@@ -1,199 +1,211 @@
-# Regulatory Change Monitor & Impact Mapper
+# NaturalSentinel
 
-An agentic system with **persistent memory** and **MCP server** capabilities for monitoring regulatory filings across SEC, CFPB, Fed, FDA, EPA, and USTR.
+**Agentic regulatory change monitor with persistent memory and MCP server.**
 
-## Architecture
+Watches regulatory filings across SEC, CFPB, Fed, FDA, EPA, and USTR — parses dense legal language, maps changes to affected business lines, and learns from human feedback over time.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        MCP CLIENTS                              │
-│   Claude Desktop  ·  Claude Code  ·  Cursor  ·  Custom Agents  │
-└──────────────────────────┬──────────────────────────────────────┘
-                           │  MCP Protocol (stdio / SSE / HTTP)
-┌──────────────────────────▼──────────────────────────────────────┐
-│                     mcp_server.py                                │
-│  ┌─────────┐  ┌───────────┐  ┌──────────┐  ┌────────────────┐  │
-│  │  Tools  │  │ Resources │  │ Prompts  │  │  Standalone    │  │
-│  │ 6 tools │  │ 3+templates│ │ 3 prompts│  │  (no SDK)      │  │
-│  └────┬────┘  └─────┬─────┘  └────┬─────┘  └───────┬────────┘  │
-└───────┼─────────────┼─────────────┼─────────────────┼───────────┘
-        │             │             │                 │
-┌───────▼─────────────▼─────────────▼─────────────────▼───────────┐
-│                       agent.py                                   │
-│  ┌──────────────┐  ┌───────────────┐  ┌──────────────────────┐  │
-│  │  Fetch       │→ │  Analyze      │→ │  Return Structured   │  │
-│  │  Filings     │  │  (LLM + Mem)  │  │  Impact Assessments  │  │
-│  └──────────────┘  └───────┬───────┘  └──────────────────────┘  │
-│                            │                                     │
-│  ┌─────────────────────────▼─────────────────────────────────┐  │
-│  │              Model Provider Abstraction                     │  │
-│  │  Anthropic  ·  OpenAI  ·  Gemini  ·  Ollama (local)       │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────┬────────────────────────────────────┘
-                              │
-┌─────────────────────────────▼────────────────────────────────────┐
-│                       memory.py                                   │
-│                                                                   │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────────┐  │
-│  │  Episodic   │  │   Entity     │  │     Precedent          │  │
-│  │  Memory     │  │   Memory     │  │     Memory             │  │
-│  │             │  │              │  │                        │  │
-│  │  Full past  │  │  Regulation  │  │  Human corrections     │  │
-│  │  analyses   │  │  & business  │  │  that teach the agent  │  │
-│  │  for recall │  │  line graph  │  │  to self-correct       │  │
-│  └──────┬──────┘  └──────┬───────┘  └────────────┬───────────┘  │
-│         │                │                        │              │
-│  ┌──────▼────────────────▼────────────────────────▼───────────┐  │
-│  │                 SQLite + TF-IDF Search                      │  │
-│  │          (falls back to keyword if no sklearn)              │  │
-│  └────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
+66 tests passing · zero required dependencies · pluggable LLM backends
 ```
-
-## Files
-
-| File | Purpose |
-|---|---|
-| `agent.py` | Core agent: model providers, filing fetchers, analysis loop |
-| `memory.py` | Persistent memory: SQLite store, semantic search, entity graph |
-| `mcp_server.py` | MCP server: tools, resources, prompts, standalone fallback |
-| `demo.py` | Basic demo with mock provider (no API keys needed) |
-| `demo_memory_mcp.py` | Full demo exercising memory + MCP pipeline |
 
 ## Quick Start
 
 ```bash
-# No dependencies needed for the demo
-python demo_memory_mcp.py
+# Clone and run — no API keys needed
+cd naturalsentinel
+PYTHONPATH=src python examples/basic_demo.py
 
-# With a real provider
+# Run the test suite
+PYTHONPATH=src python -m unittest tests.test_all -v
+
+# With a real LLM provider
 pip install anthropic
-ANTHROPIC_API_KEY=sk-ant-... python agent.py --provider anthropic --days 30
+ANTHROPIC_API_KEY=sk-ant-... PYTHONPATH=src python -m naturalsentinel.cli --provider anthropic
 ```
 
-## How Persistent Memory Works
-
-The memory system gives the agent three capabilities that improve over time:
-
-### 1. Episodic Memory
-Every filing + analysis is stored. When a new SEC filing arrives, the agent automatically recalls past SEC analyses and includes them as context. This means the agent can say "this is similar to the climate disclosure rule from last quarter, which we rated as critical."
-
-### 2. Entity Knowledge Graph
-The agent automatically extracts relationships: "Regulation S-K → affects → Public Equities", "CFPB guidance → modifies → ECOA". Over time this builds a rich graph of regulatory interconnections. When analyzing a new filing, the agent can traverse this graph to find non-obvious impacts.
-
-### 3. Precedent (Feedback) Memory
-When a human corrects the agent — "that should have been severity=critical, not high" — the correction is stored as a precedent. Future analyses in the same domain receive these precedents as context, so the agent learns from its mistakes. This is the mechanism that makes the agent genuinely improve with use.
-
-### Memory Context Injection
-
-Before each LLM call, the agent builds a context block from memory:
+## Repo Structure
 
 ```
---- AGENT MEMORY CONTEXT ---
-RELEVANT PAST ANALYSES:
-- [SEC-2026-0312-A] Climate Disclosures → severity=critical, lines=Public Equities,ESG...
-
-CORRECTION PRECEDENTS (learn from these):
-- Correction on FED-2026-0305-C.severity: high → critical (reason: $500M crypto custody exposure)
-
-KNOWN ENTITIES:
-- Regulation S-K: {"type": "regulation", "agency": "SEC", ...}
---- END MEMORY CONTEXT ---
+naturalsentinel/
+├── pyproject.toml
+├── run_tests.py
+├── src/
+│   └── naturalsentinel/
+│       ├── __init__.py              # Public API
+│       ├── models.py                # Filing, Impact, Severity, ChangeType
+│       ├── agent.py                 # Core orchestrator
+│       ├── prompts.py               # LLM prompt templates
+│       ├── cli.py                   # CLI + provider factory
+│       ├── providers/
+│       │   ├── base.py              # ModelProvider ABC
+│       │   ├── mock.py              # Zero-dep deterministic mock
+│       │   ├── anthropic.py         # Claude
+│       │   ├── openai.py            # GPT-4o
+│       │   ├── gemini.py            # Gemini
+│       │   └── ollama.py            # Local models
+│       ├── fetchers/
+│       │   ├── base.py              # fetch_filings + domain mappings
+│       │   └── sample_data.py       # 6 curated filings + mock analyses
+│       ├── memory/
+│       │   ├── types.py             # MemoryRecord, MemoryType
+│       │   ├── schema.py            # SQLite DDL
+│       │   ├── similarity.py        # TF-IDF / keyword search engine
+│       │   └── store.py             # MemoryStore (episodic, entity, precedent)
+│       ├── mcp/
+│       │   └── server.py            # MCP tools, resources, prompts
+│       └── utils/
+│           ├── parsing.py           # LLM JSON extraction
+│           ├── serialization.py     # Enum-safe serialization
+│           └── text.py              # Tokenization, similarity
+├── tests/
+│   ├── conftest.py                  # Shared fixtures
+│   ├── test_all.py                  # 66 unittest.TestCase tests
+│   ├── test_models.py               # pytest-style: domain types
+│   ├── test_utils.py                # pytest-style: parsing, text, serialization
+│   ├── test_agent.py                # pytest-style: agent pipeline
+│   ├── test_memory.py               # pytest-style: memory store
+│   ├── test_mcp.py                  # pytest-style: MCP standalone server
+│   ├── test_providers.py            # pytest-style: provider factory
+│   └── test_fetchers.py             # pytest-style: filing retrieval
+└── examples/
+    ├── basic_demo.py                # Simplest usage
+    └── memory_feedback_demo.py      # Full learning loop
 ```
 
-This block is appended to the user prompt so the LLM sees it alongside the filing text.
+## Architecture
 
-## How MCP Works
+```
+MCP Clients (Claude Desktop, Claude Code, Cursor, custom agents)
+        │
+        ▼  MCP Protocol (stdio / SSE / HTTP)
+┌─────────────────────────────────────────┐
+│  mcp/server.py                          │
+│  6 Tools · 5 Resources · 3 Prompts      │
+└────────────────┬────────────────────────┘
+                 │
+┌────────────────▼────────────────────────┐
+│  agent.py                               │
+│  Fetch → Deduplicate → Analyze → Store  │
+│                                         │
+│  providers/                             │
+│  Anthropic · OpenAI · Gemini · Ollama   │
+└────────────────┬────────────────────────┘
+                 │
+┌────────────────▼────────────────────────┐
+│  memory/store.py                        │
+│                                         │
+│  Episodic    Entity       Precedent     │
+│  (past       (regulation  (human        │
+│   analyses)   graph)       corrections) │
+│                                         │
+│  SQLite + TF-IDF / keyword search       │
+└─────────────────────────────────────────┘
+```
 
-The MCP server exposes the agent's capabilities as a standardized protocol that any MCP client can consume.
+## Memory System
 
-### Tools (things the LLM can call)
+Three memory types make the agent improve over time:
 
-| Tool | Description |
-|---|---|
-| `scan_regulatory_filings` | Run a full monitoring cycle across specified agencies |
-| `analyze_filing_text` | Analyze user-provided regulatory text |
-| `recall_memory` | Semantic search across the agent's memory |
-| `provide_feedback` | Record corrections that improve future analyses |
-| `get_entity_relations` | Explore the knowledge graph |
-| `get_memory_stats` | View memory system statistics |
+**Episodic** — Every filing analysis is stored. When a new SEC filing arrives, the agent recalls past SEC analyses as context so it can identify patterns and maintain consistency.
 
-### Resources (read-only context)
+**Entity graph** — Relationships are auto-extracted: "Regulation S-K → impacts → Public Equities." Over time this builds a knowledge graph of regulatory interconnections used to find non-obvious impacts.
 
-| URI | Description |
-|---|---|
-| `regmon://filings/recent` | Latest filing analyses |
-| `regmon://memory/stats` | Memory system statistics |
-| `regmon://config/domains` | Monitored domains and business lines |
-| `regmon://filings/domain/{domain}` | Filing history by agency |
-| `regmon://entity/{name}` | Entity knowledge and relations |
+**Precedent** — Human corrections are stored and injected into future prompts. When you say "that severity should have been critical," future analyses in the same domain see that correction as context.
 
-### Prompts (pre-built workflows)
+```python
+from naturalsentinel import MemoryStore
 
-| Prompt | Description |
-|---|---|
-| `regulatory_briefing` | Executive briefing for board/compliance/risk |
-| `impact_deep_dive` | Deep analysis of a specific filing |
-| `compliance_gap_analysis` | Gap analysis for a business line |
+mem = MemoryStore("naturalsentinel.db")
 
-### Running the MCP Server
+# Record a correction
+mem.record_feedback("SEC-2026-0312-A", "severity", "high", "critical",
+                    "SEC climate rules carry real enforcement teeth")
+
+# Recall relevant memories
+results = mem.recall("climate disclosure requirements", top_k=3)
+
+# Build context block for LLM injection
+context = mem.build_context_block("sec", "new cybersecurity reporting rule")
+```
+
+## MCP Server
+
+Exposes the agent as a standardized MCP server:
+
+| MCP Primitive | Count | Examples |
+|---|---|---|
+| Tools | 6 | `scan_regulatory_filings`, `recall_memory`, `provide_feedback` |
+| Resources | 5 | `naturalsentinel://filings/recent`, `naturalsentinel://entity/{name}` |
+| Prompts | 3 | `regulatory_briefing`, `impact_deep_dive`, `compliance_gap_analysis` |
 
 ```bash
-# For Claude Desktop (stdio transport)
-python mcp_server.py
+# Claude Desktop (stdio)
+python -m naturalsentinel.mcp.server
 
-# For web clients (SSE transport)
-python mcp_server.py --transport sse
+# Web clients (SSE)
+python -m naturalsentinel.mcp.server --transport sse
 
-# Without MCP SDK (standalone JSON-RPC over stdin/stdout)
-python mcp_server.py --transport standalone
+# Without MCP SDK
+python -m naturalsentinel.mcp.server --transport standalone
 ```
 
-### Claude Desktop Configuration
-
-Add to `claude_desktop_config.json`:
+Claude Desktop config (`claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "regulatory-monitor": {
       "command": "python",
-      "args": ["/path/to/mcp_server.py"],
+      "args": ["-m", "naturalsentinel.mcp.server"],
       "env": {
+        "PYTHONPATH": "/path/to/naturalsentinel/src",
         "ANTHROPIC_API_KEY": "sk-ant-...",
-        "REGMON_PROVIDER": "anthropic",
-        "REGMON_MEMORY_DB": "/path/to/regmon_memory.db"
+        "SENTINEL_MEMORY_DB": "/path/to/naturalsentinel.db"
       }
     }
   }
 }
 ```
 
-## Swapping Model Providers
+## Swapping Providers
 
 ```python
-from agent import RegulatoryMonitorAgent, AnthropicProvider, OpenAIProvider, OllamaProvider
-from memory import MemoryStore
+from naturalsentinel import RegulatoryMonitorAgent, MemoryStore
+from naturalsentinel.providers.anthropic import AnthropicProvider
+from naturalsentinel.providers.openai import OpenAIProvider
+from naturalsentinel.providers.ollama import OllamaProvider
 
-memory = MemoryStore("my_memory.db")
+memory = MemoryStore("shared.db")  # All providers share the same memory
 
-# Anthropic
-agent = RegulatoryMonitorAgent(AnthropicProvider("claude-sonnet-4-20250514"), memory=memory)
-
-# OpenAI
+agent = RegulatoryMonitorAgent(AnthropicProvider(), memory=memory)
 agent = RegulatoryMonitorAgent(OpenAIProvider("gpt-4o"), memory=memory)
-
-# Local via Ollama
 agent = RegulatoryMonitorAgent(OllamaProvider("llama3.1"), memory=memory)
 ```
 
-All providers share the same memory store, so you can switch models while retaining all learned context.
-
 ## Dependencies
 
-**Zero dependencies** for the demo (uses stdlib only).
+**Core: zero.** Everything runs on stdlib Python 3.11+.
 
-For production:
-- `anthropic` / `openai` / `google-genai` — for your chosen LLM provider
-- `mcp` — for the full MCP server (`pip install mcp`)
-- `scikit-learn` — for TF-IDF semantic search (optional, falls back to keyword matching)
+Optional extras:
+
+| Extra | Packages | Purpose |
+|---|---|---|
+| `anthropic` | `anthropic` | Claude provider |
+| `openai` | `openai` | GPT-4o provider |
+| `gemini` | `google-genai` | Gemini provider |
+| `mcp` | `mcp`, `uvicorn`, `starlette` | Full MCP server |
+| `search` | `scikit-learn` | TF-IDF semantic search |
+| `dev` | `pytest`, `pytest-cov`, `ruff` | Development tools |
+
+## Testing
+
+```bash
+# unittest (always works, no deps)
+PYTHONPATH=src python -m unittest tests.test_all -v
+
+# pytest (if installed)
+PYTHONPATH=src python -m pytest tests/ -v
+
+# With coverage
+PYTHONPATH=src python -m pytest tests/ --cov=naturalsentinel --cov-report=term-missing
+```

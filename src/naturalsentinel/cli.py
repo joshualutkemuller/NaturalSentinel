@@ -8,9 +8,13 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from naturalsentinel.models import ChangeType, MonitorResult, RegulatoryDomain, RegulatoryFiling
+from dataclasses import asdict
+
+from naturalsentinel.agent_framework import AgentRuntime
+from naturalsentinel.models import ChangeType, RegulatoryDomain, RegulatoryFiling
 from naturalsentinel.providers.base import ModelProvider
-from naturalsentinel.utils.serialization import enum_serializer, serialize_result
+from naturalsentinel.skills import ALL_SKILLS
+from naturalsentinel.utils.serialization import enum_serializer
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +22,23 @@ TEXT_SUFFIXES = {".txt", ".md", ".rst", ".log", ".text"}
 STRUCTURED_SUFFIXES = {".json"}
 WEB_SUFFIXES = {".html", ".htm"}
 SUPPORTED_SUFFIXES = TEXT_SUFFIXES | STRUCTURED_SUFFIXES | WEB_SUFFIXES
+
+
+def create_runtime(
+    provider: ModelProvider,
+    *,
+    memory=None,
+    state_path: str = "monitor_state.json",
+) -> AgentRuntime:
+    """Build an AgentRuntime preloaded with the full built-in skill library."""
+    runtime = AgentRuntime(provider=provider, memory=memory, state_path=state_path)
+    runtime.register_skills(*ALL_SKILLS)
+    return runtime
+
+
+def _serialize_runtime_results(results: list[dict]) -> list[dict]:
+    """Normalize runtime scan/analyze results into JSON-safe dicts."""
+    return json.loads(json.dumps(results, default=enum_serializer))
 
 
 def build_provider(provider_name: str, model: str | None = None) -> ModelProvider:
@@ -138,31 +159,42 @@ def analyze_local_documents(
     memory_db: str | None = None,
     state_path: str = "monitor_state.local.json",
 ) -> list[dict]:
-    """Analyze local documents by routing them through the core agent analysis path."""
+    """Analyze local documents by routing them through public runtime skills."""
     memory = None
     if memory_db:
         from naturalsentinel.memory.store import MemoryStore
         memory = MemoryStore(memory_db)
 
-    from naturalsentinel.agent import RegulatoryMonitorAgent
-
-    agent = RegulatoryMonitorAgent(
-        provider=provider,
-        domains=[domain],
-        memory=memory,
-        state_path=state_path,
-    )
+    runtime = create_runtime(provider, memory=memory, state_path=state_path)
 
     try:
         filings = build_local_filings(input_paths, input_dir, domain, recursive=recursive)
-        results: list[MonitorResult] = []
+        results: list[dict] = []
         for filing in filings:
-            result = agent._analyze_filing(filing)
-            results.append(result)
-            if agent.memory:
-                sr = serialize_result(result)
-                agent.memory.store_episodic(filing.id, sr["filing"], sr["impact"])
-        return [serialize_result(r) for r in results]
+            filing_data = json.loads(json.dumps(asdict(filing), default=enum_serializer))
+            context_result = runtime.execute_skill(
+                "build_context",
+                {"domain": filing.domain.value, "filing_text": filing.raw_text},
+            )
+            analysis_result = runtime.execute_skill(
+                "analyze_filing",
+                {
+                    "filing": filing_data,
+                    "memory_context": context_result.data if context_result.success else "",
+                },
+            )
+            if not analysis_result.success:
+                raise RuntimeError(f"Failed to analyze {filing.id}: {analysis_result.error}")
+
+            impact = analysis_result.data
+            if memory is not None:
+                runtime.execute_skill(
+                    "store_memory",
+                    {"filing_id": filing.id, "filing": filing_data, "impact": impact},
+                )
+
+            results.append({"filing": filing_data, "impact": impact})
+        return _serialize_runtime_results(results)
     finally:
         if memory:
             memory.close()
@@ -237,16 +269,29 @@ def main():
             from naturalsentinel.memory.store import MemoryStore
             memory = MemoryStore(args.memory_db)
 
-        from naturalsentinel.agent import RegulatoryMonitorAgent
-        agent = RegulatoryMonitorAgent(
-            provider=provider, domains=domains, memory=memory,
+        runtime = create_runtime(
+            provider,
+            memory=memory,
+            state_path="monitor_state.json",
         )
+        scan_params = {"since_days": args.days}
+        if domains:
+            scan_params["domains"] = [domain.value for domain in domains]
         if args.reset:
-            agent.reset_state()
+            Path(runtime.state_path).write_text(json.dumps({"seen_ids": []}))
 
-        output = agent.run_json(since_days=args.days)
-        if memory:
-            memory.close()
+        try:
+            result = runtime.execute_skill("scan_cycle", scan_params)
+            if not result.success:
+                raise RuntimeError(result.error)
+            output = json.dumps(
+                _serialize_runtime_results(result.data["results"]),
+                indent=2,
+                default=enum_serializer,
+            )
+        finally:
+            if memory:
+                memory.close()
 
     if args.output:
         Path(args.output).write_text(output)

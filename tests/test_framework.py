@@ -15,6 +15,8 @@ from naturalsentinel import (
     ExecutionPlan, PlanStep,
 )
 from naturalsentinel.skills import ALL_SKILLS
+from naturalsentinel.fetchers import fetch_filings
+from naturalsentinel.fetchers.sample_data import SAMPLE_FILINGS
 
 
 # ── FRAMEWORK ─────────────────────────────────────────────────────────────
@@ -196,7 +198,7 @@ class TestFetchFilingsSkill(unittest.TestCase):
     def test_fetch_all(self):
         result = self.runtime.execute_skill("fetch_filings", {"since_days": 365})
         self.assertTrue(result.success)
-        self.assertEqual(len(result.data), 6)
+        self.assertEqual(len(result.data), len(SAMPLE_FILINGS))
 
     def test_fetch_filtered(self):
         result = self.runtime.execute_skill("fetch_filings", {"domains": ["sec"], "since_days": 365})
@@ -329,13 +331,14 @@ class TestScanCycleSkill(unittest.TestCase):
         result = self.runtime.execute_skill("scan_cycle", {"since_days": 90})
         self.assertTrue(result.success)
         stats = result.data["stats"]
-        self.assertEqual(stats["total_fetched"], 6)
-        self.assertEqual(stats["new_analyzed"], 6)
+        expected = len(fetch_filings(since_days=90))
+        self.assertEqual(stats["total_fetched"], expected)
+        self.assertEqual(stats["new_analyzed"], expected)
         self.assertGreater(result.token_usage, 0)
 
         # Memory should be populated
         from naturalsentinel.memory.types import MemoryType
-        self.assertEqual(self.memory.count(MemoryType.EPISODIC), 6)
+        self.assertEqual(self.memory.count(MemoryType.EPISODIC), expected)
 
     def test_second_cycle_deduped(self):
         self.runtime.execute_skill("scan_cycle", {"since_days": 90})

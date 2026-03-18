@@ -41,4 +41,36 @@ CREATE TABLE IF NOT EXISTS feedback_log (
     reason      TEXT,
     created_at  TEXT NOT NULL
 );
+
+-- Priority 3: prior/posterior belief tracking per topic
+CREATE TABLE IF NOT EXISTS belief_states (
+    topic                TEXT NOT NULL,
+    domain               TEXT NOT NULL,
+    prior_confidence     REAL NOT NULL DEFAULT 0.5,
+    posterior_confidence REAL NOT NULL DEFAULT 0.5,
+    delta_confidence     REAL NOT NULL DEFAULT 0.0,
+    delta_drivers        TEXT NOT NULL DEFAULT '[]',
+    stability_score      REAL NOT NULL DEFAULT 1.0,
+    reversal_risk        REAL NOT NULL DEFAULT 0.1,
+    observation_count    INTEGER NOT NULL DEFAULT 0,
+    last_filing_id       TEXT NOT NULL DEFAULT '',
+    created_at           TEXT NOT NULL,
+    updated_at           TEXT NOT NULL,
+    PRIMARY KEY (topic, domain)
+);
+
+-- Full history of every confidence observation for a (topic, domain) pair
+CREATE TABLE IF NOT EXISTS belief_history (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    topic            TEXT NOT NULL,
+    domain           TEXT NOT NULL,
+    confidence       REAL NOT NULL,
+    delta_confidence REAL NOT NULL,
+    delta_drivers    TEXT NOT NULL DEFAULT '[]',
+    filing_id        TEXT NOT NULL DEFAULT '',
+    observed_at      TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_bh_topic_domain ON belief_history(topic, domain);
+CREATE INDEX IF NOT EXISTS idx_bs_domain        ON belief_states(domain);
 """

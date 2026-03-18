@@ -44,6 +44,8 @@ That means evolving the platform around six questions:
 
 ### 1. Add an explicit decision object
 
+**Status:** Complete as of 2026-03-18. NaturalSentinel now emits a first-class `DecisionFrame` alongside each `ImpactAssessment`.
+
 Right now the system produces high-quality analytical artifacts, but the outputs are still mostly filing-centric. A more professional framing would introduce a first-class `DecisionFrame` or `DecisionContext` object that sits above analysis.
 
 Suggested fields:

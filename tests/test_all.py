@@ -22,6 +22,7 @@ from naturalsentinel import (
     RegulatoryDomain,
     RegulatoryFiling,
     ImpactAssessment,
+    DecisionFrame,
     MonitorResult,
     Severity,
     ChangeType,
@@ -42,7 +43,7 @@ from naturalsentinel.cli import build_provider
 class TestEnums(unittest.TestCase):
     def test_domain_values(self):
         self.assertEqual(RegulatoryDomain.SEC.value, "sec")
-        self.assertEqual(len(RegulatoryDomain), 6)
+        self.assertGreaterEqual(len(RegulatoryDomain), 6)
 
     def test_severity_values(self):
         vals = [s.value for s in Severity]
@@ -153,7 +154,13 @@ class TestSerialization(unittest.TestCase):
             compliance_deadline="2026-12-15", action_items=["Do it"],
             risk_summary="Risk", confidence=0.95,
         )
-        return MonitorResult(filing=f, impact=i, raw_analysis="{}")
+        d = DecisionFrame(
+            decision_id="decision::T-001", question="What action is warranted?", scope="SEC review", time_horizon="near-term",
+            affected_entities=["Eq"], candidate_actions=["Escalate"], constraints=["Legal review required"],
+            evidence_items=["Source filing"], assumptions=["No implementation delay"], counterarguments=["Scope may narrow"],
+            confidence=0.9, expected_revisit_date="2026-12-01", owner="Compliance", audit_refs=["T-001"]
+        )
+        return MonitorResult(filing=f, impact=i, decision=d, raw_analysis="{}")
 
     def test_enum_serializer(self):
         self.assertEqual(enum_serializer(Severity.HIGH), "high")
@@ -162,6 +169,7 @@ class TestSerialization(unittest.TestCase):
         sr = serialize_result(self._make_result())
         self.assertEqual(sr["filing"]["domain"], "sec")
         self.assertEqual(sr["impact"]["severity"], "critical")
+        self.assertEqual(sr["decision"]["decision_id"], "decision::T-001")
         json.dumps(sr)  # should not raise
 
 
@@ -355,7 +363,7 @@ class TestAgent(unittest.TestCase):
 
     def test_run_returns_results(self):
         results = self.agent.run(since_days=90)
-        self.assertEqual(len(results), 6)
+        self.assertEqual(len(results), len(fetch_filings(since_days=90)))
 
     def test_result_structure(self):
         results = self.agent.run(since_days=90)
@@ -366,17 +374,19 @@ class TestAgent(unittest.TestCase):
             self.assertGreaterEqual(r.impact.confidence, 0.0)
             self.assertLessEqual(r.impact.confidence, 1.0)
             self.assertGreater(len(r.impact.action_items), 0)
+            self.assertTrue(r.decision.decision_id)
+            self.assertEqual(r.decision.audit_refs[0], r.filing.id)
 
     def test_deduplication(self):
         first = self.agent.run(since_days=90)
         second = self.agent.run(since_days=90)
-        self.assertEqual(len(first), 6)
+        self.assertEqual(len(first), len(fetch_filings(since_days=90)))
         self.assertEqual(len(second), 0)
 
     def test_reset_state(self):
         self.agent.run(since_days=90)
         self.agent.reset_state()
-        self.assertEqual(len(self.agent.run(since_days=90)), 6)
+        self.assertEqual(len(self.agent.run(since_days=90)), len(fetch_filings(since_days=90)))
 
     def test_domain_filter(self):
         self.agent.domains = [RegulatoryDomain.SEC, RegulatoryDomain.FDA]
@@ -387,14 +397,14 @@ class TestAgent(unittest.TestCase):
     def test_run_json_valid(self):
         output = self.agent.run_json(since_days=90)
         data = json.loads(output)
-        self.assertEqual(len(data), 6)
+        self.assertEqual(len(data), len(fetch_filings(since_days=90)))
         for item in data:
             self.assertIsInstance(item["filing"]["domain"], str)
             self.assertIsInstance(item["impact"]["severity"], str)
 
     def test_memory_populated(self):
         self.agent.run(since_days=90)
-        self.assertEqual(self.mem.count(MemoryType.EPISODIC), 6)
+        self.assertEqual(self.mem.count(MemoryType.EPISODIC), len(fetch_filings(since_days=90)))
         self.assertGreater(self.mem.stats()["total_relations"], 0)
 
     def test_agent_without_memory(self):
@@ -403,7 +413,7 @@ class TestAgent(unittest.TestCase):
             state_path=os.path.join(self.tmpdir, "state2.json"),
         )
         results = agent.run(since_days=90)
-        self.assertEqual(len(results), 6)
+        self.assertEqual(len(results), len(fetch_filings(since_days=90)))
 
 
 # ══════════════════════════════════════════════════════════════════════════

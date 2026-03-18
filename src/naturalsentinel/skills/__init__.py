@@ -15,6 +15,7 @@ Core Skills:
     generate_briefing   — Produce executive-level regulatory briefing
     scan_cycle          — Full orchestrated scan (composes other skills)
     track_belief        — Prior/posterior belief tracking per topic (Priority 3)
+    run_evaluation      — Quantitative extraction accuracy, calibration, and drift
 
 Intelligence Skills:
     alert_threshold          — Flag analyses breaching severity thresholds
@@ -61,6 +62,7 @@ from naturalsentinel.skills.dedup import DetectDuplicatesSkill
 from naturalsentinel.skills.briefing import GenerateBriefingSkill
 from naturalsentinel.skills.scan_cycle import ScanCycleSkill
 from naturalsentinel.skills.belief_tracker import BeliefTrackerSkill
+from naturalsentinel.skills.run_evaluation import RunEvaluationSkill
 
 # Intelligence / analytics skills
 from naturalsentinel.skills.alert import AlertThresholdSkill
@@ -108,6 +110,7 @@ ALL_SKILLS = [
     GenerateBriefingSkill(),
     ScanCycleSkill(),
     BeliefTrackerSkill(),
+    RunEvaluationSkill(),
     # Intelligence / analytics
     AlertThresholdSkill(),
     ComplianceDeadlineSkill(),
@@ -153,6 +156,7 @@ __all__ = [
     "GenerateBriefingSkill",
     "ScanCycleSkill",
     "BeliefTrackerSkill",
+    "RunEvaluationSkill",
     # Intelligence
     "AlertThresholdSkill",
     "ComplianceDeadlineSkill",

@@ -378,6 +378,116 @@ class MemoryStore:
 
         return f"\n--- AGENT MEMORY CONTEXT ---\n{block}\n--- END MEMORY CONTEXT ---\n"
 
+    # -- Evaluation run CRUD (quantitative eval layer) ----------------------
+
+    def store_eval_run(self, run_id: str, report: dict):
+        """Persist a completed evaluation run report."""
+        now = datetime.utcnow().isoformat()
+        self.conn.execute(
+            """
+            INSERT INTO eval_runs (
+                run_id, provider_tag, suite_name, n_cases, overall_accuracy,
+                per_field_accuracy, domain_breakdown, n_fields_evaluated,
+                ece, mce, calibration_json, drift_json, run_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(run_id) DO UPDATE SET
+                overall_accuracy   = excluded.overall_accuracy,
+                per_field_accuracy = excluded.per_field_accuracy,
+                domain_breakdown   = excluded.domain_breakdown,
+                n_fields_evaluated = excluded.n_fields_evaluated,
+                ece                = excluded.ece,
+                mce                = excluded.mce,
+                calibration_json   = excluded.calibration_json,
+                drift_json         = excluded.drift_json
+            """,
+            (
+                run_id,
+                report.get("provider_tag", "default"),
+                report.get("suite_name", ""),
+                report.get("n_cases", 0),
+                report.get("overall_accuracy", 0.0),
+                json.dumps(report.get("per_field_accuracy", {})),
+                json.dumps(report.get("domain_breakdown", {})),
+                json.dumps(report.get("n_fields_evaluated", {})),
+                report.get("ece", 0.0),
+                report.get("mce", 0.0),
+                json.dumps(report.get("calibration", {})),
+                json.dumps(report.get("drift", {})),
+                now,
+            ),
+        )
+        self.conn.commit()
+        logger.debug("Stored eval run %s (n=%d, acc=%.3f)", run_id, report.get("n_cases", 0), report.get("overall_accuracy", 0.0))
+
+    def get_eval_run(self, run_id: str) -> Optional[dict]:
+        """Retrieve a single evaluation run by ID."""
+        row = self.conn.execute(
+            "SELECT * FROM eval_runs WHERE run_id = ?", (run_id,)
+        ).fetchone()
+        if not row:
+            return None
+        return self._deserialise_eval_row(dict(row))
+
+    def list_eval_runs(
+        self, provider_tag: Optional[str] = None, limit: int = 20
+    ) -> list[dict]:
+        """List evaluation runs, newest first, optionally filtered by provider_tag."""
+        if provider_tag:
+            rows = self.conn.execute(
+                "SELECT * FROM eval_runs WHERE provider_tag = ? ORDER BY run_at DESC LIMIT ?",
+                (provider_tag, limit),
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                "SELECT * FROM eval_runs ORDER BY run_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+        return [self._deserialise_eval_row(dict(r)) for r in rows]
+
+    def compare_eval_runs(self, run_id_a: str, run_id_b: str) -> dict:
+        """Return a side-by-side comparison dict for two evaluation runs.
+
+        Fields compared: overall_accuracy, per_field_accuracy, ece, mce.
+        Delta is computed as run_b − run_a (positive = improvement).
+        """
+        a = self.get_eval_run(run_id_a)
+        b = self.get_eval_run(run_id_b)
+        if not a or not b:
+            return {"error": "One or both run_ids not found"}
+
+        def _delta(key):
+            return round(float(b.get(key, 0)) - float(a.get(key, 0)), 4)
+
+        per_field_delta: dict[str, float] = {}
+        all_fields = set(a.get("per_field_accuracy", {})) | set(b.get("per_field_accuracy", {}))
+        for f in all_fields:
+            va = a.get("per_field_accuracy", {}).get(f, 0.0)
+            vb = b.get("per_field_accuracy", {}).get(f, 0.0)
+            per_field_delta[f] = round(vb - va, 4)
+
+        return {
+            "run_a": {"run_id": run_id_a, "provider_tag": a.get("provider_tag"), "run_at": a.get("run_at")},
+            "run_b": {"run_id": run_id_b, "provider_tag": b.get("provider_tag"), "run_at": b.get("run_at")},
+            "delta_overall_accuracy": _delta("overall_accuracy"),
+            "delta_ece": _delta("ece"),           # Negative = better calibration
+            "delta_mce": _delta("mce"),
+            "per_field_delta": per_field_delta,
+            "n_cases_a": a.get("n_cases", 0),
+            "n_cases_b": b.get("n_cases", 0),
+        }
+
+    @staticmethod
+    def _deserialise_eval_row(row: dict) -> dict:
+        for key in ("per_field_accuracy", "domain_breakdown", "n_fields_evaluated",
+                    "calibration_json", "drift_json"):
+            if key in row and isinstance(row[key], str):
+                row[key] = json.loads(row[key])
+        # Normalise key names
+        if "calibration_json" in row:
+            row["calibration"] = row.pop("calibration_json")
+        if "drift_json" in row:
+            row["drift"] = row.pop("drift_json")
+        return row
+
     # -- Belief-state CRUD (Priority 3) -------------------------------------
 
     def get_belief_state(self, topic: str, domain: str) -> Optional[dict]:

@@ -73,4 +73,24 @@ CREATE TABLE IF NOT EXISTS belief_history (
 
 CREATE INDEX IF NOT EXISTS idx_bh_topic_domain ON belief_history(topic, domain);
 CREATE INDEX IF NOT EXISTS idx_bs_domain        ON belief_states(domain);
+
+-- Quantitative evaluation run results
+CREATE TABLE IF NOT EXISTS eval_runs (
+    run_id               TEXT PRIMARY KEY,
+    provider_tag         TEXT NOT NULL DEFAULT 'default',
+    suite_name           TEXT NOT NULL DEFAULT 'feedback_log',
+    n_cases              INTEGER NOT NULL DEFAULT 0,
+    overall_accuracy     REAL NOT NULL DEFAULT 0.0,
+    per_field_accuracy   TEXT NOT NULL DEFAULT '{}',
+    domain_breakdown     TEXT NOT NULL DEFAULT '{}',
+    n_fields_evaluated   TEXT NOT NULL DEFAULT '{}',
+    ece                  REAL NOT NULL DEFAULT 0.0,
+    mce                  REAL NOT NULL DEFAULT 0.0,
+    calibration_json     TEXT NOT NULL DEFAULT '{}',
+    drift_json           TEXT NOT NULL DEFAULT '{}',
+    run_at               TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_er_provider_tag ON eval_runs(provider_tag);
+CREATE INDEX IF NOT EXISTS idx_er_run_at       ON eval_runs(run_at);
 """

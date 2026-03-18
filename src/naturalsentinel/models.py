@@ -5,6 +5,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+from naturalsentinel.evidence import EvidenceLedgerEntry
+
 
 class RegulatoryDomain(Enum):
     SEC = "sec"
@@ -65,7 +67,27 @@ class ImpactAssessment:
 
 
 @dataclass
+class DecisionFrame:
+    decision_id: str
+    question: str
+    scope: str
+    time_horizon: str
+    affected_entities: list[str] = field(default_factory=list)
+    candidate_actions: list[str] = field(default_factory=list)
+    constraints: list[str] = field(default_factory=list)
+    evidence_items: list[str] = field(default_factory=list)
+    assumptions: list[str] = field(default_factory=list)
+    counterarguments: list[str] = field(default_factory=list)
+    confidence: float = 0.0
+    expected_revisit_date: Optional[str] = None
+    owner: str = "Unassigned"
+    audit_refs: list[str] = field(default_factory=list)
+
+
+@dataclass
 class MonitorResult:
     filing: RegulatoryFiling
     impact: ImpactAssessment
-    raw_analysis: str
+    decision: DecisionFrame
+    evidence_ledger: list[EvidenceLedgerEntry] = field(default_factory=list)
+    raw_analysis: str = ""

@@ -17,7 +17,23 @@ Output schema:
   "compliance_deadline": "<ISO date or null if not specified>",
   "action_items": ["<concrete action 1>", "<concrete action 2>", ...],
   "risk_summary": "<1-2 sentences on residual risk if no action is taken>",
-  "confidence": <float 0-1 indicating your confidence in this assessment>
+  "confidence": <float 0-1 indicating your confidence in this assessment>,
+  "decision": {
+    "decision_id": "<stable identifier for the decision frame>",
+    "question": "<decision question a risk, portfolio, or governance stakeholder would review>",
+    "scope": "<scope of the decision frame>",
+    "time_horizon": "<near-term|medium-term|long-term horizon>",
+    "affected_entities": ["<teams, books, entities, or business lines>", ...],
+    "candidate_actions": ["<action under consideration>", ...],
+    "constraints": ["<constraint or dependency>", ...],
+    "evidence_items": ["<supporting evidence item>", ...],
+    "assumptions": ["<assumption>", ...],
+    "counterarguments": ["<counterargument or challenge>", ...],
+    "confidence": <float 0-1 indicating confidence in the decision frame>,
+    "expected_revisit_date": "<ISO date or null>",
+    "owner": "<function or person accountable for follow-up>",
+    "audit_refs": ["<filing ids, URLs, or memory refs>", ...]
+  }
 }
 
 Guidelines:
@@ -28,6 +44,9 @@ Guidelines:
 high = material change with near-term deadline; medium = significant but with \
 reasonable compliance window; low = informational or minor.
 - If the filing references other regulations, list them in affected_regulations.
+- Build a first-class decision frame that sits above the impact assessment.
+- Candidate actions should reflect realistic governance or operating choices, not generic observations.
+- Evidence items and audit_refs must make downstream review traceable.
 """
 
 USER_PROMPT_TEMPLATE = """\

@@ -31,6 +31,7 @@ all = ["naturalsentinel[anthropic,openai,gemini,mcp,search,ui,dev]"]
 [project.scripts]
 naturalsentinel     = "naturalsentinel.cli:main"
 naturalsentinel-mcp = "naturalsentinel.mcp.server:main"
+naturalsentinel-chat = "naturalsentinel.langchain_chat:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

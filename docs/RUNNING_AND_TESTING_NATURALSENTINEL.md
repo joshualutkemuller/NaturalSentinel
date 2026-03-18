@@ -78,6 +78,109 @@ This is useful when you want to inspect:
 
 ---
 
+## 2B. Analyze your own local documents from the CLI
+
+You can now point the CLI directly at local files or directories instead of only running the sample fetched workflow.
+
+### Analyze one local file
+
+```bash
+PYTHONPATH=src python -m naturalsentinel.cli   --provider mock   --input-path /path/to/filing.txt   --input-domain sec
+```
+
+### Analyze a whole directory of documents
+
+```bash
+PYTHONPATH=src python -m naturalsentinel.cli   --provider mock   --input-dir /path/to/regulatory_docs   --input-domain fed   --output /tmp/local-analysis.json
+```
+
+### Mix files and directories
+
+```bash
+PYTHONPATH=src python -m naturalsentinel.cli   --provider mock   --input-path ./docs/sample_notice.txt   --input-path ./incoming_filings   --input-domain cftc
+```
+
+Supported local formats are currently:
+
+- `.txt`
+- `.md`
+- `.rst`
+- `.log`
+- `.text`
+- `.json`
+- `.html`
+- `.htm`
+
+This is the cleanest current path if you want a lightweight operator interface for loading documents, passing paths, and getting structured JSON back without building a separate UI first.
+
+---
+
+## 2C. Run the Streamlit front end
+
+If you want a cleaner front end for uploading files and reviewing results, use the included Streamlit app.
+
+Install the UI dependency:
+
+```bash
+pip install '.[ui]'
+```
+
+Then run:
+
+```bash
+PYTHONPATH=src streamlit run streamlit_app.py
+```
+
+What the app gives you:
+
+- multi-file upload
+- domain selection
+- provider/model selection
+- structured impact review
+- raw text preview
+- downloadable JSON output
+
+This is the cleanest current **front end** for reviewing uploaded documents without building a larger web application first.
+
+---
+
+## 2D. Run the styled LangChain CLI shell
+
+If you want a terminal interface that looks and feels more like an interactive agent shell, use the Rich-formatted chat CLI.
+
+Install the CLI extras:
+
+```bash
+pip install '.[cli]'
+```
+
+Then launch:
+
+```bash
+PYTHONPATH=src naturalsentinel-chat --provider mock --domain sec
+```
+
+Or with a LangChain-backed provider:
+
+```bash
+PYTHONPATH=src naturalsentinel-chat --provider anthropic --domain fed
+PYTHONPATH=src naturalsentinel-chat --provider openai --domain sec
+```
+
+Built-in shell commands:
+
+- `/attach <path>` — attach a file for the next message
+- `/dir <path>` — approve a directory
+- `/dirs` — list approved directories
+- `/tools` — list available tools
+- `/clear` — clear history and attachments
+- `/help` — show command help
+- `/exit` — quit
+
+This shell is designed to mirror the formatting style of a modern agent CLI: boxed header, slash commands, “Thinking...” state, and conversational responses grounded in local document analyses when attachments are present.
+
+---
+
 ## 3. Test the memory + feedback learning loop
 
 To verify that the system is not just analyzing filings once, but can accumulate institutional memory:

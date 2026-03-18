@@ -181,7 +181,121 @@ Enforcement and supervisory focus is intensifying on consumer protection violati
 
 ---
 
+### 11 · Platform Antitrust Enforcement Cycle
+
+**ID:** `platform_antitrust_enforcement`
+
+Antitrust authorities are intensifying scrutiny of large digital platforms through merger challenges, conduct investigations, or new obligations under the EU Digital Markets Act (DMA). Signals rising breakup risk, interoperability mandates, or gatekeeper designation.
+
+**Associated agencies:** FTC, DOJ
+
+**Signal vocabulary:**
+
+> digital markets act · dma · gatekeeper · self-preferencing · interoperability · data portability · platform conduct · dominant position · merger challenge · hsr · second request · ftc complaint · doj antitrust · structural remedy · divestiture · vertical integration · app store · default agreements · platform neutrality · algorithmic fairness
+
+---
+
+### 12 · Data Privacy Regulatory Expansion
+
+**ID:** `data_privacy_regulatory_expansion`
+
+New or amended data privacy regimes are extending consent requirements, data subject rights, cross-border transfer restrictions, or enforcement authority simultaneously across jurisdictions.
+
+**Associated agencies:** FTC, CISA
+
+**Signal vocabulary:**
+
+> gdpr · ccpa · cpra · data subject rights · right to erasure · consent requirement · data processing agreement · dpa · standard contractual clauses · scc · adequacy decision · cross-border transfer · data localisation · data residency · personal data · sensitive data · data broker · opt-out · privacy notice · legitimate interest · biometric data
+
+---
+
+### 13 · AI Governance and Accountability Regime
+
+**ID:** `ai_governance_regulatory_cycle`
+
+Regulators are establishing or tightening requirements for AI systems — covering risk classification, conformity assessments, transparency obligations, and bias audits. The EU AI Act is the primary legislative vector; FTC guidance and state-level algorithmic accountability laws are concurrent signals.
+
+**Associated agencies:** FTC, SEC
+
+**Signal vocabulary:**
+
+> eu ai act · high-risk ai · ai system · conformity assessment · ai risk tier · foundation model · general purpose ai · algorithmic accountability · bias audit · ai transparency · explainability · ai governance · ai oversight · automated decision · profiling · ftc ai · ai liability · ai regulatory sandbox · responsible ai · ai impact assessment
+
+---
+
+### 14 · Cybersecurity Mandate Tightening Cycle
+
+**ID:** `cybersecurity_mandate_tightening`
+
+CISA, FCC, and SEC are expanding mandatory cybersecurity obligations through KEV patching directives, incident disclosure timelines (SEC Form 8-K), and FCC telecom network security rules. EO 14028 implementation is the key federal driver.
+
+**Associated agencies:** CISA, FCC, SEC
+
+**Signal vocabulary:**
+
+> cisa kev · known exploited vulnerability · binding operational directive · bod · sec 8-k cybersecurity · incident disclosure · material breach · cybersecurity incident · zero day · patch deadline · eo 14028 · supply chain security · sbom · software bill of materials · critical infrastructure · network security · ransomware · vulnerability disclosure · fcc cyber · telecom security
+
+---
+
+### 15 · Spectrum Policy and Licensing Reform Cycle
+
+**ID:** `spectrum_policy_reform`
+
+The FCC is conducting spectrum auctions, reallocating mid-band or high-band frequencies, imposing new build-out obligations, or revising universal service fund contribution methodology. NTIA broadband funding programmes (BEAD) represent a concurrent signal.
+
+**Associated agencies:** FCC, NTIA
+
+**Signal vocabulary:**
+
+> spectrum auction · fcc auction · c-band · cbrs · mid-band · mmwave · build-out obligation · coverage requirement · universal service fund · usf · e-rate · lifeline · ntia · bead · broadband equity · rural broadband · interference protection · dynamic spectrum sharing · spectrum licence · frequency allocation · tv white space
+
+---
+
+### 16 · Content Moderation and Platform Liability Shift
+
+**ID:** `content_moderation_liability_shift`
+
+Legislative or judicial changes are narrowing or redefining Section 230 liability protections, activating DSA very-large online platform (VLOP) obligations, or requiring algorithmic amplification disclosures.
+
+**Associated agencies:** FTC, SEC
+
+**Signal vocabulary:**
+
+> section 230 · platform liability · dsa · digital services act · vlop · very large online platform · notice and takedown · ntd · content moderation · trusted flagger · algorithmic amplification · transparency report · crisis protocol · systemic risk · recommender system · illegal content · hate speech · csam · counter-terrorism · online safety · age verification
+
+---
+
+### 17 · Telecom Infrastructure Security Mandate
+
+**ID:** `telecom_infrastructure_security`
+
+FCC and NTIA are implementing supply chain security rules targeting equipment from designated foreign adversary vendors, imposing rip-and-replace obligations, and tightening roaming and interconnect security standards.
+
+**Associated agencies:** FCC, CISA, NTIA
+
+**Signal vocabulary:**
+
+> rip and replace · huawei · zte · supply chain security · covered equipment · fcc covered list · calea · lawful intercept · roaming security · ss7 vulnerability · network slicing · open ran · trusted vendor · foreign adversary · banning order · reimbursement programme · network function virtualisation · telecom supply chain · subsea cable · landing station
+
+---
+
+### 18 · Data Residency and Cross-Border Data Regime
+
+**ID:** `data_residency_localisation`
+
+Governments are imposing or expanding data localisation requirements, invalidating existing cross-border transfer mechanisms, or enacting new data sovereignty frameworks. EU-US adequacy, China PIPL/DSL, and India DPDP Act are the principal vectors.
+
+**Associated agencies:** FTC, CISA
+
+**Signal vocabulary:**
+
+> data localisation · data sovereignty · data residency · cross-border data transfer · eu-us data privacy framework · schrems · privacy shield · china pipl · dsl · data security law · india dpdp · digital personal data · government access · cloud act · fisa 702 · data border · mirror data · local storage requirement · data export restriction · third country transfer
+
+---
+
 ## Quick-Reference Table
+
+### Financial Services Regimes
 
 | ID | Label | Key Agencies | Primary Signal Terms |
 |----|-------|-------------|---------------------|
@@ -195,6 +309,19 @@ Enforcement and supervisory focus is intensifying on consumer protection violati
 | `frtb_model_implementation` | FRTB / Market Risk Models | BASEL, FED, OCC | FRTB, IMA, expected shortfall, NMRF |
 | `agency_gse_reform` | Agency / GSE Reform | FHFA | g-fee, CRT, conforming limit, TBA |
 | `consumer_fair_lending_scrutiny` | Consumer / Fair Lending | CFPB, OCC, FED, FDIC | UDAAP, redlining, HMDA, ECOA |
+
+### Technology & Telecom Regimes
+
+| ID | Label | Key Agencies | Primary Signal Terms |
+|----|-------|-------------|---------------------|
+| `platform_antitrust_enforcement` | Platform Antitrust Enforcement | FTC, DOJ | DMA, gatekeeper, self-preferencing |
+| `data_privacy_regulatory_expansion` | Data Privacy Expansion | FTC, CISA | GDPR, CCPA, adequacy, SCC |
+| `ai_governance_regulatory_cycle` | AI Governance | FTC, SEC | EU AI Act, high-risk AI, bias audit |
+| `cybersecurity_mandate_tightening` | Cybersecurity Mandates | CISA, FCC, SEC | KEV, incident disclosure, EO 14028 |
+| `spectrum_policy_reform` | Spectrum Policy Reform | FCC, NTIA | spectrum auction, build-out, USF |
+| `content_moderation_liability_shift` | Content Moderation Liability | FTC, SEC | Section 230, VLOP, DSA, NTD |
+| `telecom_infrastructure_security` | Telecom Infrastructure Security | FCC, CISA, NTIA | rip-replace, Huawei, CALEA |
+| `data_residency_localisation` | Data Residency / Localisation | FTC, CISA | data localisation, PIPL, DPDP, SCCs |
 
 ---
 

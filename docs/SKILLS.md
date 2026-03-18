@@ -3,7 +3,7 @@
 > **Branch:** `claude/expand-naturalsentinel-agents-j6oEQ`
 > **Base:** `main` @ `0a51d23` (Merge PR #3 — financial desk agents)
 > **Source:** `src/naturalsentinel/skills/`
-> **Registry:** `src/naturalsentinel/skills/__init__.py` → `ALL_SKILLS` (25 skills)
+> **Registry:** `src/naturalsentinel/skills/__init__.py` → `ALL_SKILLS` (35 skills)
 
 ---
 
@@ -43,6 +43,8 @@ Every capability in NaturalSentinel is a **Skill** — a self-contained unit wit
 - [Core Pipeline](#core-pipeline) — 9 skills
 - [Intelligence / Analytics](#intelligence--analytics) — 6 skills
 - [Specialist / Desk Skills](#specialist--desk-skills) — 10 skills
+- [Platform / Digital Regulatory](#platform--digital-regulatory) — 5 skills
+- [Technology / Telecom Security](#technology--telecom-security) — 5 skills
 
 ---
 
@@ -724,6 +726,269 @@ Extract stress scenario parameters and map them to desk-level P&L impacts. Parse
 | `capital_adequacy_impacts` | `list[str]` | CET1 / leverage impacts under scenario |
 | `model_update_requirements` | `list[str]` | Models requiring scenario integration |
 | `submission_deadline` | `str` | ISO-8601 date or `null` |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+## Platform / Digital Regulatory
+
+Skills targeting digital platform operators, privacy engineering teams, AI product teams, spectrum managers, and trust & safety organisations.
+
+---
+
+### `platform_antitrust_impact`
+
+Analyse regulatory filings for digital platform competition law implications — maps DMA/DSA gatekeeper obligations, FTC/DOJ enforcement signals, and interoperability mandates to affected products and services. Identifies fine exposure, structural remedy likelihood, and M&A clearance risk.
+
+**Tags:** `platform`, `antitrust`, `dma`, `dsa`, `ftc`, `competition`, `gatekeeper`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `affected_gatekeepers` | `list[str]` | Gatekeeper designations or candidates |
+| `interoperability_mandates` | `list[str]` | Required interop obligations |
+| `data_access_obligations` | `list[str]` | Data sharing / portability requirements |
+| `self_preferencing_prohibitions` | `list[str]` | Prohibited conduct |
+| `fine_exposure_pct_global_revenue` | `float\|null` | Max fine as % of global revenue |
+| `structural_remedy_likelihood` | `str` | `low\|moderate\|high\|null` |
+| `enforcement_timeline` | `str` | ISO-8601 date or `null` |
+| `affected_products` | `list[str]` | Products / services requiring changes |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+### `data_privacy_obligation`
+
+Identify new or changed data privacy obligations from a regulatory filing — maps GDPR, CCPA, and state-level law changes to consent frameworks, data subject rights, DPIAs, breach notification timelines, and cross-border transfer mechanisms.
+
+**Tags:** `privacy`, `gdpr`, `ccpa`, `data-protection`, `consent`, `dpo`, `breach-notification`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data_subject_rights_changes` | `list[str]` | New or expanded rights |
+| `consent_framework_changes` | `list[str]` | Changes to consent requirements |
+| `lawful_basis_impacts` | `list[str]` | Changes to processing legal bases |
+| `cross_border_transfer_changes` | `list[str]` | SCCs, adequacy, BCR changes |
+| `retention_policy_changes` | `list[str]` | Storage duration changes |
+| `dpia_triggers` | `list[str]` | When DPIA now required |
+| `breach_notification_timeline` | `str` | Hours/days to notify or `null` |
+| `dpo_obligation_change` | `bool` | Whether DPO now required |
+| `affected_jurisdictions` | `list[str]` | |
+| `compliance_deadline` | `str` | ISO-8601 or `null` |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+### `ai_regulatory_impact`
+
+Parse regulatory filings for AI governance obligations — maps EU AI Act risk tier classifications, conformity assessment requirements, FTC AI guidance, and algorithmic accountability obligations to specific AI systems and development workflows.
+
+**Tags:** `ai`, `ai-act`, `eu-ai-act`, `foundation-model`, `risk-classification`, `ftc`, `algorithmic`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `risk_tier_classification` | `str` | `unacceptable\|high\|limited\|minimal\|null` |
+| `conformity_assessment_required` | `bool` | |
+| `technical_documentation_changes` | `list[str]` | Required documentation updates |
+| `human_oversight_requirements` | `list[str]` | Mandatory human-in-the-loop provisions |
+| `transparency_obligations` | `list[str]` | Disclosure requirements |
+| `bias_audit_obligations` | `list[str]` | Audit and testing requirements |
+| `market_access_implications` | `list[str]` | CE mark / market access conditions |
+| `affected_systems` | `list[str]` | AI systems in scope |
+| `compliance_deadline` | `str` | ISO-8601 or `null` |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+### `spectrum_licensing_change`
+
+Analyse FCC spectrum rulemaking for licensing, auction, power limit, and build-out obligation changes — maps to affected frequency bands, deployment timelines, interference protection changes, and universal service fund implications for mobile network operators and rural providers.
+
+**Tags:** `spectrum`, `fcc`, `licensing`, `auction`, `5g`, `wireless`, `cbrs`, `c-band`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `band_affected` | `str` | Frequency band (e.g. `C-band 3.7-3.98 GHz`) |
+| `license_type_changes` | `list[str]` | Licence category / term changes |
+| `power_limit_changes` | `list[str]` | EIRP / power density changes |
+| `interference_protection_changes` | `list[str]` | Guard bands, coordination zones |
+| `auction_implications` | `list[str]` | Upcoming auction signals |
+| `build_out_requirement_changes` | `list[str]` | Coverage milestones and deadlines |
+| `usf_contribution_changes` | `list[str]` | Universal service obligation changes |
+| `equipment_certification_changes` | `list[str]` | FCC Part 15/25/95 changes |
+| `compliance_deadline` | `str` | ISO-8601 or `null` |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+### `content_moderation_liability`
+
+Assess platform content liability changes from regulatory filings — maps Section 230 scope changes, DSA VLOP obligations, notice-and-takedown requirements, and algorithmic amplification disclosure obligations to trust & safety workflows and legal risk.
+
+**Tags:** `content-moderation`, `section-230`, `dsa`, `vlop`, `takedown`, `trust-safety`, `platform-liability`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `section_230_implications` | `list[str]` | Changes to immunity scope |
+| `dsa_compliance_changes` | `list[str]` | VLOP / VLOSE new obligations |
+| `removal_obligation_changes` | `list[str]` | Mandatory takedown categories |
+| `notice_and_takedown_changes` | `list[str]` | NTD process / timeline changes |
+| `transparency_report_obligations` | `list[str]` | New reporting requirements |
+| `algorithmic_audit_requirements` | `list[str]` | Recommender system audit triggers |
+| `crisis_protocol_requirements` | `list[str]` | Emergency response obligations |
+| `trusted_flagger_changes` | `list[str]` | Trusted flagger programme changes |
+| `fine_exposure` | `str` | Fine structure description or `null` |
+| `compliance_deadline` | `str` | ISO-8601 or `null` |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+## Technology / Telecom Security
+
+Skills targeting CISOs, compliance officers, network operators, M&A counsel, and data engineering teams at technology and telecommunications companies.
+
+---
+
+### `cybersecurity_compliance`
+
+Identify cybersecurity compliance obligations from regulatory filings — maps CISA KEV catalog patching mandates, SEC Form 8-K incident disclosure deadlines, FCC telecom cybersecurity rules, and EO 14028 supply chain security requirements.
+
+**Tags:** `cybersecurity`, `cisa`, `kev`, `fcc`, `sec-cyber`, `incident-reporting`, `critical-infrastructure`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `kev_catalog_implications` | `list[str]` | CISA KEV patching obligations |
+| `incident_reporting_changes` | `list[str]` | Reporting timeline / scope changes |
+| `sec_disclosure_obligations` | `list[str]` | SEC 8-K materiality triggers |
+| `supply_chain_security_requirements` | `list[str]` | SBOM / vendor security obligations |
+| `network_security_mandates` | `list[str]` | FCC / CISA network controls |
+| `patch_deadlines` | `list[dict]` | Each with `vulnerability`, `deadline` |
+| `critical_infrastructure_designation` | `bool` | |
+| `pen_test_obligations` | `list[str]` | Required testing activities |
+| `compliance_deadline` | `str` | ISO-8601 or `null` |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+### `telecom_infrastructure_security`
+
+Analyse regulatory filings for telecom network security and infrastructure obligations — maps FCC supply chain prohibition orders (covered equipment lists), rip-and-replace programmes, CALEA compliance, and NTIA broadband security requirements.
+
+**Tags:** `telecom`, `infrastructure`, `supply-chain`, `huawei`, `zte`, `5g-security`, `usf`, `rip-replace`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `supply_chain_prohibition_changes` | `list[str]` | New covered equipment designations |
+| `network_architecture_requirements` | `list[str]` | Required topology / security controls |
+| `universal_service_fund_changes` | `list[str]` | USF eligibility / contribution changes |
+| `broadband_buildout_obligations` | `list[str]` | Coverage and speed requirements |
+| `rip_replace_reimbursement` | `str` | Reimbursement programme details or `null` |
+| `calea_compliance_changes` | `list[str]` | Lawful intercept obligation changes |
+| `roaming_security_requirements` | `list[str]` | SS7 / Diameter security mandates |
+| `affected_vendors` | `list[str]` | Vendors named or implicated |
+| `compliance_deadline` | `str` | ISO-8601 or `null` |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+### `data_residency_obligation`
+
+Map data localisation and cross-border transfer obligations from regulatory filings — covers EU-US adequacy frameworks, China PIPL/DSL provisions, India DPDP Act, and government-access legislation affecting cloud infrastructure and data pipeline design.
+
+**Tags:** `data-residency`, `localisation`, `cross-border`, `sccs`, `adequacy`, `cloud-sovereignty`, `gdpr-transfers`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data_localization_requirements` | `list[str]` | Where data must be stored |
+| `cross_border_transfer_mechanism_changes` | `list[str]` | SCC / BCR / adequacy changes |
+| `adequacy_decision_impacts` | `list[str]` | Adequacy decisions affected |
+| `cloud_sovereignty_implications` | `list[str]` | Cloud deployment constraints |
+| `government_access_provisions` | `list[str]` | Law enforcement access changes |
+| `affected_data_categories` | `list[str]` | Personal, financial, health, etc. |
+| `affected_jurisdictions` | `list[str]` | Countries / regions in scope |
+| `infrastructure_change_required` | `bool` | Whether physical rehosting needed |
+| `compliance_deadline` | `str` | ISO-8601 or `null` |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+### `tech_merger_review`
+
+Assess regulatory signals relevant to technology and telecom M&A — maps FTC/DOJ second-request likelihood, HSR threshold changes, FCC spectrum transfer conditions, CFIUS national security screens, and EU merger regulation signals to deal timelines and remedy risk.
+
+**Tags:** `merger`, `ma`, `antitrust`, `hsr`, `fcc-transfer`, `cfius`, `doj`, `ftc`, `eu-merger`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `notification_threshold_triggered` | `bool\|null` | HSR or equivalent threshold |
+| `theory_of_harm` | `list[str]` | Horizontal, vertical, conglomerate |
+| `behavioral_remedy_likelihood` | `str` | `low\|moderate\|high` |
+| `structural_remedy_likelihood` | `str` | `low\|moderate\|high` |
+| `market_definition_changes` | `list[str]` | Relevant market scope signals |
+| `divestiture_candidates` | `list[str]` | Products / assets at risk |
+| `fcc_transfer_conditions` | `list[str]` | Spectrum / licence transfer conditions |
+| `cfius_risk` | `str` | `low\|moderate\|high\|null` |
+| `review_timeline_estimate` | `str` | Expected phase length or `null` |
+| `action_items` | `list[str]` | |
+| `confidence` | `float` | 0–1 |
+| `summary` | `str` | |
+
+---
+
+### `algorithmic_accountability`
+
+Identify algorithmic accountability and automated decision-making obligations from regulatory filings — maps EU AI Act high-risk category requirements, FTC algorithmic scrutiny, and state-level bias audit laws to model governance, audit schedules, and impact assessment workflows.
+
+**Tags:** `algorithmic`, `bias-audit`, `explainability`, `aia`, `automated-decision`, `fairness`, `impact-assessment`
+
+**Returns schema:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `audit_requirement_triggers` | `list[str]` | When independent audit required |
+| `bias_assessment_obligations` | `list[str]` | Bias testing / fairness metrics required |
+| `explainability_requirements` | `list[str]` | Explanation and disclosure obligations |
+| `impact_assessment_triggers` | `list[str]` | Algorithmic impact assessment (AIA) triggers |
+| `prohibited_inferences` | `list[str]` | Prohibited uses of model outputs |
+| `automated_decision_opt_out` | `bool` | Right to contest automated decisions |
+| `documentation_requirements` | `list[str]` | Required model cards / technical docs |
+| `affected_systems` | `list[str]` | Model types in scope |
+| `compliance_deadline` | `str` | ISO-8601 or `null` |
 | `action_items` | `list[str]` | |
 | `confidence` | `float` | 0–1 |
 | `summary` | `str` | |

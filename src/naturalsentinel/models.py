@@ -65,7 +65,26 @@ class ImpactAssessment:
 
 
 @dataclass
+class DecisionFrame:
+    decision_id: str
+    question: str
+    scope: str
+    time_horizon: str
+    affected_entities: list[str] = field(default_factory=list)
+    candidate_actions: list[str] = field(default_factory=list)
+    constraints: list[str] = field(default_factory=list)
+    evidence_items: list[str] = field(default_factory=list)
+    assumptions: list[str] = field(default_factory=list)
+    counterarguments: list[str] = field(default_factory=list)
+    confidence: float = 0.0
+    expected_revisit_date: Optional[str] = None
+    owner: str = "Unassigned"
+    audit_refs: list[str] = field(default_factory=list)
+
+
+@dataclass
 class MonitorResult:
     filing: RegulatoryFiling
     impact: ImpactAssessment
+    decision: DecisionFrame
     raw_analysis: str

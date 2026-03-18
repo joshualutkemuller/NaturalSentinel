@@ -34,6 +34,20 @@ Specialist / Desk Skills:
     optimization_constraint     — Translate reg changes into optimizer constraint notation
     leveraged_lending_assessment — Leverage thresholds, covenants, CLO risk retention
     stress_testing_signal       — CCAR/DFAST scenario variables mapped to desk P&L
+
+Platform / Digital Regulatory Skills:
+    platform_antitrust_impact   — DMA/DSA gatekeeper obligations, FTC/DOJ enforcement signals
+    data_privacy_obligation     — GDPR, CCPA, and state privacy law obligation mapping
+    ai_regulatory_impact        — EU AI Act risk tiers, conformity assessment, FTC AI guidance
+    spectrum_licensing_change   — FCC spectrum rulemaking, auction, and build-out obligations
+    content_moderation_liability — Section 230, DSA VLOP, NTD, and algorithmic amplification
+
+Technology / Telecom Security Skills:
+    cybersecurity_compliance      — CISA KEV, SEC 8-K disclosure, FCC cyber rules, EO 14028
+    telecom_infrastructure_security — FCC network security, NTIA broadband, USF, roaming obligations
+    data_residency_obligation     — Cross-border data transfer, localisation mandates, SCCs
+    tech_merger_review            — FTC/DOJ tech M&A, HSR thresholds, divestiture conditions
+    algorithmic_accountability    — EU AI Act, FTC algorithmic scrutiny, bias audit requirements
 """
 
 from naturalsentinel.skills.fetch import FetchFilingsSkill
@@ -66,6 +80,20 @@ from naturalsentinel.skills.optimization_constraint import OptimizationConstrain
 from naturalsentinel.skills.leveraged_lending import LeveragedLendingSkill
 from naturalsentinel.skills.stress_testing import StressTestingSignalSkill
 
+# Platform / digital regulatory skills
+from naturalsentinel.skills.platform_antitrust import PlatformAntitrustSkill
+from naturalsentinel.skills.data_privacy import DataPrivacySkill
+from naturalsentinel.skills.ai_regulatory import AIRegulatorySkill
+from naturalsentinel.skills.spectrum_licensing import SpectrumLicensingSkill
+from naturalsentinel.skills.content_moderation import ContentModerationSkill
+
+# Technology / telecom security skills
+from naturalsentinel.skills.cybersecurity_compliance import CybersecurityComplianceSkill
+from naturalsentinel.skills.telecom_infrastructure import TelecomInfrastructureSkill
+from naturalsentinel.skills.data_residency import DataResidencySkill
+from naturalsentinel.skills.merger_review import TechMergerReviewSkill
+from naturalsentinel.skills.algorithmic_accountability import AlgorithmicAccountabilitySkill
+
 ALL_SKILLS = [
     # Core pipeline
     FetchFilingsSkill(),
@@ -95,6 +123,18 @@ ALL_SKILLS = [
     OptimizationConstraintSkill(),
     LeveragedLendingSkill(),
     StressTestingSignalSkill(),
+    # Platform / digital regulatory
+    PlatformAntitrustSkill(),
+    DataPrivacySkill(),
+    AIRegulatorySkill(),
+    SpectrumLicensingSkill(),
+    ContentModerationSkill(),
+    # Technology / telecom security
+    CybersecurityComplianceSkill(),
+    TelecomInfrastructureSkill(),
+    DataResidencySkill(),
+    TechMergerReviewSkill(),
+    AlgorithmicAccountabilitySkill(),
 ]
 
 __all__ = [
@@ -127,4 +167,16 @@ __all__ = [
     "OptimizationConstraintSkill",
     "LeveragedLendingSkill",
     "StressTestingSignalSkill",
+    # Platform / digital regulatory
+    "PlatformAntitrustSkill",
+    "DataPrivacySkill",
+    "AIRegulatorySkill",
+    "SpectrumLicensingSkill",
+    "ContentModerationSkill",
+    # Technology / telecom security
+    "CybersecurityComplianceSkill",
+    "TelecomInfrastructureSkill",
+    "DataResidencySkill",
+    "TechMergerReviewSkill",
+    "AlgorithmicAccountabilitySkill",
 ]

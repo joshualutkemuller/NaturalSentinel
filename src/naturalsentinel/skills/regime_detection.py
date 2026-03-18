@@ -233,6 +233,173 @@ REGIME_ARCHETYPES: list[dict] = [
         ],
         "domains": ["CFPB", "OCC", "FED", "FDIC"],
     },
+
+    # ── Technology / Telecom Regime Archetypes ────────────────────────────────
+
+    {
+        "id": "platform_antitrust_enforcement",
+        "label": "Platform Antitrust Enforcement Cycle",
+        "description": (
+            "Antitrust authorities are intensifying scrutiny of large digital "
+            "platforms via merger challenges, conduct investigations, or new "
+            "obligations under the EU Digital Markets Act (DMA) or domestic "
+            "equivalents. Signals rising breakup risk, interoperability mandates, "
+            "or gatekeeper designation for major tech operators."
+        ),
+        "signal_terms": [
+            "digital markets act", "dma", "gatekeeper", "self-preferencing",
+            "interoperability", "data portability", "platform conduct",
+            "dominant position", "merger challenge", "hsr", "second request",
+            "ftc complaint", "doj antitrust", "structural remedy", "divestiture",
+            "vertical integration", "app store", "default agreements",
+            "platform neutrality", "algorithmic fairness",
+        ],
+        "domains": ["FTC", "DOJ"],
+    },
+    {
+        "id": "data_privacy_regulatory_expansion",
+        "label": "Data Privacy Regulatory Expansion",
+        "description": (
+            "New or amended data privacy regimes are extending consent, "
+            "data subject rights, cross-border transfer restrictions, or "
+            "enforcement authority. Characterised by simultaneous state-level "
+            "law activations (US) or adequacy decision changes (EU-US). "
+            "Signals elevated compliance build-out obligations for data "
+            "processors and controllers."
+        ),
+        "signal_terms": [
+            "gdpr", "ccpa", "cpra", "data subject rights", "right to erasure",
+            "consent requirement", "data processing agreement", "dpa",
+            "standard contractual clauses", "scc", "adequacy decision",
+            "cross-border transfer", "data localisation", "data residency",
+            "personal data", "sensitive data", "data broker", "opt-out",
+            "privacy notice", "legitimate interest", "biometric data",
+        ],
+        "domains": ["FTC", "CISA"],
+    },
+    {
+        "id": "ai_governance_regulatory_cycle",
+        "label": "AI Governance and Accountability Regime",
+        "description": (
+            "Regulators are establishing or tightening requirements for AI "
+            "systems — covering risk classification, conformity assessments, "
+            "transparency obligations, and bias audits. The EU AI Act represents "
+            "the primary legislative vector; FTC guidance and state-level "
+            "algorithmic accountability laws are concurrent signals. "
+            "High-risk AI system operators face the most acute obligations."
+        ),
+        "signal_terms": [
+            "eu ai act", "high-risk ai", "ai system", "conformity assessment",
+            "ai risk tier", "foundation model", "general purpose ai",
+            "algorithmic accountability", "bias audit", "ai transparency",
+            "explainability", "ai governance", "ai oversight",
+            "automated decision", "profiling", "ftc ai", "ai liability",
+            "ai regulatory sandbox", "responsible ai", "ai impact assessment",
+        ],
+        "domains": ["FTC", "SEC"],
+    },
+    {
+        "id": "cybersecurity_mandate_tightening",
+        "label": "Cybersecurity Mandate Tightening Cycle",
+        "description": (
+            "CISA, FCC, and SEC are expanding mandatory cybersecurity obligations "
+            "through Known Exploited Vulnerability patching directives, incident "
+            "disclosure timelines (SEC Form 8-K), and FCC telecom network security "
+            "rules. Executive Order 14028 implementation is the key federal driver; "
+            "critical infrastructure sectors face simultaneous sector-specific mandates."
+        ),
+        "signal_terms": [
+            "cisa kev", "known exploited vulnerability", "binding operational directive",
+            "bod", "sec 8-k cybersecurity", "incident disclosure", "material breach",
+            "cybersecurity incident", "zero day", "patch deadline", "eo 14028",
+            "supply chain security", "sbom", "software bill of materials",
+            "critical infrastructure", "network security", "ransomware",
+            "vulnerability disclosure", "fcc cyber", "telecom security",
+        ],
+        "domains": ["CISA", "FCC", "SEC"],
+    },
+    {
+        "id": "spectrum_policy_reform",
+        "label": "Spectrum Policy and Licensing Reform Cycle",
+        "description": (
+            "The FCC is conducting spectrum auctions, reallocating mid-band or "
+            "high-band frequencies, imposing new build-out obligations, or "
+            "revising universal service fund (USF) contribution methodology. "
+            "NTIA broadband funding programmes (BEAD) represent a concurrent "
+            "signal. Signals changing interference, deployment, and coverage "
+            "obligations for mobile network operators and rural providers."
+        ),
+        "signal_terms": [
+            "spectrum auction", "fcc auction", "c-band", "cbrs", "mid-band",
+            "mmwave", "build-out obligation", "coverage requirement",
+            "universal service fund", "usf", "e-rate", "lifeline",
+            "ntia", "bead", "broadband equity", "rural broadband",
+            "interference protection", "dynamic spectrum sharing",
+            "spectrum licence", "frequency allocation", "tv white space",
+        ],
+        "domains": ["FCC", "NTIA"],
+    },
+    {
+        "id": "content_moderation_liability_shift",
+        "label": "Content Moderation and Platform Liability Shift",
+        "description": (
+            "Legislative or judicial changes are narrowing or redefining Section "
+            "230 liability protections, activating DSA very-large online platform "
+            "(VLOP) obligations, or requiring algorithmic amplification disclosures. "
+            "Notice-and-takedown frameworks and mandatory transparency reporting "
+            "are key compliance signals for major social, video, and search platforms."
+        ),
+        "signal_terms": [
+            "section 230", "platform liability", "dsa", "digital services act",
+            "vlop", "very large online platform", "notice and takedown", "ntd",
+            "content moderation", "trusted flagger", "algorithmic amplification",
+            "transparency report", "crisis protocol", "systemic risk",
+            "recommender system", "illegal content", "hate speech",
+            "csam", "counter-terrorism", "online safety", "age verification",
+        ],
+        "domains": ["FTC", "SEC"],
+    },
+    {
+        "id": "telecom_infrastructure_security",
+        "label": "Telecom Infrastructure Security Mandate",
+        "description": (
+            "FCC and NTIA are implementing supply chain security rules targeting "
+            "equipment from designated foreign adversary vendors (Huawei, ZTE), "
+            "imposing rip-and-replace obligations, and tightening roaming and "
+            "interconnect security standards. CALEA compliance modernisation and "
+            "network function virtualisation security are secondary signals."
+        ),
+        "signal_terms": [
+            "rip and replace", "huawei", "zte", "supply chain security",
+            "covered equipment", "fcc covered list", "calea", "lawful intercept",
+            "roaming security", "ss7 vulnerability", "network slicing",
+            "open ran", "trusted vendor", "foreign adversary", "banning order",
+            "reimbursement programme", "network function virtualisation",
+            "telecom supply chain", "subsea cable", "landing station",
+        ],
+        "domains": ["FCC", "CISA", "NTIA"],
+    },
+    {
+        "id": "data_residency_localisation",
+        "label": "Data Residency and Cross-Border Data Regime",
+        "description": (
+            "Governments are imposing or expanding data localisation requirements, "
+            "invalidating existing cross-border transfer mechanisms, or enacting "
+            "new data sovereignty frameworks. EU-US data transfer adequacy, "
+            "China PIPL/DSL provisions, and India DPDP Act are the principal "
+            "vectors. Cloud and payments operators face the highest compliance burden."
+        ),
+        "signal_terms": [
+            "data localisation", "data sovereignty", "data residency",
+            "cross-border data transfer", "eu-us data privacy framework",
+            "schrems", "privacy shield", "china pipl", "dsl", "data security law",
+            "india dpdp", "digital personal data", "government access",
+            "cloud act", "fisa 702", "data border", "mirror data",
+            "local storage requirement", "data export restriction",
+            "third country transfer",
+        ],
+        "domains": ["FTC", "CISA"],
+    },
 ]
 
 
@@ -378,6 +545,7 @@ class RegimeDetectionSkill(Skill):
         if context.memory is not None:
             query_domains = domains or [
                 "BASEL", "FED", "OCC", "FDIC", "CFTC", "SEC", "CFPB", "FHFA",
+                "FTC", "DOJ", "FCC", "CISA", "NTIA",
             ]
             for domain in query_domains:
                 records = context.memory.get_filing_history(

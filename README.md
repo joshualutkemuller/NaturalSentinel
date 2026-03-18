@@ -1,11 +1,12 @@
 # NaturalSentinel
 
-**Agentic regulatory change monitor with persistent memory and MCP server.**
+**Agentic regulatory change monitor with persistent memory, skill framework, and MCP server.**
 
-Watches regulatory filings across SEC, CFPB, Fed, FDA, EPA, and USTR — parses dense legal language, maps changes to affected business lines, and learns from human feedback over time.
+Watches regulatory filings across financial services, technology, and telecom sectors — parses dense legal language using a five-stage ETL pipeline, maps changes to affected business lines, detects macro-prudential and tech regulatory regimes, and learns from human feedback over time.
 
 ```
 66 tests passing · zero required dependencies · pluggable LLM backends
+35 skills · 17 agents · 18 regime archetypes · 2 industry verticals
 ```
 
 ## Quick Start
@@ -13,6 +14,7 @@ Watches regulatory filings across SEC, CFPB, Fed, FDA, EPA, and USTR — parses 
 ```bash
 # Clone and run — no API keys needed
 cd naturalsentinel
+pip install -e .
 PYTHONPATH=src python examples/basic_demo.py
 
 # Run the test suite
@@ -23,17 +25,95 @@ pip install anthropic
 ANTHROPIC_API_KEY=sk-ant-... PYTHONPATH=src python -m naturalsentinel.cli --provider anthropic
 ```
 
+## What's New
+
+### Five-Stage Filing Pipeline
+
+Regulatory filings are processed through a typed ETL pipeline rather than a single monolithic prompt:
+
+```
+Classification → Decomposition → Extraction → Validation → Span Grounding
+```
+
+Each stage is independently testable and cacheable:
+
+| Stage | Purpose | Temperature |
+|-------|---------|-------------|
+| **Classification** | Topic, agency, complexity scoring | 0.0 |
+| **Decomposition** | Split complex documents into sections (conditional) | 0.0 |
+| **Extraction** | Schema-imposed structured data pull per topic | 0.1 |
+| **Validation** | Cross-field type/plausibility checks + LLM correction loop | 0.0 |
+| **Span Grounding** | Map each extracted value back to verbatim source span | 0.0 |
+
+```python
+from naturalsentinel.pipeline import FilingPipeline
+
+pipeline = FilingPipeline(llm_provider, run_grounding=True)
+result = pipeline.run(filing_dict)
+
+print(result.data)                    # validated extraction
+print(result.classification.primary_topic)
+for g in result.grounding:
+    print(g.field, "→", g.source_span)
+```
+
+### Regime Detection
+
+`regime_detection` identifies which macro-prudential and technology regulatory regimes are **consistent with the language observed in current filings** — it informs rather than prescribes.
+
+Detection is two-pass: fast keyword scoring (zero LLM cost) followed by optional LLM synthesis for phase labelling and transition detection. Covers **18 regime archetypes** across financial services and technology/telecom sectors.
+
+```python
+from naturalsentinel.skills import RegimeDetectionSkill
+
+# Via the skill framework
+result = runtime.execute_skill("regime_detection", {
+    "window_days": 90,
+    "signal_threshold": 0.10,
+})
+# → active_regimes, dormant_regimes, regime_transitions, summary
+```
+
+See [`docs/REGIME_ARCHETYPES.md`](docs/REGIME_ARCHETYPES.md) for the full taxonomy.
+
+### Skill Framework (35 Skills)
+
+Skills are composable, permission-gated capabilities with typed inputs/outputs:
+
+**Core Pipeline (9):** `fetch_filings`, `analyze_filing`, `recall_memory`, `store_memory`, `record_feedback`, `build_context`, `detect_duplicates`, `generate_briefing`, `scan_cycle`
+
+**Intelligence / Analytics (6):** `alert_threshold`, `compliance_deadline`, `trend_analysis`, `cross_domain_correlation`, `export_report`, `regime_detection`
+
+**Financial / Desk Specialist (10):** `capital_impact`, `model_risk_assessment`, `securities_financing_analysis`, `liquidity_ratio_analysis`, `agency_mortgage_analysis`, `counterparty_risk_analysis`, `regulatory_reporting_analysis`, `optimization_constraint`, `leveraged_lending_assessment`, `stress_testing_signal`
+
+**Platform / Digital Regulatory (5):** `platform_antitrust_impact`, `data_privacy_obligation`, `ai_regulatory_impact`, `spectrum_licensing_change`, `content_moderation_liability`
+
+**Technology / Telecom Security (5):** `cybersecurity_compliance`, `telecom_infrastructure_security`, `data_residency_obligation`, `tech_merger_review`, `algorithmic_accountability`
+
+See [`docs/SKILLS.md`](docs/SKILLS.md) for the full catalogue.
+
+### Agent Library (17 Agents)
+
+Agents are thin orchestrators that compose skill invocations into high-level workflows without bypassing the permission model.
+
+**Financial / Regulatory (12):** `ComplianceTrackerAgent`, `AlertAgent`, `CapitalOptimizationAgent`, `ModelRiskAgent`, `SecuritiesFinancingAgent`, `LiquidityRatioAgent`, `AgencyMortgageAgent`, `CounterpartyRiskAgent`, `RegulatoryReportingAgent`, `OptimizationConstraintAgent`, `LeveragedLendingAgent`, `StressTestingAgent`
+
+**Technology / Telecom (5):** `PlatformComplianceAgent`, `DataPrivacyAgent`, `AIGovernanceAgent`, `TelecomSpectrumAgent`, `CybersecurityAgent`
+
 ## Repo Structure
 
 ```
 naturalsentinel/
 ├── pyproject.toml
-├── run_tests.py
+├── docs/
+│   ├── SKILLS.md                    # Full skill catalogue (35 skills)
+│   └── REGIME_ARCHETYPES.md         # 18-archetype regime reference card
 ├── src/
 │   └── naturalsentinel/
 │       ├── __init__.py              # Public API
 │       ├── models.py                # Filing, Impact, Severity, ChangeType
 │       ├── agent.py                 # Core orchestrator
+│       ├── agent_framework.py       # Skill, SkillMetadata, Permission, LatencyClass
 │       ├── prompts.py               # LLM prompt templates
 │       ├── cli.py                   # CLI + provider factory
 │       ├── providers/
@@ -45,12 +125,26 @@ naturalsentinel/
 │       │   └── ollama.py            # Local models
 │       ├── fetchers/
 │       │   ├── base.py              # fetch_filings + domain mappings
-│       │   └── sample_data.py       # 6 curated filings + mock analyses
+│       │   └── sample_data.py       # Curated filings + mock analyses
 │       ├── memory/
 │       │   ├── types.py             # MemoryRecord, MemoryType
 │       │   ├── schema.py            # SQLite DDL
 │       │   ├── similarity.py        # TF-IDF / keyword search engine
 │       │   └── store.py             # MemoryStore (episodic, entity, precedent)
+│       ├── pipeline/
+│       │   ├── __init__.py          # Pipeline public API
+│       │   └── stages.py            # 5-stage ETL pipeline
+│       ├── skills/
+│       │   ├── __init__.py          # ALL_SKILLS registry (35 skills)
+│       │   ├── regime_detection.py  # 18 regime archetypes + detection skill
+│       │   ├── capital_impact.py    # RWA / SLR / output floor
+│       │   ├── ...                  # (30 additional skill modules)
+│       ├── agents/
+│       │   ├── __init__.py          # All 17 agents
+│       │   ├── compliance_tracker.py
+│       │   ├── platform_compliance_agent.py
+│       │   ├── cybersecurity_agent.py
+│       │   └── ...                  # (14 additional agent modules)
 │       ├── mcp/
 │       │   └── server.py            # MCP tools, resources, prompts
 │       └── utils/
@@ -60,13 +154,7 @@ naturalsentinel/
 ├── tests/
 │   ├── conftest.py                  # Shared fixtures
 │   ├── test_all.py                  # 66 unittest.TestCase tests
-│   ├── test_models.py               # pytest-style: domain types
-│   ├── test_utils.py                # pytest-style: parsing, text, serialization
-│   ├── test_agent.py                # pytest-style: agent pipeline
-│   ├── test_memory.py               # pytest-style: memory store
-│   ├── test_mcp.py                  # pytest-style: MCP standalone server
-│   ├── test_providers.py            # pytest-style: provider factory
-│   └── test_fetchers.py             # pytest-style: filing retrieval
+│   └── ...                          # Additional pytest-style test modules
 └── examples/
     ├── basic_demo.py                # Simplest usage
     └── memory_feedback_demo.py      # Full learning loop
@@ -84,11 +172,18 @@ MCP Clients (Claude Desktop, Claude Code, Cursor, custom agents)
 └────────────────┬────────────────────────┘
                  │
 ┌────────────────▼────────────────────────┐
-│  agent.py                               │
-│  Fetch → Deduplicate → Analyze → Store  │
+│  Agent Framework                        │
+│  AgentRuntime → skill dispatch          │
+│  SecurityPolicy → permission gating     │
 │                                         │
-│  providers/                             │
-│  Anthropic · OpenAI · Gemini · Ollama   │
+│  17 Agents  ──►  35 Skills              │
+│  (orchestrators)  (atomic capabilities) │
+└────────────────┬────────────────────────┘
+                 │
+┌────────────────▼────────────────────────┐
+│  Five-Stage Filing Pipeline             │
+│  Classify → Decompose → Extract         │
+│          → Validate → Ground            │
 └────────────────┬────────────────────────┘
                  │
 ┌────────────────▼────────────────────────┐
@@ -101,6 +196,14 @@ MCP Clients (Claude Desktop, Claude Code, Cursor, custom agents)
 │  SQLite + TF-IDF / keyword search       │
 └─────────────────────────────────────────┘
 ```
+
+## Regime Detection
+
+18 archetypes across two verticals — each identified by keyword scoring + LLM synthesis:
+
+**Financial Services (10):** Prudential Capital Tightening · Supervisory Scrutiny · Liquidity Stress Response · Derivatives & Margin Reform · Climate/ESG Integration · Digital Asset Capture · Resolution/TLAC Tightening · FRTB/Market Risk · Agency/GSE Reform · Consumer/Fair Lending
+
+**Technology & Telecom (8):** Platform Antitrust Enforcement · Data Privacy Expansion · AI Governance · Cybersecurity Mandates · Spectrum Policy Reform · Content Moderation Liability · Telecom Infrastructure Security · Data Residency/Localisation
 
 ## Memory System
 

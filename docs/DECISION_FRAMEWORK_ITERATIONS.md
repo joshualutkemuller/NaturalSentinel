@@ -44,6 +44,8 @@ That means evolving the platform around six questions:
 
 ### 1. Add an explicit decision object
 
+**Status:** Complete as of 2026-03-18. NaturalSentinel now emits a first-class `DecisionFrame` alongside each `ImpactAssessment`.
+
 Right now the system produces high-quality analytical artifacts, but the outputs are still mostly filing-centric. A more professional framing would introduce a first-class `DecisionFrame` or `DecisionContext` object that sits above analysis.
 
 Suggested fields:
@@ -76,6 +78,8 @@ Professional upside:
 ---
 
 ### 2. Introduce evidence weighting instead of flat retrieval
+
+**Status:** Complete as of 2026-03-18. NaturalSentinel now builds a weighted `EvidenceLedger` from memory recall using source authority, recency, policy finality, jurisdiction relevance, business-line proximity, predictive usefulness, and contradiction risk.
 
 Today, memory recall is useful, but recalled items are not yet obviously ranked by **decision relevance** in an institutional sense.
 

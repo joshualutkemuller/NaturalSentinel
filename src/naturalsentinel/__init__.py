@@ -28,6 +28,7 @@ __version__ = "0.1.0"
 
 from naturalsentinel.models import (
     ChangeType,
+    DecisionFrame,
     ImpactAssessment,
     MonitorResult,
     RegulatoryDomain,
@@ -56,6 +57,7 @@ from naturalsentinel.agent_framework import (
 from naturalsentinel.providers.base import ModelProvider
 from naturalsentinel.providers.mock import MockProvider
 from naturalsentinel.memory.store import MemoryStore
+from naturalsentinel.evidence import EvidenceLedgerEntry
 from naturalsentinel.memory.types import MemoryRecord, MemoryType
 
 __all__ = [
@@ -85,10 +87,12 @@ __all__ = [
     "MemoryStore",
     "MemoryRecord",
     "MemoryType",
+    "EvidenceLedgerEntry",
     # Models
     "RegulatoryDomain",
     "RegulatoryFiling",
     "ImpactAssessment",
+    "DecisionFrame",
     "MonitorResult",
     "Severity",
     "ChangeType",

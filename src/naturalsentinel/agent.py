@@ -9,6 +9,7 @@ from pathlib import Path
 
 from naturalsentinel.models import (
     ChangeType,
+    DecisionFrame,
     ImpactAssessment,
     MonitorResult,
     RegulatoryDomain,
@@ -97,6 +98,22 @@ class RegulatoryMonitorAgent:
             "action_items": ["Manual review required — model output was unstructured"],
             "risk_summary": "Unable to parse structured assessment.",
             "confidence": 0.3,
+            "decision": {
+                "decision_id": f"decision::{filing.id}",
+                "question": f"What response is warranted for filing {filing.id}?",
+                "scope": f"{filing.domain.value.upper()} filing review for {filing.title}",
+                "time_horizon": "Near-term regulatory response window",
+                "affected_entities": domain_lines,
+                "candidate_actions": ["Escalate to manual review"],
+                "constraints": ["LLM output was unstructured"],
+                "evidence_items": [f"Source filing: {filing.id}"],
+                "assumptions": ["A human reviewer will complete the decision record"],
+                "counterarguments": ["Automated assessment may be incomplete or malformed"],
+                "confidence": 0.3,
+                "expected_revisit_date": filing.published_date,
+                "owner": "Compliance triage",
+                "audit_refs": [filing.id, filing.source_url],
+            },
         }
         parsed = parse_llm_json(raw, fallback=fallback)
 
@@ -118,7 +135,43 @@ class RegulatoryMonitorAgent:
             confidence=float(parsed.get("confidence", 0.5)),
         )
 
-        return MonitorResult(filing=filing, impact=impact, raw_analysis=raw)
+        decision_data = parsed.get("decision", {})
+        decision = DecisionFrame(
+            decision_id=decision_data.get("decision_id", f"decision::{filing.id}"),
+            question=decision_data.get("question", f"What response is warranted for filing {filing.id}?"),
+            scope=decision_data.get("scope", f"{filing.domain.value.upper()} filing review for {filing.title}"),
+            time_horizon=decision_data.get("time_horizon", "Near-term regulatory response window"),
+            affected_entities=decision_data.get("affected_entities", impact.affected_business_lines),
+            candidate_actions=decision_data.get("candidate_actions", impact.action_items),
+            constraints=decision_data.get("constraints", []),
+            evidence_items=decision_data.get("evidence_items", [f"Source filing: {filing.id}", filing.source_url]),
+            assumptions=decision_data.get("assumptions", []),
+            counterarguments=decision_data.get("counterarguments", []),
+            confidence=float(decision_data.get("confidence", parsed.get("confidence", impact.confidence))),
+            expected_revisit_date=decision_data.get("expected_revisit_date", impact.compliance_deadline or filing.published_date),
+            owner=decision_data.get("owner", "Compliance triage"),
+            audit_refs=decision_data.get("audit_refs", [filing.id, filing.source_url]),
+        )
+
+        evidence_ledger = []
+        if self.memory:
+            evidence_ledger = self.memory.recall_evidence(
+                filing.raw_text[:500],
+                top_k=5,
+                namespace=filing.domain.value,
+                business_lines=impact.affected_business_lines,
+                candidate_actions=decision.candidate_actions,
+            )
+            if evidence_ledger and not decision.evidence_items:
+                decision.evidence_items = [entry.summary for entry in evidence_ledger[:3]]
+
+        return MonitorResult(
+            filing=filing,
+            impact=impact,
+            decision=decision,
+            evidence_ledger=evidence_ledger,
+            raw_analysis=raw,
+        )
 
     # -- Public API ---------------------------------------------------------
 

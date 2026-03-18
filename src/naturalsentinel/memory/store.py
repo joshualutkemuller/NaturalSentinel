@@ -10,6 +10,7 @@ from typing import Optional
 
 from naturalsentinel.memory.schema import SCHEMA_SQL
 from naturalsentinel.memory.similarity import SimilarityEngine
+from naturalsentinel.evidence import EvidenceLedgerEntry
 from naturalsentinel.memory.types import MemoryRecord, MemoryType
 
 logger = logging.getLogger(__name__)
@@ -133,7 +134,6 @@ class MemoryStore:
                 updated_at=now,
             )
         )
-        # Auto-extract entity relations
         for biz_line in impact.get("affected_business_lines", []):
             self._add_relation(filing_id, "affects_business", biz_line, filing_id)
         for reg in impact.get("affected_regulations", []):
@@ -251,6 +251,35 @@ class MemoryStore:
                 break
         return results
 
+    def recall_evidence(
+        self,
+        query: str,
+        *,
+        top_k: int = 5,
+        namespace: str | None = None,
+        business_lines: list[str] | None = None,
+        candidate_actions: list[str] | None = None,
+    ) -> list[EvidenceLedgerEntry]:
+        """Rank memory items by decision relevance and return evidence ledger entries."""
+        memory_candidates = self.recall(query, top_k=top_k * 3)
+        if namespace:
+            memory_candidates = [
+                rec for rec in memory_candidates
+                if rec.namespace in {namespace, "global"}
+            ]
+        ledger = [
+            self._to_evidence_entry(
+                rec,
+                query=query,
+                namespace=namespace,
+                business_lines=business_lines or [],
+                candidate_actions=candidate_actions or [],
+            )
+            for rec in memory_candidates
+        ]
+        ledger.sort(key=lambda item: item.strength_score, reverse=True)
+        return ledger[:top_k]
+
     def get_related_entities(self, entity_name: str) -> list[dict]:
         """Get all entities related to a given entity via the relation graph."""
         rows = self.conn.execute(
@@ -292,12 +321,25 @@ class MemoryStore:
     ) -> str:
         """
         Build a memory context block to inject into the LLM prompt.
-        Pulls relevant episodic memories, entity knowledge, and precedents.
+        Pulls weighted evidence from episodic memories, entity knowledge, and precedents.
         """
         sections: list[str] = []
 
-        # 1. Relevant past analyses
-        past = self.recall(filing_text[:500], top_k=3, memory_type=MemoryType.EPISODIC)
+        evidence = self.recall_evidence(
+            filing_text[:500],
+            top_k=5,
+            namespace=filing_domain,
+        )
+        if evidence:
+            lines = []
+            for item in evidence[:3]:
+                lines.append(
+                    f"- [{item.evidence_id}] strength={item.strength_score:.2f}, novelty={item.novelty_score:.2f}, "
+                    f"supports={'; '.join(item.supports[:2]) or 'n/a'}, contradicts={'; '.join(item.contradicts[:2]) or 'n/a'}"
+                )
+            sections.append("WEIGHTED EVIDENCE LEDGER:\n" + "\n".join(lines))
+
+        past = self.recall(filing_text[:500], top_k=3, memory_type=MemoryType.EPISODIC, namespace=filing_domain)
         if past:
             lines = []
             for rec in past:
@@ -310,7 +352,6 @@ class MemoryStore:
                 )
             sections.append("RELEVANT PAST ANALYSES:\n" + "\n".join(lines))
 
-        # 2. Precedent corrections
         precs = self.get_precedents_for_domain(filing_domain, top_k=3)
         if precs:
             lines = []
@@ -323,7 +364,6 @@ class MemoryStore:
                 )
             sections.append("CORRECTION PRECEDENTS (learn from these):\n" + "\n".join(lines))
 
-        # 3. Entity knowledge
         entities = self.recall(filing_text[:300], top_k=3, memory_type=MemoryType.ENTITY)
         if entities:
             lines = [f"- {rec.key}: {json.dumps(rec.content)[:200]}" for rec in entities]
@@ -370,6 +410,163 @@ class MemoryStore:
             access_count=row["access_count"],
             relevance_score=row["relevance_score"],
         )
+
+    def _to_evidence_entry(
+        self,
+        rec: MemoryRecord,
+        *,
+        query: str,
+        namespace: str | None,
+        business_lines: list[str],
+        candidate_actions: list[str],
+    ) -> EvidenceLedgerEntry:
+        source_authority = self._source_authority(rec)
+        recency_score = self._recency_score(rec)
+        policy_finality_score = self._policy_finality_score(rec)
+        jurisdiction_relevance = self._jurisdiction_relevance(rec, query, namespace)
+        business_line_proximity = self._business_line_proximity(rec, query, business_lines)
+        historical_predictive_usefulness = self._historical_predictive_usefulness(rec)
+        contradiction_risk = self._contradiction_risk(rec, query)
+        novelty_score = self._novelty_score(rec, query)
+        retrieval_score = max(0.0, min(1.0, rec.relevance_score))
+
+        strength_score = (
+            0.20 * source_authority
+            + 0.15 * recency_score
+            + 0.15 * policy_finality_score
+            + 0.15 * jurisdiction_relevance
+            + 0.15 * business_line_proximity
+            + 0.10 * historical_predictive_usefulness
+            + 0.10 * retrieval_score
+            - 0.10 * contradiction_risk
+        )
+        strength_score = max(0.0, min(1.0, strength_score))
+
+        supports = self._supports(rec, candidate_actions)
+        contradicts = self._contradicts(rec, candidate_actions)
+        trace = [
+            f"memory_id={rec.id}",
+            f"namespace={rec.namespace}",
+            f"created_at={rec.created_at}",
+            f"updated_at={rec.updated_at}",
+        ]
+
+        return EvidenceLedgerEntry(
+            evidence_id=rec.id,
+            source_type=rec.memory_type.value,
+            supports=supports,
+            contradicts=contradicts,
+            strength_score=round(strength_score, 4),
+            novelty_score=round(novelty_score, 4),
+            trace=trace,
+            source_authority=round(source_authority, 4),
+            recency_score=round(recency_score, 4),
+            policy_finality_score=round(policy_finality_score, 4),
+            jurisdiction_relevance=round(jurisdiction_relevance, 4),
+            business_line_proximity=round(business_line_proximity, 4),
+            historical_predictive_usefulness=round(historical_predictive_usefulness, 4),
+            contradiction_risk=round(contradiction_risk, 4),
+            summary=self._summary_for_record(rec),
+        )
+
+    def _source_authority(self, rec: MemoryRecord) -> float:
+        if rec.memory_type == MemoryType.EPISODIC:
+            return 0.9
+        if rec.memory_type == MemoryType.PRECEDENT:
+            return 0.8
+        return 0.65
+
+    def _recency_score(self, rec: MemoryRecord) -> float:
+        try:
+            age_days = max((datetime.utcnow() - datetime.fromisoformat(rec.updated_at)).days, 0)
+        except ValueError:
+            return 0.5
+        return max(0.1, 1.0 - min(age_days, 365) / 365)
+
+    def _policy_finality_score(self, rec: MemoryRecord) -> float:
+        if rec.memory_type != MemoryType.EPISODIC:
+            return 0.55
+        filing = rec.content.get("filing", {})
+        change_type = filing.get("change_type") or rec.content.get("impact", {}).get("change_type")
+        scores = {
+            "final_rule": 1.0,
+            "enforcement": 0.95,
+            "guidance": 0.8,
+            "amendment": 0.75,
+            "executive_order": 0.7,
+            "notice": 0.55,
+            "proposed_rule": 0.45,
+        }
+        return scores.get(change_type, 0.55)
+
+    def _jurisdiction_relevance(self, rec: MemoryRecord, query: str, namespace: str | None) -> float:
+        q = query.lower()
+        if namespace and rec.namespace == namespace:
+            return 1.0
+        if rec.namespace and rec.namespace in q:
+            return 0.8
+        if rec.namespace == "global":
+            return 0.6
+        return 0.4
+
+    def _business_line_proximity(self, rec: MemoryRecord, query: str, business_lines: list[str]) -> float:
+        q = query.lower()
+        impact = rec.content.get("impact", {})
+        filing_lines = {line.lower() for line in impact.get("affected_business_lines", [])}
+        requested = {line.lower() for line in business_lines}
+        query_hits = {line for line in filing_lines if line in q}
+        overlap = filing_lines & requested
+        score = 0.2
+        if filing_lines:
+            score += min(0.5, 0.25 * len(overlap))
+            score += min(0.3, 0.15 * len(query_hits))
+        return min(1.0, score)
+
+    def _historical_predictive_usefulness(self, rec: MemoryRecord) -> float:
+        base = min(1.0, 0.2 + 0.1 * rec.access_count)
+        if rec.memory_type == MemoryType.PRECEDENT:
+            base = max(base, 0.85)
+        return min(1.0, base)
+
+    def _contradiction_risk(self, rec: MemoryRecord, query: str) -> float:
+        content_blob = json.dumps(rec.content).lower()
+        risk = 0.1
+        if rec.memory_type == MemoryType.PRECEDENT:
+            risk += 0.35
+        contradiction_markers = ["unless", "except", "however", "but", "challenge", "contradict"]
+        risk += 0.1 * sum(1 for marker in contradiction_markers if marker in content_blob or marker in query.lower())
+        return min(1.0, risk)
+
+    def _novelty_score(self, rec: MemoryRecord, query: str) -> float:
+        base = 1.0 - min(rec.access_count, 5) / 5
+        if rec.memory_type == MemoryType.PRECEDENT:
+            base = max(base, 0.75)
+        if rec.namespace and rec.namespace in query.lower():
+            base += 0.05
+        return max(0.0, min(1.0, base))
+
+    def _supports(self, rec: MemoryRecord, candidate_actions: list[str]) -> list[str]:
+        if rec.memory_type == MemoryType.PRECEDENT:
+            field = rec.content.get("field", "review")
+            return [f"Tightens analyst treatment of {field}"]
+        actions = candidate_actions or rec.content.get("impact", {}).get("action_items", [])
+        return actions[:2] if actions else ["Supports further review of the current filing"]
+
+    def _contradicts(self, rec: MemoryRecord, candidate_actions: list[str]) -> list[str]:
+        if rec.memory_type == MemoryType.PRECEDENT:
+            return [f"Challenges prior view on {rec.content.get('field', 'assessment')}"]
+        if candidate_actions:
+            return [f"May challenge action: {candidate_actions[0]}"] if rec.relevance_score < 0.35 else []
+        return []
+
+    def _summary_for_record(self, rec: MemoryRecord) -> str:
+        if rec.memory_type == MemoryType.EPISODIC:
+            filing = rec.content.get("filing", {})
+            impact = rec.content.get("impact", {})
+            return f"{filing.get('title', rec.key)} | severity={impact.get('severity', '?')}"
+        if rec.memory_type == MemoryType.PRECEDENT:
+            return f"Feedback precedent on {rec.content.get('filing_id', rec.key)}.{rec.content.get('field', '?')}"
+        return f"Entity memory for {rec.key}"
 
     # -- Maintenance --------------------------------------------------------
 

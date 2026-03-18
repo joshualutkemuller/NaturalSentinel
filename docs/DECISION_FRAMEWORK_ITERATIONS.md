@@ -114,6 +114,8 @@ Why this matters:
 
 ### 3. Track priors, posteriors, and decision deltas
 
+**Status:** Complete as of 2026-03-18. NaturalSentinel now maintains a belief-updating engine via the `BeliefTrackerSkill` (`track_belief`). Each filing observation updates a persisted `BeliefState` per (topic, domain) pair, recording `prior_confidence`, `posterior_confidence`, `delta_confidence`, `delta_drivers`, `stability_score`, and `reversal_risk`. The full observation history is stored in `belief_history` for audit and trend analysis. `BeliefState` is a first-class model and `MonitorResult` now carries a `belief_states` list.
+
 A quant-facing system becomes much more compelling when it explicitly models **how beliefs change over time**.
 
 Potential extension:

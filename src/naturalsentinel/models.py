@@ -85,9 +85,33 @@ class DecisionFrame:
 
 
 @dataclass
+class BeliefState:
+    """Prior/posterior belief tracking for a specific topic over time.
+
+    Captures how the system's confidence in a particular regulatory topic,
+    regime, or obligation has evolved as new filings arrive.  This enables
+    the belief-updating engine described in Priority 3 of the Decision
+    Framework Iterations.
+    """
+
+    topic: str                          # Regime ID, domain:risk_category, or obligation key
+    domain: str                         # Regulatory domain namespace (e.g. "sec", "fed")
+    prior_confidence: float             # Confidence before the current filing was observed
+    posterior_confidence: float         # Confidence after updating on the current filing
+    delta_confidence: float             # posterior_confidence − prior_confidence
+    delta_drivers: list[str]            # Explanation of what drove the change
+    stability_score: float              # 1.0 = very stable; 0.0 = highly volatile
+    reversal_risk: float                # 0.0–1.0 probability belief will flip next cycle
+    observation_count: int = 0          # Total number of observations recorded for this topic
+    last_filing_id: str = ""            # ID of the most recent filing that triggered an update
+    updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+
+
+@dataclass
 class MonitorResult:
     filing: RegulatoryFiling
     impact: ImpactAssessment
     decision: DecisionFrame
     evidence_ledger: list[EvidenceLedgerEntry] = field(default_factory=list)
+    belief_states: list[BeliefState] = field(default_factory=list)
     raw_analysis: str = ""

@@ -378,6 +378,119 @@ class MemoryStore:
 
         return f"\n--- AGENT MEMORY CONTEXT ---\n{block}\n--- END MEMORY CONTEXT ---\n"
 
+    # -- Belief-state CRUD (Priority 3) -------------------------------------
+
+    def get_belief_state(self, topic: str, domain: str) -> Optional[dict]:
+        """Retrieve the current belief state for a (topic, domain) pair."""
+        row = self.conn.execute(
+            "SELECT * FROM belief_states WHERE topic = ? AND domain = ?",
+            (topic, domain),
+        ).fetchone()
+        if not row:
+            return None
+        result = dict(row)
+        result["delta_drivers"] = json.loads(result.get("delta_drivers", "[]"))
+        return result
+
+    def store_belief_state(self, topic: str, domain: str, belief: dict):
+        """Upsert a belief state and append a history record."""
+        now = datetime.utcnow().isoformat()
+        delta_drivers_json = json.dumps(belief.get("delta_drivers", []))
+        self.conn.execute(
+            """
+            INSERT INTO belief_states (
+                topic, domain, prior_confidence, posterior_confidence,
+                delta_confidence, delta_drivers, stability_score, reversal_risk,
+                observation_count, last_filing_id, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(topic, domain) DO UPDATE SET
+                prior_confidence     = excluded.prior_confidence,
+                posterior_confidence = excluded.posterior_confidence,
+                delta_confidence     = excluded.delta_confidence,
+                delta_drivers        = excluded.delta_drivers,
+                stability_score      = excluded.stability_score,
+                reversal_risk        = excluded.reversal_risk,
+                observation_count    = excluded.observation_count,
+                last_filing_id       = excluded.last_filing_id,
+                updated_at           = excluded.updated_at
+            """,
+            (
+                topic,
+                domain,
+                belief.get("prior_confidence", 0.5),
+                belief.get("posterior_confidence", 0.5),
+                belief.get("delta_confidence", 0.0),
+                delta_drivers_json,
+                belief.get("stability_score", 1.0),
+                belief.get("reversal_risk", 0.1),
+                belief.get("observation_count", 1),
+                belief.get("last_filing_id", ""),
+                now,
+                now,
+            ),
+        )
+        self.conn.execute(
+            """
+            INSERT INTO belief_history
+                (topic, domain, confidence, delta_confidence, delta_drivers, filing_id, observed_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                topic,
+                domain,
+                belief.get("posterior_confidence", 0.5),
+                belief.get("delta_confidence", 0.0),
+                delta_drivers_json,
+                belief.get("last_filing_id", ""),
+                now,
+            ),
+        )
+        self.conn.commit()
+        logger.debug(
+            "Stored belief state for %s/%s: prior=%.2f → posterior=%.2f (Δ=%.2f)",
+            domain, topic,
+            belief.get("prior_confidence", 0.5),
+            belief.get("posterior_confidence", 0.5),
+            belief.get("delta_confidence", 0.0),
+        )
+
+    def get_belief_history(
+        self, topic: str, domain: str, limit: int = 20
+    ) -> list[dict]:
+        """Return chronological history of confidence observations for a topic."""
+        rows = self.conn.execute(
+            """
+            SELECT * FROM belief_history
+            WHERE topic = ? AND domain = ?
+            ORDER BY observed_at DESC LIMIT ?
+            """,
+            (topic, domain, limit),
+        ).fetchall()
+        result = []
+        for row in rows:
+            entry = dict(row)
+            entry["delta_drivers"] = json.loads(entry.get("delta_drivers", "[]"))
+            result.append(entry)
+        return result
+
+    def list_belief_states(self, domain: str | None = None) -> list[dict]:
+        """List all tracked belief states, optionally filtered by domain."""
+        if domain:
+            rows = self.conn.execute(
+                "SELECT * FROM belief_states WHERE domain = ? ORDER BY updated_at DESC",
+                (domain,),
+            ).fetchall()
+        else:
+            rows = self.conn.execute(
+                "SELECT * FROM belief_states ORDER BY updated_at DESC"
+            ).fetchall()
+        result = []
+        for row in rows:
+            entry = dict(row)
+            entry["delta_drivers"] = json.loads(entry.get("delta_drivers", "[]"))
+            result.append(entry)
+        return result
+
     # -- Internals ----------------------------------------------------------
 
     def _add_relation(self, source: str, relation: str, target: str, context: str = ""):

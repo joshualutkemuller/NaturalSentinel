@@ -63,7 +63,11 @@ class ImpactAssessment:
     compliance_deadline: Optional[str]
     action_items: list[str]
     risk_summary: str
-    confidence: float  # 0.0–1.0
+    confidence: float                       # 0.0–1.0
+    # Lineage / explainability fields (optional — populated by AnalyzeFilingSkill)
+    citations: dict = field(default_factory=dict)   # field_name → source_passage
+    trace_id: Optional[str] = None                  # Links to decision_traces record
+    provenance: dict = field(default_factory=dict)  # ModelProvenance.to_dict()
 
 
 @dataclass

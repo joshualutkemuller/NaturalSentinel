@@ -488,6 +488,153 @@ class MemoryStore:
             row["drift"] = row.pop("drift_json")
         return row
 
+    # -- Audit log (governance) ---------------------------------------------
+
+    def emit_audit_event(self, event) -> None:
+        """Append an :class:`~naturalsentinel.governance.audit.AuditEvent` to the audit log.
+
+        The audit_log table is append-only by convention; this method never
+        updates or deletes existing rows.
+        """
+        payload = event.payload if isinstance(event.payload, dict) else {}
+        self.conn.execute(
+            """
+            INSERT OR IGNORE INTO audit_log
+                (event_id, event_type, filing_id, actor, payload, timestamp, severity, trace_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event.event_id,
+                event.event_type,
+                event.filing_id,
+                event.actor,
+                json.dumps(payload),
+                event.timestamp,
+                event.severity,
+                event.trace_id,
+            ),
+        )
+        self.conn.commit()
+        logger.debug("Audit event %s: %s", event.event_type, event.event_id)
+
+    def get_audit_events(
+        self,
+        event_type: Optional[str] = None,
+        filing_id: Optional[str] = None,
+        severity: Optional[str] = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        """Query audit log with optional filters, newest first."""
+        clauses: list[str] = []
+        params: list = []
+        if event_type:
+            clauses.append("event_type = ?")
+            params.append(event_type)
+        if filing_id:
+            clauses.append("filing_id = ?")
+            params.append(filing_id)
+        if severity:
+            clauses.append("severity = ?")
+            params.append(severity)
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        params.append(limit)
+        rows = self.conn.execute(
+            f"SELECT * FROM audit_log {where} ORDER BY timestamp DESC LIMIT ?",
+            params,
+        ).fetchall()
+        results = []
+        for row in rows:
+            r = dict(row)
+            r["payload"] = json.loads(r.get("payload", "{}"))
+            results.append(r)
+        return results
+
+    # -- Decision traces (lineage) ------------------------------------------
+
+    def store_decision_trace(self, trace) -> None:
+        """Persist a completed :class:`~naturalsentinel.lineage.trace.DecisionTrace`."""
+        import json as _json
+        steps_json = _json.dumps([s.to_dict() for s in trace.steps])
+        self.conn.execute(
+            """
+            INSERT INTO decision_traces
+                (trace_id, filing_id, started_at, finished_at,
+                 total_duration_ms, total_tokens, overall_status, steps_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(trace_id) DO UPDATE SET
+                finished_at       = excluded.finished_at,
+                total_duration_ms = excluded.total_duration_ms,
+                total_tokens      = excluded.total_tokens,
+                overall_status    = excluded.overall_status,
+                steps_json        = excluded.steps_json
+            """,
+            (
+                trace.trace_id,
+                trace.filing_id,
+                trace.started_at,
+                trace.finished_at,
+                trace.total_duration_ms,
+                trace.total_tokens,
+                trace.overall_status,
+                steps_json,
+            ),
+        )
+        self.conn.commit()
+        logger.debug("Stored decision trace %s for filing %s", trace.trace_id, trace.filing_id)
+
+    def get_decision_trace(self, trace_id: str) -> Optional[dict]:
+        """Retrieve a decision trace by ID."""
+        row = self.conn.execute(
+            "SELECT * FROM decision_traces WHERE trace_id = ?", (trace_id,)
+        ).fetchone()
+        if not row:
+            return None
+        r = dict(row)
+        r["steps"] = json.loads(r.pop("steps_json", "[]"))
+        return r
+
+    def get_traces_for_filing(self, filing_id: str) -> list[dict]:
+        """Return all decision traces for a given filing, newest first."""
+        rows = self.conn.execute(
+            "SELECT * FROM decision_traces WHERE filing_id = ? ORDER BY started_at DESC",
+            (filing_id,),
+        ).fetchall()
+        results = []
+        for row in rows:
+            r = dict(row)
+            r["steps"] = json.loads(r.pop("steps_json", "[]"))
+            results.append(r)
+        return results
+
+    # -- Field citations (lineage) ------------------------------------------
+
+    def store_citations(self, bundle) -> None:
+        """Persist a :class:`~naturalsentinel.lineage.citation.CitationBundle`."""
+        citations_json = json.dumps([c.to_dict() for c in bundle.citations])
+        self.conn.execute(
+            """
+            INSERT INTO citations (filing_id, source_url, citations_json, extracted_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(filing_id) DO UPDATE SET
+                citations_json = excluded.citations_json,
+                extracted_at   = excluded.extracted_at
+            """,
+            (bundle.filing_id, bundle.source_url, citations_json, bundle.extracted_at),
+        )
+        self.conn.commit()
+        logger.debug("Stored %d citations for filing %s", len(bundle.citations), bundle.filing_id)
+
+    def get_citations(self, filing_id: str) -> Optional[dict]:
+        """Return the citation bundle dict for *filing_id*, or None."""
+        row = self.conn.execute(
+            "SELECT * FROM citations WHERE filing_id = ?", (filing_id,)
+        ).fetchone()
+        if not row:
+            return None
+        r = dict(row)
+        r["citations"] = json.loads(r.pop("citations_json", "[]"))
+        return r
+
     # -- Belief-state CRUD (Priority 3) -------------------------------------
 
     def get_belief_state(self, topic: str, domain: str) -> Optional[dict]:

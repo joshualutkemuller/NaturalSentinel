@@ -1,6 +1,6 @@
 """Data types for the memory subsystem."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 
@@ -22,3 +22,4 @@ class MemoryRecord:
     updated_at: str
     access_count: int = 0
     relevance_score: float = 1.0
+

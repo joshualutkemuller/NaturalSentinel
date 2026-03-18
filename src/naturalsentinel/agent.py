@@ -153,7 +153,25 @@ class RegulatoryMonitorAgent:
             audit_refs=decision_data.get("audit_refs", [filing.id, filing.source_url]),
         )
 
-        return MonitorResult(filing=filing, impact=impact, decision=decision, raw_analysis=raw)
+        evidence_ledger = []
+        if self.memory:
+            evidence_ledger = self.memory.recall_evidence(
+                filing.raw_text[:500],
+                top_k=5,
+                namespace=filing.domain.value,
+                business_lines=impact.affected_business_lines,
+                candidate_actions=decision.candidate_actions,
+            )
+            if evidence_ledger and not decision.evidence_items:
+                decision.evidence_items = [entry.summary for entry in evidence_ledger[:3]]
+
+        return MonitorResult(
+            filing=filing,
+            impact=impact,
+            decision=decision,
+            evidence_ledger=evidence_ledger,
+            raw_analysis=raw,
+        )
 
     # -- Public API ---------------------------------------------------------
 

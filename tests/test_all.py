@@ -17,6 +17,7 @@ from naturalsentinel import (
     RegulatoryMonitorAgent,
     MockProvider,
     MemoryStore,
+    EvidenceLedgerEntry,
     MemoryRecord,
     MemoryType,
     RegulatoryDomain,
@@ -160,7 +161,8 @@ class TestSerialization(unittest.TestCase):
             evidence_items=["Source filing"], assumptions=["No implementation delay"], counterarguments=["Scope may narrow"],
             confidence=0.9, expected_revisit_date="2026-12-01", owner="Compliance", audit_refs=["T-001"]
         )
-        return MonitorResult(filing=f, impact=i, decision=d, raw_analysis="{}")
+        e = EvidenceLedgerEntry(evidence_id="episodic:T-001", source_type="episodic", supports=["Escalate"], contradicts=[], strength_score=0.9, novelty_score=0.4, trace=["memory_id=episodic:T-001"], summary="Test evidence")
+        return MonitorResult(filing=f, impact=i, decision=d, evidence_ledger=[e], raw_analysis="{}")
 
     def test_enum_serializer(self):
         self.assertEqual(enum_serializer(Severity.HIGH), "high")
@@ -170,6 +172,7 @@ class TestSerialization(unittest.TestCase):
         self.assertEqual(sr["filing"]["domain"], "sec")
         self.assertEqual(sr["impact"]["severity"], "critical")
         self.assertEqual(sr["decision"]["decision_id"], "decision::T-001")
+        self.assertEqual(sr["evidence_ledger"][0]["evidence_id"], "episodic:T-001")
         json.dumps(sr)  # should not raise
 
 
@@ -305,6 +308,7 @@ class TestMemoryStore(unittest.TestCase):
     def test_context_block_with_data(self):
         self.mem.store_episodic("SEC-001", {"id": "SEC-001", "title": "Climate", "domain": "sec"}, {"severity": "critical", "affected_business_lines": ["ESG"], "affected_regulations": [], "risk_summary": "R"})
         ctx = self.mem.build_context_block("sec", "climate disclosure")
+        self.assertIn("WEIGHTED EVIDENCE LEDGER", ctx)
         self.assertIn("RELEVANT PAST ANALYSES", ctx)
         self.assertIn("SEC-001", ctx)
 
@@ -376,6 +380,7 @@ class TestAgent(unittest.TestCase):
             self.assertGreater(len(r.impact.action_items), 0)
             self.assertTrue(r.decision.decision_id)
             self.assertEqual(r.decision.audit_refs[0], r.filing.id)
+            self.assertIsInstance(r.evidence_ledger, list)
 
     def test_deduplication(self):
         first = self.agent.run(since_days=90)

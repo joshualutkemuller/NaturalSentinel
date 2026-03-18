@@ -154,3 +154,35 @@ class TestSimilarityEngine:
     def test_backend_attribute(self):
         engine = SimilarityEngine()
         assert engine.backend in ("sklearn", "keyword")
+
+
+class TestEvidenceLedger:
+    def test_recall_evidence_returns_weighted_entries(self, memory):
+        memory.store_episodic(
+            "SEC-001",
+            {"id": "SEC-001", "title": "Climate Disclosure Final Rule", "domain": "sec", "change_type": "final_rule"},
+            {"severity": "high", "affected_business_lines": ["ESG", "Asset Management"], "affected_regulations": ["Reg S-K"], "risk_summary": "Material disclosure risk"},
+        )
+        memory.record_feedback("SEC-001", "severity", "high", "critical", "final rule increases urgency")
+
+        evidence = memory.recall_evidence(
+            "sec climate disclosure esg",
+            top_k=3,
+            namespace="sec",
+            business_lines=["ESG"],
+            candidate_actions=["Escalate disclosure control review"],
+        )
+
+        assert len(evidence) >= 1
+        assert evidence[0].strength_score >= evidence[-1].strength_score
+        assert evidence[0].trace
+        assert evidence[0].source_type in {"episodic", "precedent", "entity"}
+
+    def test_context_block_includes_weighted_evidence(self, memory):
+        memory.store_episodic(
+            "SEC-002",
+            {"id": "SEC-002", "title": "Climate Guidance", "domain": "sec", "change_type": "guidance"},
+            {"severity": "medium", "affected_business_lines": ["ESG"], "affected_regulations": [], "risk_summary": "Climate risk context"},
+        )
+        ctx = memory.build_context_block("sec", "climate disclosure")
+        assert "WEIGHTED EVIDENCE LEDGER" in ctx

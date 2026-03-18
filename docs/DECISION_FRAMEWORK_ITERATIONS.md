@@ -79,6 +79,8 @@ Professional upside:
 
 ### 2. Introduce evidence weighting instead of flat retrieval
 
+**Status:** Complete as of 2026-03-18. NaturalSentinel now builds a weighted `EvidenceLedger` from memory recall using source authority, recency, policy finality, jurisdiction relevance, business-line proximity, predictive usefulness, and contradiction risk.
+
 Today, memory recall is useful, but recalled items are not yet obviously ranked by **decision relevance** in an institutional sense.
 
 A next-level version should score evidence along dimensions such as:

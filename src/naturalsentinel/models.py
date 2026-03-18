@@ -5,6 +5,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
+from naturalsentinel.evidence import EvidenceLedgerEntry
+
 
 class RegulatoryDomain(Enum):
     SEC = "sec"
@@ -87,4 +89,5 @@ class MonitorResult:
     filing: RegulatoryFiling
     impact: ImpactAssessment
     decision: DecisionFrame
-    raw_analysis: str
+    evidence_ledger: list[EvidenceLedgerEntry] = field(default_factory=list)
+    raw_analysis: str = ""

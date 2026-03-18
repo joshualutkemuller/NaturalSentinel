@@ -60,15 +60,14 @@ except ImportError:
     HAS_MCP = False
 
 # Local imports
-from naturalsentinel.agent import RegulatoryMonitorAgent
 from naturalsentinel.models import RegulatoryDomain, RegulatoryFiling, ChangeType
 from naturalsentinel.providers.base import ModelProvider
 from naturalsentinel.fetchers import fetch_filings, DOMAIN_BUSINESS_LINES
 from naturalsentinel.memory.store import MemoryStore
 from naturalsentinel.memory.types import MemoryType
-from naturalsentinel.cli import build_provider
+from naturalsentinel.cli import build_provider, create_runtime
 from naturalsentinel.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
-from naturalsentinel.utils.serialization import enum_serializer, serialize_result
+from naturalsentinel.utils.serialization import enum_serializer
 
 logger = logging.getLogger("SentinelMCP")
 
@@ -77,7 +76,7 @@ logger = logging.getLogger("SentinelMCP")
 # ---------------------------------------------------------------------------
 
 _memory: MemoryStore | None = None
-_agent: RegulatoryMonitorAgent | None = None
+_runtime = None
 
 def _get_memory() -> MemoryStore:
     global _memory
@@ -86,19 +85,22 @@ def _get_memory() -> MemoryStore:
         _memory = MemoryStore(db_path)
     return _memory
 
-def _get_agent() -> RegulatoryMonitorAgent:
-    global _agent
-    if _agent is None:
-        provider_name = os.getenv("SENTINEL_PROVIDER", "anthropic")
+def _get_runtime():
+    global _runtime
+    if _runtime is None:
+        provider_name = os.getenv("SENTINEL_PROVIDER", "mock")
         model = os.getenv("SENTINEL_MODEL")
-        provider = _build_provider(provider_name, model)
-        _agent = RegulatoryMonitorAgent(
-            provider=provider,
+        try:
+            provider = _build_provider(provider_name, model)
+        except ImportError:
+            logger.warning("Provider %s unavailable; falling back to mock provider", provider_name)
+            provider = _build_provider("mock")
+        _runtime = create_runtime(
+            provider,
+            memory=_get_memory(),
             state_path=os.getenv("SENTINEL_STATE", "monitor_state.json"),
         )
-        # Attach memory to the agent
-        _agent.memory = _get_memory()
-    return _agent
+    return _runtime
 
 def _build_provider(name: str, model: str | None = None) -> ModelProvider:
     return build_provider(name, model)
@@ -253,30 +255,24 @@ def create_mcp_server() -> "Server":
         mem = _get_memory()
 
         if name == "scan_regulatory_filings":
-            agent = _get_agent()
-            domains = [RegulatoryDomain(d) for d in args.get("domains", [])] or None
-            if domains:
-                agent.domains = domains
-            days = args.get("days", 30)
-            agent.reset_state()
-            results = agent.run(since_days=days)
-
-            # Store results in memory
-            output = []
-            for r in results:
-                sr = serialize_result(r)
-                mem.store_episodic(r.filing.id, sr["filing"], sr["impact"])
-                output.append(sr)
-
+            runtime = _get_runtime()
+            scan_params = {"since_days": args.get("days", 30)}
+            if args.get("domains"):
+                scan_params["domains"] = args["domains"]
+            Path(runtime.state_path).write_text(json.dumps({"seen_ids": []}))
+            result = runtime.execute_skill("scan_cycle", scan_params)
+            if not result.success:
+                raise RuntimeError(result.error)
+            output = json.loads(json.dumps(result.data["results"], default=enum_serializer))
             return json.dumps({
                 "status": "success",
-                "filings_analyzed": len(results),
+                "filings_analyzed": len(output),
                 "results": output,
             }, indent=2)
 
         elif name == "analyze_filing_text":
             import hashlib as _hashlib
-            agent = _get_agent()
+            runtime = _get_runtime()
             fid = f"CUSTOM-{_hashlib.sha256(args['text'][:100].encode()).hexdigest()[:8]}"
             filing = RegulatoryFiling(
                 id=fid,
@@ -286,39 +282,38 @@ def create_mcp_server() -> "Server":
                 published_date=datetime.utcnow().strftime("%Y-%m-%d"),
                 raw_text=args["text"],
             )
-            result = agent._analyze_filing(filing)
-            sr = serialize_result(result)
-            mem.store_episodic(fid, sr["filing"], sr["impact"])
-            return json.dumps(sr, indent=2)
+            filing_data = json.loads(json.dumps(filing.__dict__, default=enum_serializer))
+            context_result = runtime.execute_skill(
+                "build_context",
+                {"domain": filing.domain.value, "filing_text": filing.raw_text},
+            )
+            result = runtime.execute_skill(
+                "analyze_filing",
+                {"filing": filing_data, "memory_context": context_result.data if context_result.success else ""},
+            )
+            if not result.success:
+                raise RuntimeError(result.error)
+            payload = {"filing": filing_data, "impact": result.data}
+            runtime.execute_skill("store_memory", {"filing_id": fid, "filing": filing_data, "impact": result.data})
+            return json.dumps(json.loads(json.dumps(payload, default=enum_serializer)), indent=2)
 
         elif name == "recall_memory":
-            mt = MemoryType(args["memory_type"]) if args.get("memory_type") else None
-            results = mem.recall(args["query"], top_k=args.get("top_k", 5), memory_type=mt)
-            return json.dumps([
-                {
-                    "id": r.id,
-                    "type": r.memory_type.value,
-                    "key": r.key,
-                    "namespace": r.namespace,
-                    "relevance": round(r.relevance_score, 3),
-                    "content": r.content,
-                    "created_at": r.created_at,
-                }
-                for r in results
-            ], indent=2)
+            runtime = _get_runtime()
+            result = runtime.execute_skill("recall_memory", args)
+            if not result.success:
+                raise RuntimeError(result.error)
+            return json.dumps(result.data, indent=2)
 
         elif name == "provide_feedback":
-            mem.record_feedback(
-                filing_id=args["filing_id"],
-                field=args["field"],
-                old_value=args["old_value"],
-                new_value=args["new_value"],
-                reason=args.get("reason", ""),
-            )
+            runtime = _get_runtime()
+            result = runtime.execute_skill("record_feedback", args)
+            if not result.success:
+                raise RuntimeError(result.error)
             return json.dumps({
                 "status": "recorded",
                 "message": f"Feedback recorded for {args['filing_id']}.{args['field']}. "
                            f"This correction will be used in future analyses.",
+                "result": result.data,
             })
 
         elif name == "get_entity_relations":
@@ -556,7 +551,10 @@ class StandaloneServer:
     """
 
     def __init__(self):
+        global _runtime
+        _runtime = None
         self.memory = _get_memory()
+        self.runtime = _get_runtime()
         self.tools = {
             "scan_regulatory_filings": self._scan,
             "recall_memory": self._recall,
@@ -593,16 +591,27 @@ class StandaloneServer:
             return {"error": f"Unknown method: {method}"}
 
     def _scan(self, args: dict) -> dict:
-        return {"status": "use the full MCP server for scanning", "memory_stats": self.memory.stats()}
+        scan_params = {"since_days": args.get("days", 30)}
+        if args.get("domains"):
+            scan_params["domains"] = args["domains"]
+        Path(self.runtime.state_path).write_text(json.dumps({"seen_ids": []}))
+        result = self.runtime.execute_skill("scan_cycle", scan_params)
+        if not result.success:
+            raise RuntimeError(result.error)
+        results = json.loads(json.dumps(result.data["results"], default=enum_serializer))
+        return {"status": "success", "filings_analyzed": len(results), "results": results}
 
     def _recall(self, args: dict) -> list:
-        mt = MemoryType(args["memory_type"]) if args.get("memory_type") else None
-        results = self.memory.recall(args["query"], top_k=args.get("top_k", 5), memory_type=mt)
-        return [{"id": r.id, "key": r.key, "relevance": r.relevance_score, "content": r.content} for r in results]
+        result = self.runtime.execute_skill("recall_memory", args)
+        if not result.success:
+            raise RuntimeError(result.error)
+        return result.data
 
     def _feedback(self, args: dict) -> dict:
-        self.memory.record_feedback(args["filing_id"], args["field"], args["old_value"], args["new_value"], args.get("reason", ""))
-        return {"status": "recorded"}
+        result = self.runtime.execute_skill("record_feedback", args)
+        if not result.success:
+            raise RuntimeError(result.error)
+        return {"status": "recorded", "result": result.data}
 
     def _relations(self, args: dict) -> list:
         return self.memory.get_related_entities(args["entity"])

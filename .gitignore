@@ -25,7 +25,7 @@ htmlcov/
 monitor_state.json
 
 # Stale legacy directory (removed in ca9bb34, kept out of tree)
-naturalsentinel/
+/naturalsentinel/
 
 # Editor / OS
 .DS_Store

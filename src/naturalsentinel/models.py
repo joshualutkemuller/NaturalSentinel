@@ -13,6 +13,13 @@ class RegulatoryDomain(Enum):
     FDA = "fda"
     EPA = "epa"
     USTR = "ustr"
+    # Securities finance & lending domains
+    FHFA  = "fhfa"   # Federal Housing Finance Agency
+    OCC   = "occ"    # Office of the Comptroller of the Currency
+    FINRA = "finra"  # Financial Industry Regulatory Authority
+    CFTC  = "cftc"   # Commodity Futures Trading Commission
+    FDIC  = "fdic"   # Federal Deposit Insurance Corporation
+    BASEL = "basel"  # Basel Committee on Banking Supervision
 
 
 class Severity(Enum):

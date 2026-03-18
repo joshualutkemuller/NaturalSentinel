@@ -72,6 +72,43 @@ class TestStandaloneServer:
         for r in results:
             assert "precedent" in r["id"]
 
+    def test_missing_query_argument_returns_error(self, server):
+        resp = server.handle_request({
+            "method": "tools/call",
+            "params": {"name": "recall_memory", "arguments": {}},
+        })
+        assert "error" in resp
+        assert "query" in resp["error"]
+
+    def test_invalid_memory_type_returns_error(self, server):
+        resp = server.handle_request({
+            "method": "tools/call",
+            "params": {
+                "name": "recall_memory",
+                "arguments": {"query": "climate", "memory_type": "bogus"},
+            },
+        })
+        assert "error" in resp
+        assert "bogus" in resp["error"]
+
+    def test_missing_feedback_field_returns_error(self, server):
+        resp = server.handle_request({
+            "method": "tools/call",
+            "params": {
+                "name": "provide_feedback",
+                "arguments": {"filing_id": "SEC-001", "field": "severity"},
+            },
+        })
+        assert "error" in resp
+
+    def test_stats_response_contract(self, server):
+        resp = server.handle_request({
+            "method": "tools/call",
+            "params": {"name": "get_memory_stats", "arguments": {}},
+        })
+        result = resp["result"]
+        assert {"total_memories", "by_type", "total_relations"} <= set(result.keys())
+
     # -- tools/call: provide_feedback ---------------------------------------
 
     def test_provide_feedback(self, server, populated_memory):

@@ -575,7 +575,10 @@ class StandaloneServer:
             tool_name = params.get("name", "")
             args = params.get("arguments", {})
             if tool_name in self.tools:
-                return {"result": self.tools[tool_name](args)}
+                try:
+                    return {"result": self.tools[tool_name](args)}
+                except Exception as exc:
+                    return {"error": f"{type(exc).__name__}: {exc}"}
             return {"error": f"Unknown tool: {tool_name}"}
         elif method == "resources/list":
             return {"resources": [

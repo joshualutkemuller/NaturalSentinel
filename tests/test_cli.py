@@ -31,6 +31,23 @@ class TestCliDocumentLoading(unittest.TestCase):
             self.assertIn('"title": "Risk Notice"', text)
             self.assertIn('"body": "Capital impact"', text)
 
+    def test_read_document_text_rejects_unsupported_suffix(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "notice.csv"
+            path.write_text("a,b,c")
+
+            with self.assertRaises(ValueError):
+                _read_document_text(path)
+
+    def test_read_document_text_returns_raw_when_json_invalid(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "notice.json"
+            path.write_text('{"title": invalid json}')
+
+            text = _read_document_text(path)
+
+            self.assertEqual(text, '{"title": invalid json}')
+
     def test_collect_input_files_from_directory(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -41,6 +58,33 @@ class TestCliDocumentLoading(unittest.TestCase):
             files = _collect_input_files(None, str(root), recursive=False)
 
             self.assertEqual([p.name for p in files], ["doc1.txt", "doc2.md"])
+
+    def test_collect_input_files_recurses_when_requested(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            nested = root / "nested"
+            nested.mkdir()
+            (nested / "deep.txt").write_text("deep")
+
+            files = _collect_input_files(None, str(root), recursive=True)
+
+            self.assertEqual([p.name for p in files], ["deep.txt"])
+
+    def test_collect_input_files_deduplicates_explicit_and_directory_inputs(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            doc = root / "same.txt"
+            doc.write_text("alpha")
+
+            files = _collect_input_files([str(doc)], str(root), recursive=False)
+
+            self.assertEqual(files, [doc.resolve()])
+
+    def test_collect_input_files_raises_for_missing_path(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing = Path(tmpdir) / "missing.txt"
+            with self.assertRaises(FileNotFoundError):
+                _collect_input_files([str(missing)], None, recursive=False)
 
     def test_build_local_filings_from_paths(self):
         with tempfile.TemporaryDirectory() as tmpdir:

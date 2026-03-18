@@ -32,6 +32,37 @@ DOMAIN_BUSINESS_LINES: dict[str, list[str]] = {
         "Defense Contracting", "Consumer Electronics", "Critical Minerals",
         "International Trade Finance",
     ],
+    # Securities finance & lending domains
+    "fhfa": [
+        "Agency Lending", "Mortgage Banking", "Agency MBS / TBA",
+        "GSE Collateral Management", "Conforming Loan Origination",
+        "Credit Risk Transfer (CRT)", "Prepayment Modelling",
+    ],
+    "occ": [
+        "Secured Lending", "Prime Lending", "Leveraged Finance",
+        "Commercial Real Estate Lending", "Capital Planning",
+        "Model Risk Management", "Credit Portfolio Management",
+    ],
+    "finra": [
+        "Prime Brokerage", "Securities Lending", "Margin Lending",
+        "Repo / Reverse Repo", "TBA / MBS Trading", "Broker-Dealer Operations",
+        "Customer Margin Accounts",
+    ],
+    "cftc": [
+        "Derivatives / Swaps", "Initial Margin (IM/SIMM)",
+        "Counterparty Credit Risk", "Cleared vs Uncleared Swaps",
+        "Commodity Finance", "FX Prime Brokerage", "CVA / MVA Hedging",
+    ],
+    "fdic": [
+        "Commercial Banking", "Deposit Funding", "Capital Adequacy",
+        "Resolution Planning", "Secured Lending", "Brokered Deposits",
+        "Stress Testing",
+    ],
+    "basel": [
+        "Capital Optimization", "RWA Modelling", "SA-CCR",
+        "Leverage Ratio / SLR", "NSFR / LCR", "Output Floor",
+        "Internal Models (FRTB / IRBA)", "XVA Desk",
+    ],
 }
 
 

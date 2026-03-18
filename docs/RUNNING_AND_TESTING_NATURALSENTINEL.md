@@ -2,10 +2,10 @@
 
 This guide shows how to run NaturalSentinel in practice and how to test both:
 
-1. the **legacy agentic monitoring workflow** (`RegulatoryMonitorAgent`), and
-2. the newer **skill-based framework** (`AgentRuntime` + registered skills + agents).
+1. the **preferred runtime path** (`AgentRuntime` + registered skills + agents), and
+2. the **legacy compatibility workflow** (`RegulatoryMonitorAgent`).
 
-The goal is to give you a concrete way to validate the system end to end before making deeper architectural changes.
+`AgentRuntime` + skills is the strategic direction for the project. `RegulatoryMonitorAgent` remains supported so the original fetch → analyze → store flow, CLI surfaces, and compatibility integrations continue to work while the framework-centric API becomes the default.
 
 ---
 
@@ -27,9 +27,24 @@ Why:
 
 ## 2. Fastest way to see NaturalSentinel working
 
-### Option A — Run the basic demo
+### Option A — Run the advanced runtime demo
 
-This is the simplest proof that the core monitoring loop works with no API keys.
+This is the recommended proof that the framework-centric architecture works with no API keys.
+
+```bash
+PYTHONPATH=src python examples/advanced_agents_demo.py
+```
+
+What it exercises:
+
+- `AgentRuntime`
+- registered skills via `ALL_SKILLS`
+- thin agent orchestrators built on top of runtime skill dispatch
+- in-memory/persistent `MemoryStore` usage across a larger sample filing corpus
+
+### Option B — Run the basic legacy demo
+
+Use this when you specifically want to validate the backwards-compatible monitor surface.
 
 ```bash
 PYTHONPATH=src python examples/basic_demo.py
@@ -40,7 +55,7 @@ What it exercises:
 - `RegulatoryMonitorAgent`
 - `MockProvider`
 - in-memory `MemoryStore`
-- fetch → analyze → store workflow over sample filings
+- fetch → analyze → store workflow over the same sample filing corpus
 
 What you should expect:
 
@@ -51,9 +66,9 @@ What you should expect:
 
 ---
 
-### Option B — Run the CLI
+### Option C — Run the CLI
 
-This is the most production-like way to run the legacy monitor.
+This is the most production-like way to run the legacy compatibility monitor.
 
 ```bash
 PYTHONPATH=src python -m naturalsentinel.cli --provider mock --reset --days 90

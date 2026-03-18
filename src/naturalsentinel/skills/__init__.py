@@ -21,6 +21,7 @@ Intelligence Skills:
     trend_analysis           — Detect regulatory escalation patterns over time
     cross_domain_correlation — Find business-line overlaps across agencies
     export_report            — Render compliance reports (markdown/json/csv)
+    regime_detection         — Identify active macro-prudential regulatory regimes
 
 Specialist / Desk Skills:
     capital_impact              — RWA, SLR, leverage ratio, and output floor analysis
@@ -51,6 +52,7 @@ from naturalsentinel.skills.deadline import ComplianceDeadlineSkill
 from naturalsentinel.skills.trends import TrendAnalysisSkill
 from naturalsentinel.skills.cross_domain import CrossDomainCorrelationSkill
 from naturalsentinel.skills.export_report import ExportReportSkill
+from naturalsentinel.skills.regime_detection import RegimeDetectionSkill
 
 # Specialist / desk skills
 from naturalsentinel.skills.capital_impact import CapitalImpactSkill
@@ -81,6 +83,7 @@ ALL_SKILLS = [
     TrendAnalysisSkill(),
     CrossDomainCorrelationSkill(),
     ExportReportSkill(),
+    RegimeDetectionSkill(),
     # Specialist / desk
     CapitalImpactSkill(),
     ModelRiskAssessmentSkill(),
@@ -112,6 +115,7 @@ __all__ = [
     "TrendAnalysisSkill",
     "CrossDomainCorrelationSkill",
     "ExportReportSkill",
+    "RegimeDetectionSkill",
     # Specialist / desk
     "CapitalImpactSkill",
     "ModelRiskAssessmentSkill",

@@ -78,43 +78,6 @@ This is useful when you want to inspect:
 
 ---
 
-## 2B. Analyze your own local documents from the CLI
-
-You can now point the CLI directly at local files or directories instead of only running the sample fetched workflow.
-
-### Analyze one local file
-
-```bash
-PYTHONPATH=src python -m naturalsentinel.cli   --provider mock   --input-path /path/to/filing.txt   --input-domain sec
-```
-
-### Analyze a whole directory of documents
-
-```bash
-PYTHONPATH=src python -m naturalsentinel.cli   --provider mock   --input-dir /path/to/regulatory_docs   --input-domain fed   --output /tmp/local-analysis.json
-```
-
-### Mix files and directories
-
-```bash
-PYTHONPATH=src python -m naturalsentinel.cli   --provider mock   --input-path ./docs/sample_notice.txt   --input-path ./incoming_filings   --input-domain cftc
-```
-
-Supported local formats are currently:
-
-- `.txt`
-- `.md`
-- `.rst`
-- `.log`
-- `.text`
-- `.json`
-- `.html`
-- `.htm`
-
-This is the cleanest current path if you want a lightweight operator interface for loading documents, passing paths, and getting structured JSON back without building a separate UI first.
-
----
-
 ## 3. Test the memory + feedback learning loop
 
 To verify that the system is not just analyzing filings once, but can accumulate institutional memory:

@@ -18,6 +18,14 @@ Output schema:
   "action_items": ["<concrete action 1>", "<concrete action 2>", ...],
   "risk_summary": "<1-2 sentences on residual risk if no action is taken>",
   "confidence": <float 0-1 indicating your confidence in this assessment>,
+  "citations": {
+    "severity": "<verbatim passage from the filing that determines severity>",
+    "change_type": "<verbatim passage identifying the change type>",
+    "compliance_deadline": "<verbatim passage specifying the deadline, or omit key if none>",
+    "affected_business_lines": "<verbatim passage identifying affected business lines>",
+    "affected_regulations": "<verbatim passage citing affected regulations or statutes>",
+    "risk_summary": "<verbatim passage describing the key risk>"
+  },
   "decision": {
     "decision_id": "<stable identifier for the decision frame>",
     "question": "<decision question a risk, portfolio, or governance stakeholder would review>",
@@ -47,6 +55,9 @@ reasonable compliance window; low = informational or minor.
 - Build a first-class decision frame that sits above the impact assessment.
 - Candidate actions should reflect realistic governance or operating choices, not generic observations.
 - Evidence items and audit_refs must make downstream review traceable.
+- For each key in "citations", quote the shortest passage that directly \
+supports your extraction — do not paraphrase.  If no passage is available \
+for a field, omit that key from citations rather than fabricating one.
 """
 
 USER_PROMPT_TEMPLATE = """\

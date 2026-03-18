@@ -5,22 +5,27 @@
 Watches regulatory filings across financial services, technology, and telecom sectors — parses dense legal language using a five-stage ETL pipeline, maps changes to affected business lines, detects macro-prudential and tech regulatory regimes, and learns from human feedback over time.
 
 ```
-66 tests passing · zero required dependencies · pluggable LLM backends
-35 skills · 17 agents · 18 regime archetypes · 2 industry verticals
+Stdlib unittest suite passing · zero required dependencies · pluggable LLM backends
+35 skills · 17 agents · 18 regime archetypes · expanding sample filing corpus
 ```
 
 ## Quick Start
+
+> **Canonical runtime path:** `AgentRuntime` + registered skills is the strategic, forward-looking API for NaturalSentinel. `RegulatoryMonitorAgent` remains supported as a compatibility layer for the legacy fetch → analyze → store workflow, the CLI, and MCP integrations that still wrap that interface.
 
 ```bash
 # Clone and run — no API keys needed
 cd naturalsentinel
 pip install -e .
+PYTHONPATH=src python examples/advanced_agents_demo.py
+
+# Legacy compatibility demo
 PYTHONPATH=src python examples/basic_demo.py
 
-# Run the test suite
+# Run the stdlib unittest suite
 PYTHONPATH=src python -m unittest tests.test_all -v
 
-# With a real LLM provider
+# With a real LLM provider (legacy CLI path)
 pip install anthropic
 ANTHROPIC_API_KEY=sk-ant-... PYTHONPATH=src python -m naturalsentinel.cli --provider anthropic
 ```
@@ -153,7 +158,7 @@ naturalsentinel/
 │           └── text.py              # Tokenization, similarity
 ├── tests/
 │   ├── conftest.py                  # Shared fixtures
-│   ├── test_all.py                  # 66 unittest.TestCase tests
+│   ├── test_all.py                  # stdlib unittest regression suite
 │   └── ...                          # Additional pytest-style test modules
 └── examples/
     ├── basic_demo.py                # Simplest usage
@@ -270,20 +275,30 @@ Claude Desktop config (`claude_desktop_config.json`):
 }
 ```
 
-## Swapping Providers
+## Runtime Direction and Provider Swapping
+
+Use `AgentRuntime` for new integrations so skills, policies, and audit trails stay first-class:
 
 ```python
-from naturalsentinel import RegulatoryMonitorAgent, MemoryStore
+from naturalsentinel import AgentRuntime, MemoryStore
 from naturalsentinel.providers.anthropic import AnthropicProvider
 from naturalsentinel.providers.openai import OpenAIProvider
 from naturalsentinel.providers.ollama import OllamaProvider
+from naturalsentinel.skills import ALL_SKILLS
 
-memory = MemoryStore("shared.db")  # All providers share the same memory
+memory = MemoryStore("shared.db")
 
-agent = RegulatoryMonitorAgent(AnthropicProvider(), memory=memory)
-agent = RegulatoryMonitorAgent(OpenAIProvider("gpt-4o"), memory=memory)
-agent = RegulatoryMonitorAgent(OllamaProvider("llama3.1"), memory=memory)
+runtime = AgentRuntime(provider=AnthropicProvider(), memory=memory)
+runtime.register_skills(*ALL_SKILLS)
+
+runtime = AgentRuntime(provider=OpenAIProvider("gpt-4o"), memory=memory)
+runtime.register_skills(*ALL_SKILLS)
+
+runtime = AgentRuntime(provider=OllamaProvider("llama3.1"), memory=memory)
+runtime.register_skills(*ALL_SKILLS)
 ```
+
+If you need the original end-to-end monitor surface, `RegulatoryMonitorAgent` is still available as the backwards-compatible wrapper used by the legacy CLI and some MCP entry points.
 
 ## Dependencies
 

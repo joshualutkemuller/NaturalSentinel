@@ -15,6 +15,9 @@ from naturalsentinel import (
     ExecutionPlan, PlanStep,
 )
 from naturalsentinel.skills import ALL_SKILLS
+from naturalsentinel.fetchers import fetch_filings
+from naturalsentinel.fetchers.sample_data import SAMPLE_FILINGS
+from naturalsentinel.agent import RegulatoryMonitorAgent
 
 
 # ── FRAMEWORK ─────────────────────────────────────────────────────────────
@@ -186,6 +189,176 @@ class TestAgentRuntime(unittest.TestCase):
         self.assertGreaterEqual(summary["total_invocations"], 1)
 
 
+class TestLegacyRuntimeParity(unittest.TestCase):
+    def setUp(self):
+        self.agent_memory = MemoryStore(":memory:")
+        self.runtime_memory = MemoryStore(":memory:")
+        self.tmpdir = tempfile.mkdtemp()
+
+        self.agent = RegulatoryMonitorAgent(
+            provider=MockProvider(),
+            memory=self.agent_memory,
+            state_path=os.path.join(self.tmpdir, "agent_state.json"),
+        )
+        self.runtime = AgentRuntime(
+            provider=MockProvider(),
+            memory=self.runtime_memory,
+            state_path=os.path.join(self.tmpdir, "runtime_state.json"),
+            policy=SecurityPolicy(allowed=FULL),
+        )
+        self.runtime.register_skills(*ALL_SKILLS)
+
+    def tearDown(self):
+        self.agent_memory.close()
+        self.runtime_memory.close()
+
+    def test_scan_cycle_matches_legacy_agent_outputs(self):
+        agent_results = self.agent.run(since_days=90)
+        runtime_result = self.runtime.execute_skill("scan_cycle", {"since_days": 90})
+
+        self.assertTrue(runtime_result.success)
+
+        agent_by_id = {r.filing.id: r for r in agent_results}
+        runtime_by_id = {item["filing"]["id"]: item for item in runtime_result.data["results"]}
+
+        self.assertEqual(set(agent_by_id), set(runtime_by_id))
+        self.assertEqual(len(agent_results), runtime_result.data["stats"]["new_analyzed"])
+
+        for filing_id, agent_result in agent_by_id.items():
+            runtime_item = runtime_by_id[filing_id]
+            self.assertEqual(runtime_item["impact"]["severity"], agent_result.impact.severity.value)
+            self.assertEqual(runtime_item["impact"]["filing_id"], filing_id)
+
+        from naturalsentinel.memory.types import MemoryType
+        self.assertEqual(
+            self.agent_memory.count(MemoryType.EPISODIC),
+            self.runtime_memory.count(MemoryType.EPISODIC),
+        )
+
+
+class TestFrameworkInvariants(unittest.TestCase):
+    def _make_filing(self, filing_id="SEC-2026-0312-A"):
+        return {
+            "id": filing_id,
+            "title": "Climate",
+            "domain": "sec",
+            "published_date": "2026-03-10",
+            "source_url": "https://x.com",
+            "raw_text": "SEC climate disclosure rule text.",
+        }
+
+    def test_budget_exhaustion_is_audited(self):
+        runtime = AgentRuntime(
+            provider=MockProvider(),
+            policy=SecurityPolicy(allowed=FULL, max_llm_calls_per_run=1),
+        )
+        runtime.register_skills(*ALL_SKILLS)
+
+        first = runtime.execute_skill("analyze_filing", {"filing": self._make_filing()})
+        second = runtime.execute_skill("analyze_filing", {"filing": self._make_filing("SEC-2026-0312-A-2")})
+
+        self.assertTrue(first.success)
+        self.assertFalse(second.success)
+        self.assertIn("Budget exceeded", second.error)
+
+        failures = runtime.audit.failures()
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0].skill_name, "analyze_filing")
+        self.assertIn("Budget exceeded", failures[0].error)
+
+    def test_dependency_failure_propagates_and_is_linked_in_audit(self):
+        class FailingChildSkill(Skill):
+            metadata = SkillMetadata(
+                name="failing_child",
+                description="Always fails",
+                version="0.0.1",
+                permissions=Permission.NONE,
+                latency=LatencyClass.INSTANT,
+                parameters=[],
+                returns="None",
+            )
+
+            def execute(self, context):
+                raise RuntimeError("child boom")
+
+        class ParentSkill(Skill):
+            metadata = SkillMetadata(
+                name="parent_skill",
+                description="Invokes child",
+                version="0.0.1",
+                permissions=Permission.NONE,
+                latency=LatencyClass.INSTANT,
+                parameters=[],
+                returns="dict",
+                dependencies=["failing_child"],
+            )
+
+            def execute(self, context):
+                child = context.invoke_skill("failing_child", {})
+                if not child.success:
+                    return SkillResult(
+                        skill_name="parent_skill",
+                        success=False,
+                        data=None,
+                        error=f"Child failed: {child.error}",
+                    )
+                return SkillResult(skill_name="parent_skill", success=True, data={"child": child.data})
+
+        runtime = AgentRuntime(policy=SecurityPolicy(allowed=FULL))
+        runtime.register_skill(FailingChildSkill())
+        runtime.register_skill(ParentSkill())
+
+        result = runtime.execute_skill("parent_skill", {})
+
+        self.assertFalse(result.success)
+        self.assertIn("Child failed: RuntimeError: child boom", result.error)
+
+        child_entries = runtime.audit.for_skill("failing_child")
+        parent_entries = runtime.audit.for_skill("parent_skill")
+        self.assertEqual(len(child_entries), 1)
+        self.assertEqual(len(parent_entries), 1)
+        self.assertEqual(child_entries[0].parent_invocation_id, parent_entries[0].invocation_id)
+        self.assertFalse(child_entries[0].success)
+        self.assertFalse(parent_entries[0].success)
+
+
+class TestStableFixtureSubset(unittest.TestCase):
+    FIXTURE_IDS = ["SEC-2026-0312-A", "CFPB-2026-0228-B"]
+
+    def _subset_filings(self):
+        return [f for f in SAMPLE_FILINGS if f["id"] in self.FIXTURE_IDS]
+
+    def test_fixture_subset_exact_mock_severities(self):
+        runtime = AgentRuntime(provider=MockProvider(), policy=SecurityPolicy(allowed=FULL))
+        runtime.register_skills(*ALL_SKILLS)
+
+        expected = {
+            "SEC-2026-0312-A": "critical",
+            "CFPB-2026-0228-B": "high",
+        }
+
+        for filing in self._subset_filings():
+            result = runtime.execute_skill("analyze_filing", {"filing": filing})
+            self.assertTrue(result.success)
+            self.assertEqual(result.data["severity"], expected[filing["id"]])
+
+    def test_fixture_subset_dedup_counts_are_exact(self):
+        runtime = AgentRuntime(
+            state_path=os.path.join(tempfile.mkdtemp(), "subset_state.json"),
+            policy=SecurityPolicy(allowed=FULL),
+        )
+        runtime.register_skills(*ALL_SKILLS)
+
+        subset = [{"id": filing["id"]} for filing in self._subset_filings()]
+        first = runtime.execute_skill("detect_duplicates", {"filings": subset, "mark_seen": True})
+        second = runtime.execute_skill("detect_duplicates", {"filings": subset, "mark_seen": True})
+
+        self.assertEqual(len(first.data["new_filings"]), 2)
+        self.assertEqual(first.data["duplicates_skipped"], 0)
+        self.assertEqual(len(second.data["new_filings"]), 0)
+        self.assertEqual(second.data["duplicates_skipped"], 2)
+
+
 # ── INDIVIDUAL SKILLS ─────────────────────────────────────────────────────
 
 class TestFetchFilingsSkill(unittest.TestCase):
@@ -196,7 +369,7 @@ class TestFetchFilingsSkill(unittest.TestCase):
     def test_fetch_all(self):
         result = self.runtime.execute_skill("fetch_filings", {"since_days": 365})
         self.assertTrue(result.success)
-        self.assertEqual(len(result.data), 6)
+        self.assertEqual(len(result.data), len(SAMPLE_FILINGS))
 
     def test_fetch_filtered(self):
         result = self.runtime.execute_skill("fetch_filings", {"domains": ["sec"], "since_days": 365})
@@ -329,13 +502,14 @@ class TestScanCycleSkill(unittest.TestCase):
         result = self.runtime.execute_skill("scan_cycle", {"since_days": 90})
         self.assertTrue(result.success)
         stats = result.data["stats"]
-        self.assertEqual(stats["total_fetched"], 6)
-        self.assertEqual(stats["new_analyzed"], 6)
+        expected = len(fetch_filings(since_days=90))
+        self.assertEqual(stats["total_fetched"], expected)
+        self.assertEqual(stats["new_analyzed"], expected)
         self.assertGreater(result.token_usage, 0)
 
         # Memory should be populated
         from naturalsentinel.memory.types import MemoryType
-        self.assertEqual(self.memory.count(MemoryType.EPISODIC), 6)
+        self.assertEqual(self.memory.count(MemoryType.EPISODIC), expected)
 
     def test_second_cycle_deduped(self):
         self.runtime.execute_skill("scan_cycle", {"since_days": 90})

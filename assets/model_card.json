@@ -1,0 +1,47 @@
+{
+  "name": "NaturalSentinel Regulatory Extraction Pipeline",
+  "version": "1.0.0",
+  "provider": "anthropic",
+  "model_id": "claude-sonnet-4-6",
+  "release_date": "2026-03-01",
+  "last_reviewed": "2026-03-18",
+  "intended_use": "Automated first-pass analysis of regulatory filings published by US and international financial regulators (SEC, Federal Reserve, OCC, FDIC, CFTC, CFPB, FHFA, FINRA, Basel Committee). Extracts structured metadata — severity, affected business lines, compliance deadlines, and action items — to assist human compliance analysts, risk managers, and legal teams in prioritising their review workload.",
+  "intended_users": [
+    "Compliance officers and analysts",
+    "Chief Risk Officers and risk management teams",
+    "Legal and regulatory affairs functions",
+    "Portfolio managers with regulatory exposure",
+    "Audit and governance committees"
+  ],
+  "out_of_scope_uses": [
+    "Replacing qualified legal advice or counsel opinion",
+    "Making binding compliance decisions without human review",
+    "Analysing non-regulatory documents (earnings calls, news)",
+    "Real-time trading decisions based on extracted severity scores",
+    "Jurisdictions outside the explicitly evaluated regulatory domains"
+  ],
+  "known_limitations": [
+    "Confidence scores are probabilistic estimates — calibration should be verified regularly using the run_evaluation skill.",
+    "LLM outputs can hallucinate citations or misclassify novel filing formats not represented in the curated sample data.",
+    "Compliance deadlines extracted from dense regulatory text may omit phase-in provisions or carve-outs; human verification is required.",
+    "Affected business-line mapping is seeded from a curated taxonomy; highly specialised business lines may be missed.",
+    "Performance degrades on filings longer than ~80,000 characters due to context-window truncation.",
+    "No fine-tuning has been performed; performance reflects the base model's general regulatory knowledge."
+  ],
+  "ethical_considerations": [
+    "This system must not be used as a substitute for qualified legal advice. All critical compliance decisions require human review.",
+    "Regulatory extractions may reflect biases present in the underlying LLM's training data, particularly for under-represented jurisdictions.",
+    "Audit trails (audit_log) and feedback corrections (feedback_log) must be retained to enable accountability and model improvement.",
+    "Escalation policies should be configured to route critical findings to human reviewers, not to automated enforcement systems.",
+    "Model card, control matrix, and evaluation reports should be shared with relevant audit and compliance stakeholders."
+  ],
+  "evaluated_domains": [
+    "sec", "fed", "cfpb", "occ", "fdic", "cftc", "fhfa", "finra",
+    "epa", "ustr", "fda", "basel"
+  ],
+  "evaluation_metrics": {},
+  "evaluation_notes": "Run `run_evaluation` skill (mode='historical') after accumulating at least 20 human feedback corrections to populate accuracy metrics.",
+  "update_cadence": "Model card should be reviewed when the LLM provider or model version changes, when evaluation accuracy drops below 0.70, or quarterly as a minimum.",
+  "contact": "compliance-ai-team@example.com",
+  "license": "MIT"
+}

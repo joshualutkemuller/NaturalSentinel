@@ -93,4 +93,44 @@ CREATE TABLE IF NOT EXISTS eval_runs (
 
 CREATE INDEX IF NOT EXISTS idx_er_provider_tag ON eval_runs(provider_tag);
 CREATE INDEX IF NOT EXISTS idx_er_run_at       ON eval_runs(run_at);
+
+-- Immutable audit log (governance — append-only by convention)
+CREATE TABLE IF NOT EXISTS audit_log (
+    event_id   TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    filing_id  TEXT,
+    actor      TEXT NOT NULL DEFAULT 'system',
+    payload    TEXT NOT NULL DEFAULT '{}',
+    timestamp  TEXT NOT NULL,
+    severity   TEXT NOT NULL DEFAULT 'INFO',
+    trace_id   TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_al_event_type ON audit_log(event_type);
+CREATE INDEX IF NOT EXISTS idx_al_filing_id  ON audit_log(filing_id);
+CREATE INDEX IF NOT EXISTS idx_al_timestamp  ON audit_log(timestamp);
+CREATE INDEX IF NOT EXISTS idx_al_severity   ON audit_log(severity);
+
+-- Decision traces (lineage — one row per filing analysis)
+CREATE TABLE IF NOT EXISTS decision_traces (
+    trace_id          TEXT PRIMARY KEY,
+    filing_id         TEXT NOT NULL,
+    started_at        TEXT NOT NULL,
+    finished_at       TEXT NOT NULL DEFAULT '',
+    total_duration_ms REAL NOT NULL DEFAULT 0.0,
+    total_tokens      INTEGER NOT NULL DEFAULT 0,
+    overall_status    TEXT NOT NULL DEFAULT 'ok',
+    steps_json        TEXT NOT NULL DEFAULT '[]'
+);
+
+CREATE INDEX IF NOT EXISTS idx_dt_filing_id  ON decision_traces(filing_id);
+CREATE INDEX IF NOT EXISTS idx_dt_started_at ON decision_traces(started_at);
+
+-- Field citations (lineage — one row per filing analysis)
+CREATE TABLE IF NOT EXISTS citations (
+    filing_id     TEXT PRIMARY KEY,
+    source_url    TEXT NOT NULL DEFAULT '',
+    citations_json TEXT NOT NULL DEFAULT '[]',
+    extracted_at  TEXT NOT NULL
+);
 """

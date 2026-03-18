@@ -28,6 +28,7 @@ __version__ = "0.1.0"
 
 from naturalsentinel.models import (
     ChangeType,
+    DecisionFrame,
     ImpactAssessment,
     MonitorResult,
     RegulatoryDomain,
@@ -89,6 +90,7 @@ __all__ = [
     "RegulatoryDomain",
     "RegulatoryFiling",
     "ImpactAssessment",
+    "DecisionFrame",
     "MonitorResult",
     "Severity",
     "ChangeType",

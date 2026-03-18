@@ -20,6 +20,7 @@ def serialize_result(result: MonitorResult) -> dict:
     raw = {
         "filing": asdict(result.filing),
         "impact": asdict(result.impact),
+        "decision": asdict(result.decision),
     }
     # Round-trip through JSON to resolve all enums
     return json.loads(json.dumps(raw, default=enum_serializer))

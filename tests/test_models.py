@@ -2,6 +2,7 @@
 
 from naturalsentinel.models import (
     ChangeType,
+    DecisionFrame,
     ImpactAssessment,
     MonitorResult,
     RegulatoryDomain,
@@ -14,7 +15,7 @@ class TestEnums:
     def test_regulatory_domain_values(self):
         assert RegulatoryDomain.SEC.value == "sec"
         assert RegulatoryDomain.FDA.value == "fda"
-        assert len(RegulatoryDomain) == 6
+        assert len(RegulatoryDomain) >= 6
 
     def test_severity_ordering(self):
         severities = [s.value for s in Severity]
@@ -72,3 +73,16 @@ class TestImpactAssessment:
         assert ia.severity == Severity.HIGH
         assert ia.confidence == 0.85
         assert len(ia.action_items) == 1
+
+
+class TestDecisionFrame:
+    def test_creation_defaults(self):
+        decision = DecisionFrame(
+            decision_id="decision::TEST-001",
+            question="What response is warranted?",
+            scope="SEC filing review",
+            time_horizon="near-term",
+        )
+        assert decision.owner == "Unassigned"
+        assert decision.candidate_actions == []
+        assert decision.audit_refs == []

@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(echo $SSH_AUTH_SOCK)",
-      "Bash(test -S \"$SSH_AUTH_SOCK\")",
-      "WebSearch"
-    ]
-  }
-}

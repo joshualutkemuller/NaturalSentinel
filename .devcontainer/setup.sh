@@ -38,6 +38,32 @@ if ! grep -q "NaturalSentinel dev aliases" ~/.bashrc 2>/dev/null; then
     echo "$ALIAS_BLOCK" >> ~/.bashrc
 fi
 
+# ------------------------------------------------------------------
+# Git auth: prefer SSH agent forwarding, fall back to gh CLI
+# ------------------------------------------------------------------
+echo "==> Configuring git authentication..."
+if ssh-add -l &>/dev/null && ssh -T git@github.com 2>&1 | grep -qi "successfully authenticated"; then
+    echo "    SSH agent forwarded — using SSH for git operations."
+else
+    echo "    SSH agent not available or not authenticated with GitHub."
+    echo "    Falling back to GitHub CLI authentication..."
+    if gh auth status &>/dev/null; then
+        echo "    gh CLI already authenticated."
+    else
+        echo ""
+        echo "    ┌──────────────────────────────────────────────────────┐"
+        echo "    │  GitHub CLI login required for git push/pull.       │"
+        echo "    │  Run: gh auth login                                 │"
+        echo "    │  Then: gh auth setup-git                            │"
+        echo "    └──────────────────────────────────────────────────────┘"
+        echo ""
+    fi
+    # Configure git to use gh as credential helper (idempotent, works
+    # even before login — git will prompt via gh when credentials are
+    # needed at push/pull time)
+    gh auth setup-git 2>/dev/null || true
+fi
+
 echo "==> Dev environment ready. Available aliases:"
 echo "    lint        - ruff check src/ tests/"
 echo "    lint:fix    - ruff check --fix src/ tests/"

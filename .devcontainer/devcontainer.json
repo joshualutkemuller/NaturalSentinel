@@ -4,11 +4,8 @@
   "features": {
     "ghcr.io/devcontainers-extra/features/uv:1": {}
   },
-  "mounts": [
-    "source=${localEnv:SSH_AUTH_SOCK},target=/ssh-agent,type=bind,consistency=cached"
-  ],
+  "mounts": [],
   "containerEnv": {
-    "SSH_AUTH_SOCK": "/ssh-agent",
     "UV_LINK_MODE": "copy",
     "VIRTUAL_ENV": "/workspaces/NaturalSentinel/.venv"
   },

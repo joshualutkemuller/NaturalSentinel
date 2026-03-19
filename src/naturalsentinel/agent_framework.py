@@ -24,10 +24,10 @@ import json
 import logging
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from enum import Enum, Flag, auto
-from typing import Any
+from typing import Any, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -36,57 +36,46 @@ logger = logging.getLogger(__name__)
 # PERMISSIONS
 # ═══════════════════════════════════════════════════════════════════════════
 
-
 class Permission(Flag):
     """Granular capabilities a skill may request."""
-
-    NONE = 0
-    LLM_READ = auto()  # Call an LLM for analysis (read-only inference)
-    LLM_WRITE = auto()  # Call an LLM to generate content that gets stored
-    MEMORY_READ = auto()  # Read from the persistent memory store
-    MEMORY_WRITE = auto()  # Write to the persistent memory store
-    STATE_READ = auto()  # Read dedup / checkpoint state
-    STATE_WRITE = auto()  # Write dedup / checkpoint state
-    FETCH_LOCAL = auto()  # Read from local sample/cached data
+    NONE         = 0
+    LLM_READ     = auto()   # Call an LLM for analysis (read-only inference)
+    LLM_WRITE    = auto()   # Call an LLM to generate content that gets stored
+    MEMORY_READ  = auto()   # Read from the persistent memory store
+    MEMORY_WRITE = auto()   # Write to the persistent memory store
+    STATE_READ   = auto()   # Read dedup / checkpoint state
+    STATE_WRITE  = auto()   # Write dedup / checkpoint state
+    FETCH_LOCAL  = auto()   # Read from local sample/cached data
     FETCH_NETWORK = auto()  # Make outbound HTTP requests (real API fetching)
-    FILE_READ = auto()  # Read from the filesystem
-    FILE_WRITE = auto()  # Write to the filesystem
-    HUMAN_INPUT = auto()  # Request input/confirmation from a human
+    FILE_READ    = auto()   # Read from the filesystem
+    FILE_WRITE   = auto()   # Write to the filesystem
+    HUMAN_INPUT  = auto()   # Request input/confirmation from a human
 
 
 # Convenience groups
-READONLY = (
-    Permission.LLM_READ
-    | Permission.MEMORY_READ
-    | Permission.STATE_READ
-    | Permission.FETCH_LOCAL
-    | Permission.FILE_READ
-)
+READONLY = Permission.LLM_READ | Permission.MEMORY_READ | Permission.STATE_READ | Permission.FETCH_LOCAL | Permission.FILE_READ
 STANDARD = READONLY | Permission.LLM_WRITE | Permission.MEMORY_WRITE | Permission.STATE_WRITE
-FULL = STANDARD | Permission.FETCH_NETWORK | Permission.FILE_WRITE | Permission.HUMAN_INPUT
+FULL     = STANDARD | Permission.FETCH_NETWORK | Permission.FILE_WRITE | Permission.HUMAN_INPUT
 
 
 class LatencyClass(Enum):
     """Expected execution speed."""
-
-    INSTANT = "instant"  # < 100ms — pure computation
-    FAST = "fast"  # < 2s — local DB / cached data
-    MODERATE = "moderate"  # 2-15s — single LLM call
-    SLOW = "slow"  # 15-60s — multiple LLM calls or network
-    BATCH = "batch"  # > 60s — full scan cycle
+    INSTANT = "instant"      # < 100ms — pure computation
+    FAST    = "fast"         # < 2s — local DB / cached data
+    MODERATE = "moderate"    # 2-15s — single LLM call
+    SLOW    = "slow"         # 15-60s — multiple LLM calls or network
+    BATCH   = "batch"        # > 60s — full scan cycle
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # SKILL DEFINITION
 # ═══════════════════════════════════════════════════════════════════════════
 
-
 @dataclass
 class SkillParameter:
     """Declared parameter for a skill."""
-
     name: str
-    type: str  # "str", "int", "bool", "list[str]", "dict", etc.
+    type: str                          # "str", "int", "bool", "list[str]", "dict", etc.
     description: str
     required: bool = True
     default: Any = None
@@ -95,17 +84,16 @@ class SkillParameter:
 @dataclass
 class SkillMetadata:
     """Everything the runtime needs to know about a skill *before* executing it."""
-
     name: str
     description: str
-    version: str  # Semver
-    permissions: Permission  # What this skill is allowed to do
+    version: str                         # Semver
+    permissions: Permission              # What this skill is allowed to do
     latency: LatencyClass
-    parameters: list[SkillParameter]  # Input schema
-    returns: str  # Description of output type
-    dependencies: list[str] = field(default_factory=list)  # Other skill names this may call
-    max_token_budget: int = 4096  # Soft cap on LLM tokens per invocation
-    cacheable: bool = False  # Can results be cached for identical inputs?
+    parameters: list[SkillParameter]     # Input schema
+    returns: str                         # Description of output type
+    dependencies: list[str] = field(default_factory=list)   # Other skill names this may call
+    max_token_budget: int = 4096         # Soft cap on LLM tokens per invocation
+    cacheable: bool = False              # Can results be cached for identical inputs?
     tags: list[str] = field(default_factory=list)
 
 
@@ -119,7 +107,7 @@ class Skill:
 
     metadata: SkillMetadata
 
-    def execute(self, context: SkillContext) -> SkillResult:
+    def execute(self, context: "SkillContext") -> "SkillResult":
         """
         Run the skill.
 
@@ -138,7 +126,6 @@ class Skill:
 # EXECUTION CONTEXT & RESULTS
 # ═══════════════════════════════════════════════════════════════════════════
 
-
 @dataclass
 class SkillContext:
     """
@@ -147,26 +134,25 @@ class SkillContext:
     The runtime constructs this for each invocation, filtering available
     capabilities to match the skill's declared permissions.
     """
-
     # Parameters the user/planner passed in
     params: dict[str, Any]
 
     # Gated accessors — only populated if the skill has permission
-    llm: Any | None = None  # ModelProvider (LLM_READ or LLM_WRITE)
-    memory: Any | None = None  # MemoryStore (MEMORY_READ or MEMORY_WRITE)
-    state_path: str | None = None  # Path to state file (STATE_READ or STATE_WRITE)
+    llm: Optional[Any] = None                  # ModelProvider (LLM_READ or LLM_WRITE)
+    memory: Optional[Any] = None               # MemoryStore (MEMORY_READ or MEMORY_WRITE)
+    state_path: Optional[str] = None           # Path to state file (STATE_READ or STATE_WRITE)
 
     # Permission flags so the skill can check at runtime
     permissions: Permission = Permission.NONE
 
     # Reference to the runtime for invoking sub-skills
-    _runtime: AgentRuntime | None = None
+    _runtime: Optional["AgentRuntime"] = None
 
     # Execution metadata
     invocation_id: str = ""
     parent_invocation_id: str = ""
 
-    def invoke_skill(self, skill_name: str, params: dict[str, Any]) -> SkillResult:
+    def invoke_skill(self, skill_name: str, params: dict[str, Any]) -> "SkillResult":
         """Invoke another skill (if this skill has it as a declared dependency)."""
         if self._runtime is None:
             raise RuntimeError("No runtime attached — cannot invoke sub-skills")
@@ -181,14 +167,13 @@ class SkillContext:
 @dataclass
 class SkillResult:
     """Output from a skill execution."""
-
     skill_name: str
     success: bool
-    data: Any  # The actual output
+    data: Any                          # The actual output
     error: str = ""
     invocation_id: str = ""
     duration_ms: float = 0.0
-    token_usage: int = 0  # Approximate LLM tokens consumed
+    token_usage: int = 0               # Approximate LLM tokens consumed
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -196,11 +181,9 @@ class SkillResult:
 # EXECUTION PLAN
 # ═══════════════════════════════════════════════════════════════════════════
 
-
 @dataclass
 class PlanStep:
     """One step in an execution plan."""
-
     skill_name: str
     params: dict[str, Any]
     depends_on: list[str] = field(default_factory=list)  # invocation IDs this step waits for
@@ -210,7 +193,6 @@ class PlanStep:
 @dataclass
 class ExecutionPlan:
     """Ordered sequence of skill invocations to achieve a goal."""
-
     goal: str
     steps: list[PlanStep]
     created_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
@@ -220,16 +202,14 @@ class ExecutionPlan:
 # AUDIT LOG
 # ═══════════════════════════════════════════════════════════════════════════
 
-
 @dataclass
 class AuditEntry:
     """Immutable record of a skill invocation."""
-
     invocation_id: str
     parent_invocation_id: str
     skill_name: str
     params: dict[str, Any]
-    permissions_granted: str  # String repr of Permission flags
+    permissions_granted: str           # String repr of Permission flags
     permissions_requested: str
     success: bool
     error: str
@@ -292,7 +272,6 @@ class AuditLog:
 # SECURITY POLICY
 # ═══════════════════════════════════════════════════════════════════════════
 
-
 class SecurityPolicy:
     """
     Controls which permissions are actually granted at runtime.
@@ -314,7 +293,7 @@ class SecurityPolicy:
         self.denied = denied
         self.max_llm_calls_per_run = max_llm_calls_per_run
         self.max_total_tokens = max_total_tokens
-        self.allowed_skills = allowed_skills  # None = all allowed
+        self.allowed_skills = allowed_skills       # None = all allowed
         self.denied_skills = denied_skills or set()
         self._llm_calls = 0
         self._total_tokens = 0
@@ -334,10 +313,7 @@ class SecurityPolicy:
     def check_budget(self) -> tuple[bool, str]:
         """Check if we're still within token/call budget."""
         if self._llm_calls >= self.max_llm_calls_per_run:
-            return (
-                False,
-                f"LLM call budget exhausted ({self._llm_calls}/{self.max_llm_calls_per_run})",
-            )
+            return False, f"LLM call budget exhausted ({self._llm_calls}/{self.max_llm_calls_per_run})"
         if self._total_tokens >= self.max_total_tokens:
             return False, f"Token budget exhausted ({self._total_tokens}/{self.max_total_tokens})"
         return True, ""
@@ -354,7 +330,6 @@ class SecurityPolicy:
 # ═══════════════════════════════════════════════════════════════════════════
 # SKILL REGISTRY
 # ═══════════════════════════════════════════════════════════════════════════
-
 
 class SkillRegistry:
     """Typed catalog of available skills with lookup and validation."""
@@ -408,12 +383,7 @@ class SkillRegistry:
                 "permissions": str(s.metadata.permissions),
                 "latency": s.metadata.latency.value,
                 "parameters": [
-                    {
-                        "name": p.name,
-                        "type": p.type,
-                        "required": p.required,
-                        "description": p.description,
-                    }
+                    {"name": p.name, "type": p.type, "required": p.required, "description": p.description}
                     for p in s.metadata.parameters
                 ],
                 "returns": s.metadata.returns,
@@ -429,7 +399,6 @@ class SkillRegistry:
 # AGENT RUNTIME
 # ═══════════════════════════════════════════════════════════════════════════
 
-
 class AgentRuntime:
     """
     The central orchestrator.
@@ -441,8 +410,8 @@ class AgentRuntime:
 
     def __init__(
         self,
-        provider: Any = None,  # ModelProvider
-        memory: Any = None,  # MemoryStore
+        provider: Any = None,          # ModelProvider
+        memory: Any = None,            # MemoryStore
         state_path: str = "sentinel_state.json",
         policy: SecurityPolicy | None = None,
     ):
@@ -477,21 +446,11 @@ class AgentRuntime:
         skill = self.registry.get(skill_name)
         if skill is None:
             result = SkillResult(
-                skill_name=skill_name,
-                success=False,
-                data=None,
+                skill_name=skill_name, success=False, data=None,
                 error=f"Unknown skill: {skill_name}",
                 invocation_id=invocation_id,
             )
-            self._audit(
-                result,
-                skill_name,
-                params,
-                Permission.NONE,
-                Permission.NONE,
-                parent_invocation_id,
-                start,
-            )
+            self._audit(result, skill_name, params, Permission.NONE, Permission.NONE, parent_invocation_id, start)
             return result
 
         meta = skill.metadata
@@ -500,42 +459,22 @@ class AgentRuntime:
         allowed, reason = self.policy.check_skill(skill_name)
         if not allowed:
             result = SkillResult(
-                skill_name=skill_name,
-                success=False,
-                data=None,
+                skill_name=skill_name, success=False, data=None,
                 error=f"Policy denied: {reason}",
                 invocation_id=invocation_id,
             )
-            self._audit(
-                result,
-                skill_name,
-                params,
-                meta.permissions,
-                Permission.NONE,
-                parent_invocation_id,
-                start,
-            )
+            self._audit(result, skill_name, params, meta.permissions, Permission.NONE, parent_invocation_id, start)
             return result
 
         # 3. Check budget
         budget_ok, budget_reason = self.policy.check_budget()
         if not budget_ok:
             result = SkillResult(
-                skill_name=skill_name,
-                success=False,
-                data=None,
+                skill_name=skill_name, success=False, data=None,
                 error=f"Budget exceeded: {budget_reason}",
                 invocation_id=invocation_id,
             )
-            self._audit(
-                result,
-                skill_name,
-                params,
-                meta.permissions,
-                Permission.NONE,
-                parent_invocation_id,
-                start,
-            )
+            self._audit(result, skill_name, params, meta.permissions, Permission.NONE, parent_invocation_id, start)
             return result
 
         # 4. Resolve permissions (requested ∩ allowed − denied)
@@ -548,33 +487,19 @@ class AgentRuntime:
                     params[p.name] = p.default
                 else:
                     result = SkillResult(
-                        skill_name=skill_name,
-                        success=False,
-                        data=None,
+                        skill_name=skill_name, success=False, data=None,
                         error=f"Missing required parameter: {p.name}",
                         invocation_id=invocation_id,
                     )
-                    self._audit(
-                        result,
-                        skill_name,
-                        params,
-                        meta.permissions,
-                        granted,
-                        parent_invocation_id,
-                        start,
-                    )
+                    self._audit(result, skill_name, params, meta.permissions, granted, parent_invocation_id, start)
                     return result
 
         # 6. Build sandboxed context
         context = SkillContext(
             params=params,
             llm=self.provider if (granted & (Permission.LLM_READ | Permission.LLM_WRITE)) else None,
-            memory=self.memory
-            if (granted & (Permission.MEMORY_READ | Permission.MEMORY_WRITE))
-            else None,
-            state_path=self.state_path
-            if (granted & (Permission.STATE_READ | Permission.STATE_WRITE))
-            else None,
+            memory=self.memory if (granted & (Permission.MEMORY_READ | Permission.MEMORY_WRITE)) else None,
+            state_path=self.state_path if (granted & (Permission.STATE_READ | Permission.STATE_WRITE)) else None,
             permissions=granted,
             _runtime=self,
             invocation_id=invocation_id,
@@ -605,18 +530,14 @@ class AgentRuntime:
 
         except Exception as exc:
             result = SkillResult(
-                skill_name=skill_name,
-                success=False,
-                data=None,
+                skill_name=skill_name, success=False, data=None,
                 error=f"{type(exc).__name__}: {exc}",
                 invocation_id=invocation_id,
                 duration_ms=(time.monotonic() - start) * 1000,
             )
 
         # 9. Audit
-        self._audit(
-            result, skill_name, params, meta.permissions, granted, parent_invocation_id, start
-        )
+        self._audit(result, skill_name, params, meta.permissions, granted, parent_invocation_id, start)
         return result
 
     def execute_plan(self, plan: ExecutionPlan) -> list[SkillResult]:
@@ -639,36 +560,26 @@ class AgentRuntime:
             if not result.success:
                 logger.warning(
                     "Plan step %d/%d failed (%s): %s — continuing",
-                    i + 1,
-                    len(plan.steps),
-                    step.skill_name,
-                    result.error,
+                    i + 1, len(plan.steps), step.skill_name, result.error,
                 )
 
         return results
 
     def _audit(
-        self,
-        result: SkillResult,
-        skill_name: str,
-        params: dict,
-        requested: Permission,
-        granted: Permission,
-        parent_id: str,
-        start: float,
+        self, result: SkillResult, skill_name: str, params: dict,
+        requested: Permission, granted: Permission,
+        parent_id: str, start: float,
     ):
-        self.audit.record(
-            AuditEntry(
-                invocation_id=result.invocation_id,
-                parent_invocation_id=parent_id,
-                skill_name=skill_name,
-                params={k: str(v)[:200] for k, v in params.items()},
-                permissions_requested=str(requested),
-                permissions_granted=str(granted),
-                success=result.success,
-                error=result.error,
-                duration_ms=result.duration_ms,
-                token_usage=result.token_usage,
-                timestamp=datetime.utcnow().isoformat(),
-            )
-        )
+        self.audit.record(AuditEntry(
+            invocation_id=result.invocation_id,
+            parent_invocation_id=parent_id,
+            skill_name=skill_name,
+            params={k: str(v)[:200] for k, v in params.items()},
+            permissions_requested=str(requested),
+            permissions_granted=str(granted),
+            success=result.success,
+            error=result.error,
+            duration_ms=result.duration_ms,
+            token_usage=result.token_usage,
+            timestamp=datetime.utcnow().isoformat(),
+        ))

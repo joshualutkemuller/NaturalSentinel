@@ -300,6 +300,126 @@ runtime.register_skills(*ALL_SKILLS)
 
 If you need the original end-to-end monitor surface, `RegulatoryMonitorAgent` is still available as the backwards-compatible wrapper used by the legacy CLI and some MCP entry points.
 
+## Developer Environment
+
+Two paths to a working dev environment — choose whichever fits your workflow. Both provide identical tooling, aliases, and git auth.
+
+### Option A: Dev Container (recommended)
+
+Gives you a fully configured environment in one click. Requires Docker and VS Code.
+
+**Prerequisites**
+
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) (Mac/Windows) or [Docker Engine](https://docs.docker.com/engine/install/) (Linux)
+2. Install [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers)
+
+**Setup**
+
+1. Clone the repo:
+   ```bash
+   git clone git@github.com:joshualutkemuller/NaturalSentinel.git
+   cd NaturalSentinel
+   ```
+2. Open in VS Code:
+   ```bash
+   code .
+   ```
+3. When prompted **"Reopen in Container"**, click yes — or run the command palette (`Ctrl/Cmd+Shift+P`) → **Dev Containers: Reopen in Container**
+4. Wait for the container to build. On first run this installs Python 3.12, uv, gh CLI, and all project dependencies automatically
+5. Open a terminal inside VS Code — you're ready to go
+
+**What you get out of the box:**
+- Python 3.12 with a pre-synced virtualenv (all extras)
+- uv, ruff, mypy, pytest, GitHub CLI
+- Pre-configured VS Code extensions (Pylance, Ruff, mypy, GitLens, Copilot, Claude Code)
+- Format-on-save, lint-on-save, type checking
+- Shell aliases for every common operation (see [Aliases](#shell-aliases) below)
+- SSH agent forwarding with automatic fallback to `gh auth` for git operations
+
+**Git authentication** is handled automatically:
+- If your host has an SSH agent running, keys are forwarded into the container
+- If SSH is unavailable, the setup configures `gh` as the git credential helper — run `gh auth login` on first use
+
+> **WSL2 users:** The init script detects WSL2 and provides platform-specific guidance for SSH agent setup. The simplest path is keeping SSH keys inside WSL2 and adding `eval "$(ssh-agent -s)" && ssh-add` to your `~/.bashrc`.
+
+### Option B: Local Setup (no Docker)
+
+Run a single script that installs everything you need.
+
+**Prerequisites**
+
+- Python 3.11+ (uv will download it if missing)
+- Git
+
+**macOS / Linux / WSL2**
+
+1. Clone the repo:
+   ```bash
+   git clone git@github.com:joshualutkemuller/NaturalSentinel.git
+   cd NaturalSentinel
+   ```
+2. Run the setup script:
+   ```bash
+   ./scripts/setup.sh
+   ```
+3. Reload your shell:
+   ```bash
+   source ~/.zshrc   # or ~/.bashrc
+   ```
+
+**Windows (PowerShell)**
+
+1. Clone the repo:
+   ```powershell
+   git clone git@github.com:joshualutkemuller/NaturalSentinel.git
+   cd NaturalSentinel
+   ```
+2. Run the setup script:
+   ```powershell
+   .\scripts\setup.ps1
+   ```
+3. Reload your profile:
+   ```powershell
+   . $PROFILE
+   ```
+
+**What the setup scripts do:**
+1. Install [uv](https://docs.astral.sh/uv/) (fast Python package manager) if not present
+2. Install [GitHub CLI](https://cli.github.com/) via your platform's package manager (brew / apt / winget / scoop / choco)
+3. Create a virtualenv and sync all dependencies (`uv sync --all-extras`)
+4. Verify that ruff, mypy, and pytest are working
+5. Configure git authentication (SSH agent check → `gh auth` fallback)
+6. Add shell aliases to your rc file (`~/.zshrc`, `~/.bashrc`, or PowerShell `$PROFILE`)
+
+### Shell Aliases
+
+Both setup paths install the same aliases. Run `alias | grep -E "^(g|test|lint|fmt|dep|pr|py)"` to see them all.
+
+| Category | Alias | Command |
+|----------|-------|---------|
+| **Quality** | `check` | lint + format check + mypy (all-in-one) |
+| | `lint` / `lint:fix` | `ruff check` / `ruff check --fix` |
+| | `fmt` / `fmt:check` | `ruff format` / `ruff format --check` |
+| | `typecheck` | `mypy` |
+| **Test** | `test` | `pytest` |
+| | `test:cov` | `pytest --cov` |
+| | `test:v` | `pytest -v` |
+| | `test:last` | `pytest --lf` (rerun failures only) |
+| **Deps** | `deps` | `uv sync --all-extras` |
+| | `deps:add` / `deps:rm` | `uv add` / `uv remove` |
+| | `deps:up` | `uv lock --upgrade && uv sync` |
+| | `deps:tree` | `uv tree` |
+| **Python** | `py` | `uv run python` |
+| | `pip` | `uv pip` |
+| **Git** | `gs` `gd` `gl` `gb` | status, diff, log, branches |
+| | `ga` `gap` `gc` `gcm` | add, add -p, commit, commit -m |
+| | `gp` `gpu` `gpf` `gpl` | push, push -u, push --force-with-lease, pull --rebase |
+| | `gco` `gcb` `gst` `gstp` | checkout, new branch, stash, stash pop |
+| **GitHub** | `prs` `pr` `prc` `prco` | list PRs, view in browser, create, checkout |
+| | `issues` `repo` | list issues, open repo in browser |
+
+> **Windows note:** PowerShell doesn't support colons in alias names. Equivalents use hyphens (e.g., `lint-fix`, `test-cov`, `deps-add`) or slightly different names (e.g., `check-all`, `test-run`). See `scripts/setup.ps1` for the full list.
+
 ## Dependencies
 
 **Core: zero.** Everything runs on stdlib Python 3.11+.

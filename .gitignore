@@ -27,6 +27,12 @@ monitor_state.json
 # Stale legacy directory (removed in ca9bb34, kept out of tree)
 /naturalsentinel/
 
+# uv
+.python-version
+
+# mypy
+.mypy_cache/
+
 # Editor / OS
 .DS_Store
 *.swp

@@ -27,9 +27,35 @@ monitor_state.json
 # Stale legacy directory (removed in ca9bb34, kept out of tree)
 /naturalsentinel/
 
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# mypy
+.mypy_cache/
+
+# uv
+.python-version
+
+# Ruff
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
 # Editor / OS
 .DS_Store
+Thumbs.db
 *.swp
 *.swo
+*~
 .idea/
 .vscode/
+*.code-workspace
+
+# Devcontainer
+.devcontainer/.env
+.devcontainer/docker-compose.override.yml

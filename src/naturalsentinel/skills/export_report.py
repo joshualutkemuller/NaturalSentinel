@@ -11,10 +11,16 @@ No LLM calls required — this is a pure-data formatting skill.
 from __future__ import annotations
 
 import json
+from datetime import UTC
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 
 _VALID_FORMATS = {"markdown", "json", "csv"}
@@ -73,14 +79,18 @@ class ExportReportSkill(Skill):
     def execute(self, context: SkillContext) -> SkillResult:
         if context.memory is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="Memory access denied — requires MEMORY_READ permission",
             )
 
         fmt = (context.params.get("format") or "markdown").lower().strip()
         if fmt not in _VALID_FORMATS:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error=f"Invalid format '{fmt}'. Choose from: {', '.join(sorted(_VALID_FORMATS))}",
             )
 
@@ -107,21 +117,23 @@ class ExportReportSkill(Skill):
             if self._SEVERITY_RANK.get(sev, 0) < min_rank:
                 continue
 
-            rows.append({
-                "filing_id": filing.get("id", rec.key),
-                "title": filing.get("title", ""),
-                "domain": (filing.get("domain") or "").upper(),
-                "change_type": filing.get("change_type", ""),
-                "published_date": filing.get("published_date", ""),
-                "severity": sev,
-                "affected_business_lines": ", ".join(impact.get("affected_business_lines", [])),
-                "affected_regulations": ", ".join(impact.get("affected_regulations", [])),
-                "compliance_deadline": impact.get("compliance_deadline") or "",
-                "action_items": impact.get("action_items", []),
-                "risk_summary": impact.get("risk_summary", ""),
-                "confidence": impact.get("confidence", 0.0),
-                "source_url": filing.get("source_url", ""),
-            })
+            rows.append(
+                {
+                    "filing_id": filing.get("id", rec.key),
+                    "title": filing.get("title", ""),
+                    "domain": (filing.get("domain") or "").upper(),
+                    "change_type": filing.get("change_type", ""),
+                    "published_date": filing.get("published_date", ""),
+                    "severity": sev,
+                    "affected_business_lines": ", ".join(impact.get("affected_business_lines", [])),
+                    "affected_regulations": ", ".join(impact.get("affected_regulations", [])),
+                    "compliance_deadline": impact.get("compliance_deadline") or "",
+                    "action_items": impact.get("action_items", []),
+                    "risk_summary": impact.get("risk_summary", ""),
+                    "confidence": impact.get("confidence", 0.0),
+                    "source_url": filing.get("source_url", ""),
+                }
+            )
 
         if not rows:
             content = _empty_content(fmt)
@@ -151,6 +163,7 @@ class ExportReportSkill(Skill):
 
 # ── Formatters ────────────────────────────────────────────────────────────────
 
+
 def _empty_content(fmt: str) -> str:
     if fmt == "csv":
         return _csv_header()
@@ -160,8 +173,9 @@ def _empty_content(fmt: str) -> str:
 
 
 def _to_markdown(rows: list[dict], domain_filter: str, min_severity: str) -> str:
-    from datetime import datetime, timezone
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    from datetime import datetime
+
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     domain_label = domain_filter.upper() if domain_filter else "All Agencies"
 
     lines = [
@@ -175,16 +189,20 @@ def _to_markdown(rows: list[dict], domain_filter: str, min_severity: str) -> str
         "",
     ]
 
-    _SEV_ICON = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🟢"}
+    sev_icon = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "🟢"}
 
     for row in rows:
-        icon = _SEV_ICON.get(row["severity"], "⚪")
+        icon = sev_icon.get(row["severity"], "⚪")
         lines.append(f"## {icon} {row['title']}")
-        lines.append(f"**ID:** `{row['filing_id']}` | **Domain:** {row['domain']} | "
-                     f"**Type:** {row['change_type']} | **Published:** {row['published_date']}")
-        lines.append(f"**Severity:** {row['severity'].upper()} | "
-                     f"**Confidence:** {row['confidence']:.0%} | "
-                     f"**Deadline:** {row['compliance_deadline'] or 'Not specified'}")
+        lines.append(
+            f"**ID:** `{row['filing_id']}` | **Domain:** {row['domain']} | "
+            f"**Type:** {row['change_type']} | **Published:** {row['published_date']}"
+        )
+        lines.append(
+            f"**Severity:** {row['severity'].upper()} | "
+            f"**Confidence:** {row['confidence']:.0%} | "
+            f"**Deadline:** {row['compliance_deadline'] or 'Not specified'}"
+        )
         lines.append("")
         if row["risk_summary"]:
             lines.append(f"> {row['risk_summary']}")
@@ -221,22 +239,27 @@ def _csv_header() -> str:
 def _to_csv(rows: list[dict]) -> str:
     lines = [_csv_header().rstrip()]
     for row in rows:
+
         def _esc(val: str) -> str:
             val = str(val).replace('"', '""')
             return f'"{val}"' if ("," in val or '"' in val or "\n" in val) else val
 
-        lines.append(",".join([
-            _esc(row["filing_id"]),
-            _esc(row["title"]),
-            _esc(row["domain"]),
-            _esc(row["change_type"]),
-            _esc(row["published_date"]),
-            _esc(row["severity"]),
-            _esc(row["affected_business_lines"]),
-            _esc(row["affected_regulations"]),
-            _esc(row["compliance_deadline"]),
-            _esc(row["risk_summary"]),
-            _esc(str(row["confidence"])),
-            _esc(row["source_url"]),
-        ]))
+        lines.append(
+            ",".join(
+                [
+                    _esc(row["filing_id"]),
+                    _esc(row["title"]),
+                    _esc(row["domain"]),
+                    _esc(row["change_type"]),
+                    _esc(row["published_date"]),
+                    _esc(row["severity"]),
+                    _esc(row["affected_business_lines"]),
+                    _esc(row["affected_regulations"]),
+                    _esc(row["compliance_deadline"]),
+                    _esc(row["risk_summary"]),
+                    _esc(str(row["confidence"])),
+                    _esc(row["source_url"]),
+                ]
+            )
+        )
     return "\n".join(lines) + "\n"

@@ -9,20 +9,23 @@ Supports multiple agentic model backends: OpenAI, Anthropic, Google Gemini, loca
 """
 
 import json
+import logging
 import os
 import re
-import hashlib
-import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Optional
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from memory import MemoryStore
 
 # ---------------------------------------------------------------------------
 # Domain types
 # ---------------------------------------------------------------------------
+
 
 class RegulatoryDomain(Enum):
     SEC = "sec"
@@ -32,11 +35,13 @@ class RegulatoryDomain(Enum):
     EPA = "epa"
     USTR = "ustr"
 
+
 class Severity(Enum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
+
 
 class ChangeType(Enum):
     PROPOSED_RULE = "proposed_rule"
@@ -46,6 +51,7 @@ class ChangeType(Enum):
     NOTICE = "notice"
     AMENDMENT = "amendment"
     EXECUTIVE_ORDER = "executive_order"
+
 
 @dataclass
 class RegulatoryFiling:
@@ -59,16 +65,18 @@ class RegulatoryFiling:
     summary: str = ""
     fetched_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
+
 @dataclass
 class ImpactAssessment:
     filing_id: str
     severity: Severity
     affected_business_lines: list[str]
     affected_regulations: list[str]
-    compliance_deadline: Optional[str]
+    compliance_deadline: str | None
     action_items: list[str]
     risk_summary: str
     confidence: float  # 0-1
+
 
 @dataclass
 class MonitorResult:
@@ -76,9 +84,11 @@ class MonitorResult:
     impact: ImpactAssessment
     raw_analysis: str
 
+
 # ---------------------------------------------------------------------------
 # Model provider abstraction
 # ---------------------------------------------------------------------------
+
 
 class ModelProvider(ABC):
     """Abstract base for LLM providers used by the agent."""
@@ -155,6 +165,7 @@ class GeminiProvider(ModelProvider):
 
     def complete(self, system: str, user: str, temperature: float = 0.2) -> str:
         from google.genai import types
+
         resp = self.client.models.generate_content(
             model=self.model,
             contents=f"{system}\n\n{user}",
@@ -175,15 +186,18 @@ class OllamaProvider(ModelProvider):
 
     def complete(self, system: str, user: str, temperature: float = 0.2) -> str:
         import urllib.request
-        payload = json.dumps({
-            "model": self.model,
-            "stream": False,
-            "options": {"temperature": temperature},
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-        }).encode()
+
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "stream": False,
+                "options": {"temperature": temperature},
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            }
+        ).encode()
         req = urllib.request.Request(
             f"{self.base_url}/api/chat",
             data=payload,
@@ -325,28 +339,51 @@ SAMPLE_FILINGS: list[dict] = [
 # Maps domain -> list of portfolio/business lines typically affected
 DOMAIN_BUSINESS_LINES: dict[str, list[str]] = {
     "sec": [
-        "Public Equities", "Investment Banking", "Corporate Finance",
-        "ESG / Sustainability", "Investor Relations", "Audit & Assurance",
+        "Public Equities",
+        "Investment Banking",
+        "Corporate Finance",
+        "ESG / Sustainability",
+        "Investor Relations",
+        "Audit & Assurance",
     ],
     "cfpb": [
-        "Consumer Lending", "Credit Cards", "Mortgage Banking",
-        "Auto Finance", "Fintech Partnerships", "Collections",
+        "Consumer Lending",
+        "Credit Cards",
+        "Mortgage Banking",
+        "Auto Finance",
+        "Fintech Partnerships",
+        "Collections",
     ],
     "fed": [
-        "Commercial Banking", "Digital Assets / Crypto", "Treasury & ALM",
-        "Risk Management", "Capital Markets", "Payments",
+        "Commercial Banking",
+        "Digital Assets / Crypto",
+        "Treasury & ALM",
+        "Risk Management",
+        "Capital Markets",
+        "Payments",
     ],
     "fda": [
-        "Medical Devices", "Pharmaceuticals", "Biotech",
-        "Digital Health / SaMD", "Clinical Trials", "Regulatory Affairs",
+        "Medical Devices",
+        "Pharmaceuticals",
+        "Biotech",
+        "Digital Health / SaMD",
+        "Clinical Trials",
+        "Regulatory Affairs",
     ],
     "epa": [
-        "Manufacturing", "Energy & Utilities", "Transportation",
-        "Real Estate & Construction", "Agriculture", "Insurance (Environmental)",
+        "Manufacturing",
+        "Energy & Utilities",
+        "Transportation",
+        "Real Estate & Construction",
+        "Agriculture",
+        "Insurance (Environmental)",
     ],
     "ustr": [
-        "Supply Chain / Procurement", "Semiconductor Manufacturing",
-        "Defense Contracting", "Consumer Electronics", "Critical Minerals",
+        "Supply Chain / Procurement",
+        "Semiconductor Manufacturing",
+        "Defense Contracting",
+        "Consumer Electronics",
+        "Critical Minerals",
         "International Trade Finance",
     ],
 }
@@ -375,15 +412,17 @@ def fetch_filings(
         if domains and domain not in domains:
             continue
         if pub >= cutoff:
-            results.append(RegulatoryFiling(
-                id=raw["id"],
-                title=raw["title"],
-                domain=domain,
-                source_url=raw["source_url"],
-                published_date=raw["published_date"],
-                change_type=ChangeType(raw["change_type"]),
-                raw_text=raw["raw_text"],
-            ))
+            results.append(
+                RegulatoryFiling(
+                    id=raw["id"],
+                    title=raw["title"],
+                    domain=domain,
+                    source_url=raw["source_url"],
+                    published_date=raw["published_date"],
+                    change_type=ChangeType(raw["change_type"]),
+                    raw_text=raw["raw_text"],
+                )
+            )
     return results
 
 
@@ -459,7 +498,7 @@ class RegulatoryMonitorAgent:
         self.business_lines = {**DOMAIN_BUSINESS_LINES, **(custom_business_lines or {})}
         self.state_path = Path(state_path)
         self.seen_ids: set[str] = set()
-        self.memory: "MemoryStore | None" = memory  # Persistent memory (optional)
+        self.memory: MemoryStore | None = memory  # Persistent memory (optional)
         self._load_state()
         self.logger = logging.getLogger("RegulatoryMonitor")
 
@@ -482,9 +521,7 @@ class RegulatoryMonitorAgent:
         # Build memory context if available
         memory_context = ""
         if self.memory:
-            memory_context = self.memory.build_context_block(
-                filing.domain.value, filing.raw_text
-            )
+            memory_context = self.memory.build_context_block(filing.domain.value, filing.raw_text)
 
         user_prompt = USER_PROMPT_TEMPLATE.format(
             filing_id=filing.id,
@@ -549,8 +586,9 @@ class RegulatoryMonitorAgent:
           4. Persist state
           5. Return results
         """
-        self.logger.info("Fetching filings from %s (last %d days)…",
-                         [d.value for d in self.domains], since_days)
+        self.logger.info(
+            "Fetching filings from %s (last %d days)…", [d.value for d in self.domains], since_days
+        )
 
         filings = fetch_filings(domains=self.domains, since_days=since_days)
         new_filings = [f for f in filings if f.id not in self.seen_ids]
@@ -566,6 +604,7 @@ class RegulatoryMonitorAgent:
 
             # Persist to memory if available
             if self.memory:
+
                 def _ser(obj):
                     if isinstance(obj, Enum):
                         return obj.value
@@ -587,13 +626,17 @@ class RegulatoryMonitorAgent:
                 return obj.value
             return str(obj)
 
-        return json.dumps([
-            {
-                "filing": r.filing.model_dump(),
-                "impact": r.impact.model_dump(),
-            }
-            for r in results
-        ], indent=2, default=_serialize)
+        return json.dumps(
+            [
+                {
+                    "filing": r.filing.model_dump(),
+                    "impact": r.impact.model_dump(),
+                }
+                for r in results
+            ],
+            indent=2,
+            default=_serialize,
+        )
 
     def reset_state(self):
         """Clear seen filings to allow re-processing."""
@@ -604,6 +647,7 @@ class RegulatoryMonitorAgent:
 # ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
+
 
 def _build_provider(provider_name: str, model: str | None = None) -> ModelProvider:
     """Factory to build a provider from CLI args."""
@@ -622,15 +666,23 @@ def _build_provider(provider_name: str, model: str | None = None) -> ModelProvid
 
 def main():
     import argparse
+
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 
     parser = argparse.ArgumentParser(description="Regulatory Change Monitor & Impact Mapper")
-    parser.add_argument("--provider", default="anthropic",
-                        choices=["anthropic", "openai", "gemini", "ollama"],
-                        help="LLM provider to use")
+    parser.add_argument(
+        "--provider",
+        default="anthropic",
+        choices=["anthropic", "openai", "gemini", "ollama"],
+        help="LLM provider to use",
+    )
     parser.add_argument("--model", default=None, help="Specific model name override")
-    parser.add_argument("--domains", nargs="*", default=None,
-                        help="Regulatory domains to monitor (sec cfpb fed fda epa ustr)")
+    parser.add_argument(
+        "--domains",
+        nargs="*",
+        default=None,
+        help="Regulatory domains to monitor (sec cfpb fed fda epa ustr)",
+    )
     parser.add_argument("--days", type=int, default=60, help="Look-back window in days")
     parser.add_argument("--reset", action="store_true", help="Reset seen-filings state")
     parser.add_argument("--output", default=None, help="Write JSON output to file")

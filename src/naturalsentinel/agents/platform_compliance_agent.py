@@ -88,10 +88,10 @@ class PlatformComplianceAgent:
         """
         params = {"filing": filing, "memory_context": memory_context}
 
-        antitrust   = self._run_platform_antitrust(params)
+        antitrust = self._run_platform_antitrust(params)
         content_lib = self._run_content_moderation_liability(params)
-        merger      = self._run_tech_merger_review(params)
-        algo        = self._run_algorithmic_accountability(params)
+        merger = self._run_tech_merger_review(params)
+        algo = self._run_algorithmic_accountability(params)
 
         return {
             "antitrust": antitrust,

@@ -8,12 +8,16 @@ portfolios — the most data-science-specific skill in the NaturalSentinel suite
 """
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES
 from naturalsentinel.utils.parsing import parse_llm_json
-
 
 OPTIMIZATION_CONSTRAINT_SYSTEM = """\
 You are a senior quantitative analyst and optimization modeller with deep expertise \
@@ -90,13 +94,22 @@ class OptimizationConstraintSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["optimization", "constraints", "capital-allocation", "balance-sheet", "data-science", "quant"],
+        tags=[
+            "optimization",
+            "constraints",
+            "capital-allocation",
+            "balance-sheet",
+            "data-science",
+            "quant",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="LLM access denied — this skill requires LLM_READ permission",
             )
 

@@ -85,8 +85,8 @@ class DataPrivacyAgent:
         """
         params = {"filing": filing, "memory_context": memory_context}
 
-        obligations  = self._run_data_privacy_obligation(params)
-        transfers    = self._run_data_residency_obligation(params)
+        obligations = self._run_data_privacy_obligation(params)
+        transfers = self._run_data_residency_obligation(params)
 
         return {
             "privacy_obligations": obligations,

@@ -7,7 +7,9 @@ and prime brokerage counterparty limits?"
 Monitors CFTC, Fed, and Basel filings for counterparty credit risk framework
 changes — directly actionable for Prime Lending and XVA desks.
 """
+
 from __future__ import annotations
+
 from typing import Any
 
 CCR_DOMAINS = ["cftc", "fed", "basel"]
@@ -44,13 +46,22 @@ class CounterpartyRiskAgent:
             "ccr_analyses": analyses,
             "supervisory_factor_changes": _extract_sf_changes(analyses),
             "im_changes": [
-                {"filing_id": a.get("filing_id"), "change_pct": a.get("initial_margin_change_pct", 0)}
-                for a in analyses if a.get("initial_margin_change_pct", 0) != 0
+                {
+                    "filing_id": a.get("filing_id"),
+                    "change_pct": a.get("initial_margin_change_pct", 0),
+                }
+                for a in analyses
+                if a.get("initial_margin_change_pct", 0) != 0
             ],
-            "cva_impacts": [a.get("cva_capital_impact") for a in analyses if a.get("cva_capital_impact") not in (None, "neutral")],
+            "cva_impacts": [
+                a.get("cva_capital_impact")
+                for a in analyses
+                if a.get("cva_capital_impact") not in (None, "neutral")
+            ],
             "ead_direction": [
                 {"filing_id": a.get("filing_id"), "direction": a.get("ead_delta_direction")}
-                for a in analyses if a.get("ead_delta_direction") not in (None, "neutral")
+                for a in analyses
+                if a.get("ead_delta_direction") not in (None, "neutral")
             ],
             "xva_recalibrations": [a for a in analyses if a.get("xva_recalibration_required")],
             "action_items": _dedup(analyses, "action_items"),
@@ -77,7 +88,9 @@ class CounterpartyRiskAgent:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {"domains": domains, "since_days": since_days})
+        result = self.runtime.execute_skill(
+            "scan_cycle", {"domains": domains, "since_days": since_days}
+        )
         return result.data.get("stats", {}) if result.success else {}
 
     def _analyze_ccr_filings(self) -> list[dict]:

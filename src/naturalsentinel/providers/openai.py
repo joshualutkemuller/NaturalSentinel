@@ -1,6 +1,7 @@
 """OpenAI GPT provider."""
 
 import os
+
 from naturalsentinel.providers.base import ModelProvider
 
 

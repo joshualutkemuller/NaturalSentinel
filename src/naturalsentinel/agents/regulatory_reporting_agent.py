@@ -7,11 +7,25 @@ Monitors all domains for changes to CCAR/DFAST, Form PF, FR Y-14, FINRA
 reporting, and SFTR — giving data engineering teams early warning before
 a schema or methodology change breaks a production pipeline.
 """
+
 from __future__ import annotations
+
 from typing import Any
 
-ALL_DOMAINS = ["sec", "cfpb", "fed", "fda", "epa", "ustr",
-               "fhfa", "occ", "finra", "cftc", "fdic", "basel"]
+ALL_DOMAINS = [
+    "sec",
+    "cfpb",
+    "fed",
+    "fda",
+    "epa",
+    "ustr",
+    "fhfa",
+    "occ",
+    "finra",
+    "cftc",
+    "fdic",
+    "basel",
+]
 
 
 class RegulatoryReportingAgent:
@@ -70,18 +84,22 @@ class RegulatoryReportingAgent:
         effort_rank = {"high": 3, "medium": 2, "low": 1}
         for a in analyses:
             for impact in a.get("system_pipeline_impacts", []):
-                backlog.append({
-                    "filing_id": a.get("filing_id"),
-                    "domain": a.get("domain"),
-                    "impact": impact,
-                    "effort": a.get("estimated_build_effort", "low"),
-                })
+                backlog.append(
+                    {
+                        "filing_id": a.get("filing_id"),
+                        "domain": a.get("domain"),
+                        "impact": impact,
+                        "effort": a.get("estimated_build_effort", "low"),
+                    }
+                )
         return sorted(backlog, key=lambda x: -effort_rank.get(x["effort"], 0))
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {"domains": domains, "since_days": since_days})
+        result = self.runtime.execute_skill(
+            "scan_cycle", {"domains": domains, "since_days": since_days}
+        )
         return result.data.get("stats", {}) if result.success else {}
 
     def _analyze_reporting_filings(self, domains: list[str]) -> list[dict]:
@@ -93,9 +111,9 @@ class RegulatoryReportingAgent:
                 continue
             result = self.runtime.execute_skill("regulatory_reporting_analysis", {"filing": filing})
             if result.success and (
-                result.data.get("new_reporting_obligations") or
-                result.data.get("schema_changes") or
-                result.data.get("deadline_changes")
+                result.data.get("new_reporting_obligations")
+                or result.data.get("schema_changes")
+                or result.data.get("deadline_changes")
             ):
                 analyses.append(result.data)
         return analyses

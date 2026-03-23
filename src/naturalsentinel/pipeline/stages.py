@@ -24,21 +24,24 @@ from __future__ import annotations
 import dataclasses
 import json
 import re
-from typing import Any, Optional
+from typing import Any
 
 from naturalsentinel.utils.parsing import parse_llm_json
 
-
 # ── Data transfer objects ────────────────────────────────────────────────────
+
 
 @dataclasses.dataclass
 class ClassificationResult:
     """Output of Stage 1."""
-    doc_type: str           # proposed_rule | final_rule | guidance | notice | enforcement | amendment | speech
-    primary_topic: str      # capital | liquidity | reporting | derivatives | model_risk | consumer_protection | market_structure | resolution | other
-    complexity: int         # 1-5  (1=simple notice, 5=multi-provision final rule)
+
+    doc_type: (
+        str  # proposed_rule | final_rule | guidance | notice | enforcement | amendment | speech
+    )
+    primary_topic: str  # capital | liquidity | reporting | derivatives | model_risk | consumer_protection | market_structure | resolution | other
+    complexity: int  # 1-5  (1=simple notice, 5=multi-provision final rule)
     requires_decomposition: bool
-    regulatory_body: str    # FED | OCC | FDIC | SEC | CFTC | CFPB | FHFA | BASEL | FSB | OTHER
+    regulatory_body: str  # FED | OCC | FDIC | SEC | CFTC | CFPB | FHFA | BASEL | FSB | OTHER
     confidence: float
     raw: dict = dataclasses.field(default_factory=dict)
 
@@ -46,7 +49,8 @@ class ClassificationResult:
 @dataclasses.dataclass
 class DocumentSection:
     """One logical section produced by Stage 2."""
-    section_type: str       # preamble | amendments | effective_dates | definitions | supplementary | background | transition_provisions
+
+    section_type: str  # preamble | amendments | effective_dates | definitions | supplementary | background | transition_provisions
     title: str
     text: str
     relevance_score: float  # 0-1
@@ -55,28 +59,31 @@ class DocumentSection:
 @dataclasses.dataclass
 class ValidationResult:
     """Output of Stage 4."""
+
     valid: bool
     issues: list[str]
-    corrected: dict         # corrected extraction (may equal the original if no issues)
+    corrected: dict  # corrected extraction (may equal the original if no issues)
 
 
 @dataclasses.dataclass
 class SpanGround:
     """One field-to-span mapping from Stage 5."""
+
     field: str
     value: Any
-    source_span: str        # verbatim quote from source text (or "" if not found)
+    source_span: str  # verbatim quote from source text (or "" if not found)
     confidence: float
 
 
 @dataclasses.dataclass
 class PipelineResult:
     """Aggregate output of all five stages."""
+
     classification: ClassificationResult
-    sections: list[DocumentSection]         # empty if Stage 2 was skipped
-    extracted: dict                         # raw Stage 3 output
-    validation: ValidationResult            # Stage 4 output
-    grounding: list[SpanGround]             # Stage 5 output (may be empty)
+    sections: list[DocumentSection]  # empty if Stage 2 was skipped
+    extracted: dict  # raw Stage 3 output
+    validation: ValidationResult  # Stage 4 output
+    grounding: list[SpanGround]  # Stage 5 output (may be empty)
     source_text: str
 
     @property
@@ -348,8 +355,7 @@ class ExtractionStage:
         if sections:
             relevant = sorted(sections, key=lambda s: s.relevance_score, reverse=True)
             text = "\n\n".join(
-                f"[{s.section_type.upper()}] {s.title}\n{s.text}"
-                for s in relevant[:3]
+                f"[{s.section_type.upper()}] {s.title}\n{s.text}" for s in relevant[:3]
             )
         else:
             text = (filing.get("raw_text") or "")[:4000]
@@ -375,10 +381,18 @@ class ExtractionStage:
 _REQUIRED_FIELDS = frozenset({"confidence", "summary"})
 _DIRECTION_VALUES = frozenset({"increase", "decrease", "neutral", "unknown"})
 _SEVERITY_VALUES = frozenset({"low", "medium", "high", "critical"})
-_DOC_TYPE_VALUES = frozenset({
-    "proposed_rule", "final_rule", "guidance", "enforcement",
-    "notice", "amendment", "executive_order", "speech",
-})
+_DOC_TYPE_VALUES = frozenset(
+    {
+        "proposed_rule",
+        "final_rule",
+        "guidance",
+        "enforcement",
+        "notice",
+        "amendment",
+        "executive_order",
+        "speech",
+    }
+)
 
 
 def _validate_field(key: str, value: Any) -> list[str]:
@@ -401,7 +415,7 @@ def _validate_field(key: str, value: Any) -> list[str]:
                 issues.append(f"confidence out of range: {v}")
         except (TypeError, ValueError):
             issues.append(f"confidence not numeric: {value!r}")
-    if re.search(r'_pct$|_bps$|_estimate$|_impact_bps$|_change_pct$', key):
+    if re.search(r"_pct$|_bps$|_estimate$|_impact_bps$|_change_pct$", key):
         if not isinstance(value, (int, float)):
             try:
                 float(value)
@@ -444,7 +458,7 @@ class ValidationStage:
         self,
         llm: Any,
         extracted: dict,
-        schema: Optional[dict] = None,
+        schema: dict | None = None,
         max_retries: int = 1,
     ) -> ValidationResult:
         issues = self._check(extracted)
@@ -525,11 +539,12 @@ class GroundingStage:
         llm: Any,
         extracted: dict,
         source_text: str,
-        fields_to_ground: Optional[list[str]] = None,
+        fields_to_ground: list[str] | None = None,
     ) -> list[SpanGround]:
         if fields_to_ground is None:
             fields_to_ground = [
-                k for k, v in extracted.items()
+                k
+                for k, v in extracted.items()
                 if v is not None
                 and isinstance(v, (str, int, float))
                 and k not in ("confidence", "summary")
@@ -557,6 +572,7 @@ class GroundingStage:
 
 
 # ── FilingPipeline — orchestrates all five stages ────────────────────────────
+
 
 class FilingPipeline:
     """
@@ -631,7 +647,9 @@ class FilingPipeline:
         # Stage 4
         schema = EXTRACTION_SCHEMAS.get(classification.primary_topic)
         validation = self._stage4.run(
-            self.llm, extracted, schema,
+            self.llm,
+            extracted,
+            schema,
             max_retries=self.max_validation_retries,
         )
 

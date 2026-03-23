@@ -22,11 +22,13 @@ from __future__ import annotations
 import logging
 import urllib.error
 from datetime import datetime, timedelta
-from typing import Optional
 
 from naturalsentinel.fetchers.live.http_client import HTTPClient
 from naturalsentinel.fetchers.live.parsers import (
-    html_to_text, detect_change_type, normalise_whitespace, truncate,
+    detect_change_type,
+    html_to_text,
+    normalise_whitespace,
+    truncate,
 )
 
 logger = logging.getLogger(__name__)
@@ -35,40 +37,42 @@ _API_BASE = "https://www.federalregister.gov/api/v1/documents.json"
 
 # Map NaturalSentinel domain codes → Federal Register agency slugs
 DOMAIN_TO_AGENCY: dict[str, str] = {
-    "fed":   "federal-reserve-system",
-    "cfpb":  "consumer-financial-protection-bureau",
-    "occ":   "comptroller-of-the-currency",
-    "fdic":  "federal-deposit-insurance-corporation",
-    "cftc":  "commodity-futures-trading-commission",
-    "sec":   "securities-and-exchange-commission",
-    "epa":   "environmental-protection-agency",
-    "ustr":  "office-of-the-united-states-trade-representative",
-    "fhfa":  "federal-housing-finance-agency",
-    "fda":   "food-and-drug-administration",
+    "fed": "federal-reserve-system",
+    "cfpb": "consumer-financial-protection-bureau",
+    "occ": "comptroller-of-the-currency",
+    "fdic": "federal-deposit-insurance-corporation",
+    "cftc": "commodity-futures-trading-commission",
+    "sec": "securities-and-exchange-commission",
+    "epa": "environmental-protection-agency",
+    "ustr": "office-of-the-united-states-trade-representative",
+    "fhfa": "federal-housing-finance-agency",
+    "fda": "food-and-drug-administration",
 }
 
 # Federal Register document type → NaturalSentinel change_type
 FR_TYPE_TO_CHANGE_TYPE: dict[str, str] = {
-    "Rule":                   "final_rule",
-    "Proposed Rule":          "proposed_rule",
-    "Notice":                 "notice",
-    "Presidential Document":  "executive_order",
+    "Rule": "final_rule",
+    "Proposed Rule": "proposed_rule",
+    "Notice": "notice",
+    "Presidential Document": "executive_order",
     "Significant Proposed Rule": "proposed_rule",
-    "Interim Rule":           "amendment",
+    "Interim Rule": "amendment",
 }
 
-_FIELDS = ",".join([
-    "document_number",
-    "title",
-    "abstract",
-    "type",
-    "publication_date",
-    "effective_on",
-    "html_url",
-    "pdf_url",
-    "agencies",
-    "regulation_id_numbers",
-])
+_FIELDS = ",".join(
+    [
+        "document_number",
+        "title",
+        "abstract",
+        "type",
+        "publication_date",
+        "effective_on",
+        "html_url",
+        "pdf_url",
+        "agencies",
+        "regulation_id_numbers",
+    ]
+)
 
 
 def fetch(
@@ -76,7 +80,7 @@ def fetch(
     since_days: int = 30,
     per_page: int = 20,
     fetch_full_text: bool = True,
-    client: Optional[HTTPClient] = None,
+    client: HTTPClient | None = None,
 ) -> list[dict]:
     """Fetch recent Federal Register documents for the requested domains.
 
@@ -132,7 +136,7 @@ def _normalise(
     domain: str,
     http: HTTPClient,
     fetch_full_text: bool,
-) -> Optional[dict]:
+) -> dict | None:
     """Convert a Federal Register API result to a NaturalSentinel filing dict."""
     doc_number = doc.get("document_number", "").strip()
     title = normalise_whitespace(doc.get("title", ""))
@@ -145,9 +149,7 @@ def _normalise(
     fr_type = doc.get("type", "")
 
     # Resolve change_type
-    change_type = FR_TYPE_TO_CHANGE_TYPE.get(fr_type) or detect_change_type(
-        f"{title} {abstract}"
-    )
+    change_type = FR_TYPE_TO_CHANGE_TYPE.get(fr_type) or detect_change_type(f"{title} {abstract}")
 
     # Build raw_text: start with abstract, optionally augment with full HTML
     raw_text = abstract
@@ -168,7 +170,8 @@ def _normalise(
         "id": f"FR-{doc_number}",
         "title": title,
         "domain": domain,
-        "source_url": html_url or f"https://www.federalregister.gov/documents/search?conditions[document_numbers][]={doc_number}",
+        "source_url": html_url
+        or f"https://www.federalregister.gov/documents/search?conditions[document_numbers][]={doc_number}",
         "published_date": pub_date,
         "change_type": change_type,
         "raw_text": raw_text,

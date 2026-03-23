@@ -2,10 +2,10 @@
 
 import json
 import logging
-import re
-from enum import Enum
 from pathlib import Path
+from typing import TYPE_CHECKING
 
+from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES, fetch_filings
 from naturalsentinel.models import (
     ChangeType,
     DecisionFrame,
@@ -15,11 +15,13 @@ from naturalsentinel.models import (
     RegulatoryFiling,
     Severity,
 )
-from naturalsentinel.providers.base import ModelProvider
-from naturalsentinel.fetchers import fetch_filings, DOMAIN_BUSINESS_LINES
 from naturalsentinel.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
+from naturalsentinel.providers.base import ModelProvider
 from naturalsentinel.utils.parsing import parse_llm_json
 from naturalsentinel.utils.serialization import enum_serializer, serialize_result
+
+if TYPE_CHECKING:
+    from naturalsentinel.memory.store import MemoryStore
 
 logger = logging.getLogger(__name__)
 
@@ -70,9 +72,7 @@ class RegulatoryMonitorAgent:
         # Build memory context if available
         memory_context = ""
         if self.memory:
-            memory_context = self.memory.build_context_block(
-                filing.domain.value, filing.raw_text
-            )
+            memory_context = self.memory.build_context_block(filing.domain.value, filing.raw_text)
 
         user_prompt = USER_PROMPT_TEMPLATE.format(
             filing_id=filing.id,
@@ -137,17 +137,29 @@ class RegulatoryMonitorAgent:
         decision_data = parsed.get("decision", {})
         decision = DecisionFrame(
             decision_id=decision_data.get("decision_id", f"decision::{filing.id}"),
-            question=decision_data.get("question", f"What response is warranted for filing {filing.id}?"),
-            scope=decision_data.get("scope", f"{filing.domain.value.upper()} filing review for {filing.title}"),
+            question=decision_data.get(
+                "question", f"What response is warranted for filing {filing.id}?"
+            ),
+            scope=decision_data.get(
+                "scope", f"{filing.domain.value.upper()} filing review for {filing.title}"
+            ),
             time_horizon=decision_data.get("time_horizon", "Near-term regulatory response window"),
-            affected_entities=decision_data.get("affected_entities", impact.affected_business_lines),
+            affected_entities=decision_data.get(
+                "affected_entities", impact.affected_business_lines
+            ),
             candidate_actions=decision_data.get("candidate_actions", impact.action_items),
             constraints=decision_data.get("constraints", []),
-            evidence_items=decision_data.get("evidence_items", [f"Source filing: {filing.id}", filing.source_url]),
+            evidence_items=decision_data.get(
+                "evidence_items", [f"Source filing: {filing.id}", filing.source_url]
+            ),
             assumptions=decision_data.get("assumptions", []),
             counterarguments=decision_data.get("counterarguments", []),
-            confidence=float(decision_data.get("confidence", parsed.get("confidence", impact.confidence))),
-            expected_revisit_date=decision_data.get("expected_revisit_date", impact.compliance_deadline or filing.published_date),
+            confidence=float(
+                decision_data.get("confidence", parsed.get("confidence", impact.confidence))
+            ),
+            expected_revisit_date=decision_data.get(
+                "expected_revisit_date", impact.compliance_deadline or filing.published_date
+            ),
             owner=decision_data.get("owner", "Compliance triage"),
             audit_refs=decision_data.get("audit_refs", [filing.id, filing.source_url]),
         )
@@ -203,9 +215,7 @@ class RegulatoryMonitorAgent:
     def run_json(self, since_days: int = 30) -> str:
         """Run and return results as a JSON string."""
         results = self.run(since_days=since_days)
-        return json.dumps(
-            [serialize_result(r) for r in results], indent=2, default=enum_serializer
-        )
+        return json.dumps([serialize_result(r) for r in results], indent=2, default=enum_serializer)
 
     def reset_state(self):
         """Clear seen filings to allow re-processing."""

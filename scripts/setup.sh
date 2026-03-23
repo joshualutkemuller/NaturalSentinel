@@ -160,6 +160,13 @@ setup_git_auth() {
     fi
 }
 
+# ── Pre-commit hooks ─────────────────────────────────────────────
+setup_precommit() {
+    step "Installing pre-commit hooks"
+    uv run pre-commit install
+    info "Pre-commit hooks installed"
+}
+
 # ── Shell aliases ────────────────────────────────────────────────
 setup_aliases() {
     step "Setting up shell aliases"
@@ -265,6 +272,9 @@ print_summary() {
     echo "  Activate the virtualenv (if not using uv run):"
     echo "    source .venv/bin/activate"
     echo ""
+    echo "  Pre-commit hook active — runs on every commit:"
+    echo "    ruff format --check, ruff check, pytest"
+    echo ""
     echo "  Quick start:"
     echo "    test          — run tests"
     echo "    check         — lint + format + typecheck"
@@ -290,6 +300,7 @@ main() {
 
     setup_venv
     verify_tools
+    setup_precommit
     setup_git_auth
     setup_aliases
     print_summary

@@ -32,14 +32,19 @@ import math
 from datetime import datetime
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Heuristic helpers
 # ---------------------------------------------------------------------------
+
 
 def _compute_delta_drivers(
     prior: float,
@@ -70,23 +75,15 @@ def _compute_delta_drivers(
                 f"Strong negative update ({delta:.2f}) — contradictory or de-escalatory evidence"
             )
         else:
-            drivers.append(
-                f"Moderate negative update ({delta:.2f}) — mixed or weakening signals"
-            )
+            drivers.append(f"Moderate negative update ({delta:.2f}) — mixed or weakening signals")
 
     # Document-type finality signal
     if change_type in ("final_rule", "enforcement"):
-        drivers.append(
-            f"High-finality document type ({change_type}) narrows uncertainty"
-        )
+        drivers.append(f"High-finality document type ({change_type}) narrows uncertainty")
     elif change_type == "proposed_rule":
-        drivers.append(
-            "Proposed rule stage — uncertainty persists until finalisation"
-        )
+        drivers.append("Proposed rule stage — uncertainty persists until finalisation")
     elif change_type in ("guidance", "notice"):
-        drivers.append(
-            f"Interpretive document ({change_type}) — moderate certainty, may evolve"
-        )
+        drivers.append(f"Interpretive document ({change_type}) — moderate certainty, may evolve")
 
     # Prior position context
     if prior < 0.3 and delta > 0:
@@ -172,6 +169,7 @@ def _compute_reversal_risk(
 # Skill
 # ---------------------------------------------------------------------------
 
+
 class BeliefTrackerSkill(Skill):
     """Track prior/posterior confidence evolution for a regulatory topic.
 
@@ -255,7 +253,7 @@ class BeliefTrackerSkill(Skill):
             "last_filing_id, updated_at"
         ),
         dependencies=[],
-        max_token_budget=0,   # No LLM calls
+        max_token_budget=0,  # No LLM calls
         cacheable=False,
         tags=["belief", "priors", "posteriors", "delta", "decision-framework", "priority-3"],
     )
@@ -302,7 +300,9 @@ class BeliefTrackerSkill(Skill):
         #   accumulate, so early filings don't over-anchor the prior.
         # ------------------------------------------------------------------
         effective_lr = learning_rate / (1.0 + 0.05 * min(observation_count, 10))
-        posterior_confidence = effective_lr * new_confidence + (1.0 - effective_lr) * prior_confidence
+        posterior_confidence = (
+            effective_lr * new_confidence + (1.0 - effective_lr) * prior_confidence
+        )
         posterior_confidence = round(max(0.0, min(1.0, posterior_confidence)), 4)
 
         delta_confidence = round(posterior_confidence - prior_confidence, 4)

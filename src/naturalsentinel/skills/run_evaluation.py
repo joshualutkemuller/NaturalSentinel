@@ -42,16 +42,21 @@ import hashlib
 from datetime import datetime, timedelta
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 from naturalsentinel.eval.benchmark import (
     load_suite_from_feedback,
     load_suite_from_fixture,
 )
-from naturalsentinel.eval.scorer import score_suite
 from naturalsentinel.eval.calibration import build_calibration_report
 from naturalsentinel.eval.drift import build_drift_report
+from naturalsentinel.eval.scorer import score_suite
 
 
 def _auto_run_id(provider_tag: str, suite_name: str) -> str:
@@ -95,8 +100,7 @@ class RunEvaluationSkill(Skill):
             SkillParameter(
                 "domains",
                 "list[str]",
-                "Optional domain filter (e.g. ['sec', 'fed']). "
-                "None or empty = all domains.",
+                "Optional domain filter (e.g. ['sec', 'fed']). None or empty = all domains.",
                 required=False,
                 default=None,
             ),
@@ -246,9 +250,7 @@ class RunEvaluationSkill(Skill):
         drift_dict: dict = {}
         if drift_window_days > 0:
             try:
-                drift_dict = self._compute_drift(
-                    context.memory, domains, drift_window_days
-                )
+                drift_dict = self._compute_drift(context.memory, domains, drift_window_days)
             except Exception:
                 drift_dict = {"error": "Drift analysis failed — insufficient episodic data"}
 
@@ -315,14 +317,9 @@ class RunEvaluationSkill(Skill):
     @staticmethod
     def _compute_drift(memory_store, domains, window_days: int) -> dict:
         """Pull episodic memories and split into two time windows for drift."""
-        all_episodes = memory_store.get_filing_history(
-            domain=None, limit=1000
-        )
+        all_episodes = memory_store.get_filing_history(domain=None, limit=1000)
         if domains:
-            all_episodes = [
-                r for r in all_episodes
-                if r.namespace in domains
-            ]
+            all_episodes = [r for r in all_episodes if r.namespace in domains]
 
         now = datetime.utcnow()
         cutoff_recent = now - timedelta(days=window_days)

@@ -32,31 +32,30 @@ Usage::
 
 from __future__ import annotations
 
+import enum
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from enum import Enum
-from typing import Optional
 
 
-class AuditEventType(str, Enum):
-    FILING_INGESTED       = "FILING_INGESTED"
-    ANALYSIS_COMPLETED    = "ANALYSIS_COMPLETED"
-    ANALYSIS_FAILED       = "ANALYSIS_FAILED"
-    FEEDBACK_RECORDED     = "FEEDBACK_RECORDED"
-    ESCALATION_TRIGGERED  = "ESCALATION_TRIGGERED"
-    ESCALATION_RESOLVED   = "ESCALATION_RESOLVED"
-    FALLBACK_ACTIVATED    = "FALLBACK_ACTIVATED"
-    EVAL_RUN_COMPLETED    = "EVAL_RUN_COMPLETED"
-    DRIFT_DETECTED        = "DRIFT_DETECTED"
-    POLICY_APPLIED        = "POLICY_APPLIED"
-    MODEL_CHANGED         = "MODEL_CHANGED"
+class AuditEventType(enum.StrEnum):
+    FILING_INGESTED = "FILING_INGESTED"
+    ANALYSIS_COMPLETED = "ANALYSIS_COMPLETED"
+    ANALYSIS_FAILED = "ANALYSIS_FAILED"
+    FEEDBACK_RECORDED = "FEEDBACK_RECORDED"
+    ESCALATION_TRIGGERED = "ESCALATION_TRIGGERED"
+    ESCALATION_RESOLVED = "ESCALATION_RESOLVED"
+    FALLBACK_ACTIVATED = "FALLBACK_ACTIVATED"
+    EVAL_RUN_COMPLETED = "EVAL_RUN_COMPLETED"
+    DRIFT_DETECTED = "DRIFT_DETECTED"
+    POLICY_APPLIED = "POLICY_APPLIED"
+    MODEL_CHANGED = "MODEL_CHANGED"
 
 
-class AuditSeverity(str, Enum):
-    INFO     = "INFO"
-    WARNING  = "WARNING"
-    HIGH     = "HIGH"
+class AuditSeverity(enum.StrEnum):
+    INFO = "INFO"
+    WARNING = "WARNING"
+    HIGH = "HIGH"
     CRITICAL = "CRITICAL"
 
 
@@ -65,12 +64,12 @@ class AuditEvent:
     """A single immutable audit log record."""
 
     event_id: str
-    event_type: str          # AuditEventType value
-    actor: str               # "system" | user identifier
-    timestamp: str           # ISO UTC
-    severity: str            # AuditSeverity value
-    filing_id: Optional[str] = None
-    trace_id: Optional[str] = None
+    event_type: str  # AuditEventType value
+    actor: str  # "system" | user identifier
+    timestamp: str  # ISO UTC
+    severity: str  # AuditSeverity value
+    filing_id: str | None = None
+    trace_id: str | None = None
     payload: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
@@ -82,11 +81,11 @@ class AuditEvent:
         cls,
         event_type: AuditEventType,
         actor: str = "system",
-        filing_id: Optional[str] = None,
-        trace_id: Optional[str] = None,
-        payload: Optional[dict] = None,
+        filing_id: str | None = None,
+        trace_id: str | None = None,
+        payload: dict | None = None,
         severity: AuditSeverity = AuditSeverity.INFO,
-    ) -> "AuditEvent":
+    ) -> AuditEvent:
         """Convenience factory — generates event_id and timestamp automatically."""
         return cls(
             event_id=str(uuid.uuid4()),
@@ -103,8 +102,11 @@ class AuditEvent:
 def severity_for_event(event_type: AuditEventType) -> AuditSeverity:
     """Return the default :class:`AuditSeverity` for a given event type."""
     critical = {AuditEventType.ESCALATION_TRIGGERED, AuditEventType.DRIFT_DETECTED}
-    warnings = {AuditEventType.ANALYSIS_FAILED, AuditEventType.FALLBACK_ACTIVATED,
-                AuditEventType.MODEL_CHANGED}
+    warnings = {
+        AuditEventType.ANALYSIS_FAILED,
+        AuditEventType.FALLBACK_ACTIVATED,
+        AuditEventType.MODEL_CHANGED,
+    }
     if event_type in critical:
         return AuditSeverity.HIGH
     if event_type in warnings:

@@ -1,8 +1,13 @@
 """Skill: Store a filing analysis in persistent episodic memory."""
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 
 
@@ -25,7 +30,9 @@ class StoreMemorySkill(Skill):
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.memory is None:
-            return SkillResult(skill_name=self.metadata.name, success=False, data=None, error="Memory write denied")
+            return SkillResult(
+                skill_name=self.metadata.name, success=False, data=None, error="Memory write denied"
+            )
 
         context.memory.store_episodic(
             context.params["filing_id"],
@@ -33,6 +40,7 @@ class StoreMemorySkill(Skill):
             context.params["impact"],
         )
         return SkillResult(
-            skill_name=self.metadata.name, success=True,
+            skill_name=self.metadata.name,
+            success=True,
             data={"stored": context.params["filing_id"], "total_memories": context.memory.count()},
         )

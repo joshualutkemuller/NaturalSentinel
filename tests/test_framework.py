@@ -1,26 +1,36 @@
 """Tests for the agent framework, skill registry, and built-in skills."""
 
-import json
 import os
+import sys
 import tempfile
 import unittest
 
-import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "src"))
 
 from naturalsentinel import (
-    AgentRuntime, SecurityPolicy, Permission, SkillRegistry,
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    LatencyClass, MockProvider, MemoryStore, READONLY, STANDARD, FULL,
-    ExecutionPlan, PlanStep,
+    FULL,
+    READONLY,
+    STANDARD,
+    AgentRuntime,
+    ExecutionPlan,
+    LatencyClass,
+    MemoryStore,
+    MockProvider,
+    Permission,
+    PlanStep,
+    SecurityPolicy,
+    Skill,
+    SkillMetadata,
+    SkillRegistry,
+    SkillResult,
 )
-from naturalsentinel.skills import ALL_SKILLS
+from naturalsentinel.agent import RegulatoryMonitorAgent
 from naturalsentinel.fetchers import fetch_filings
 from naturalsentinel.fetchers.sample_data import SAMPLE_FILINGS
-from naturalsentinel.agent import RegulatoryMonitorAgent
-
+from naturalsentinel.skills import ALL_SKILLS
 
 # ── FRAMEWORK ─────────────────────────────────────────────────────────────
+
 
 class TestPermissions(unittest.TestCase):
     def test_flag_combinations(self):
@@ -91,13 +101,20 @@ class TestSkillRegistry(unittest.TestCase):
     def _make_dummy(self, name="dummy", perms=Permission.NONE, deps=None):
         class DummySkill(Skill):
             metadata = SkillMetadata(
-                name=name, description="test", version="0.0.1",
-                permissions=perms, latency=LatencyClass.INSTANT,
-                parameters=[], returns="None",
-                dependencies=deps or [], tags=["test"],
+                name=name,
+                description="test",
+                version="0.0.1",
+                permissions=perms,
+                latency=LatencyClass.INSTANT,
+                parameters=[],
+                returns="None",
+                dependencies=deps or [],
+                tags=["test"],
             )
+
             def execute(self, ctx):
                 return SkillResult(skill_name=name, success=True, data="ok")
+
         return DummySkill()
 
     def test_register_and_get(self):
@@ -138,6 +155,7 @@ class TestSkillRegistry(unittest.TestCase):
 
 
 # ── RUNTIME ───────────────────────────────────────────────────────────────
+
 
 class TestAgentRuntime(unittest.TestCase):
     def setUp(self):
@@ -230,6 +248,7 @@ class TestLegacyRuntimeParity(unittest.TestCase):
             self.assertEqual(runtime_item["impact"]["filing_id"], filing_id)
 
         from naturalsentinel.memory.types import MemoryType
+
         self.assertEqual(
             self.agent_memory.count(MemoryType.EPISODIC),
             self.runtime_memory.count(MemoryType.EPISODIC),
@@ -255,7 +274,9 @@ class TestFrameworkInvariants(unittest.TestCase):
         runtime.register_skills(*ALL_SKILLS)
 
         first = runtime.execute_skill("analyze_filing", {"filing": self._make_filing()})
-        second = runtime.execute_skill("analyze_filing", {"filing": self._make_filing("SEC-2026-0312-A-2")})
+        second = runtime.execute_skill(
+            "analyze_filing", {"filing": self._make_filing("SEC-2026-0312-A-2")}
+        )
 
         self.assertTrue(first.success)
         self.assertFalse(second.success)
@@ -302,7 +323,9 @@ class TestFrameworkInvariants(unittest.TestCase):
                         data=None,
                         error=f"Child failed: {child.error}",
                     )
-                return SkillResult(skill_name="parent_skill", success=True, data={"child": child.data})
+                return SkillResult(
+                    skill_name="parent_skill", success=True, data={"child": child.data}
+                )
 
         runtime = AgentRuntime(policy=SecurityPolicy(allowed=FULL))
         runtime.register_skill(FailingChildSkill())
@@ -361,6 +384,7 @@ class TestStableFixtureSubset(unittest.TestCase):
 
 # ── INDIVIDUAL SKILLS ─────────────────────────────────────────────────────
 
+
 class TestFetchFilingsSkill(unittest.TestCase):
     def setUp(self):
         self.runtime = AgentRuntime(policy=SecurityPolicy(allowed=FULL))
@@ -372,12 +396,14 @@ class TestFetchFilingsSkill(unittest.TestCase):
         self.assertEqual(len(result.data), len(SAMPLE_FILINGS))
 
     def test_fetch_filtered(self):
-        result = self.runtime.execute_skill("fetch_filings", {"domains": ["sec"], "since_days": 365})
+        result = self.runtime.execute_skill(
+            "fetch_filings", {"domains": ["sec"], "since_days": 365}
+        )
         self.assertTrue(result.success)
         self.assertTrue(all(f["domain"] == "sec" for f in result.data))
 
     def test_cacheable(self):
-        r1 = self.runtime.execute_skill("fetch_filings", {"since_days": 365})
+        _ = self.runtime.execute_skill("fetch_filings", {"since_days": 365})
         r2 = self.runtime.execute_skill("fetch_filings", {"since_days": 365})
         self.assertTrue(r2.metadata.get("cached", False))
 
@@ -392,8 +418,11 @@ class TestAnalyzeFilingSkill(unittest.TestCase):
 
     def test_analyze(self):
         filing = {
-            "id": "SEC-2026-0312-A", "title": "Climate", "domain": "sec",
-            "published_date": "2026-03-10", "source_url": "https://x.com",
+            "id": "SEC-2026-0312-A",
+            "title": "Climate",
+            "domain": "sec",
+            "published_date": "2026-03-10",
+            "source_url": "https://x.com",
             "raw_text": "SEC climate disclosure rule text.",
         }
         result = self.runtime.execute_skill("analyze_filing", {"filing": filing})
@@ -404,7 +433,19 @@ class TestAnalyzeFilingSkill(unittest.TestCase):
     def test_denied_without_llm(self):
         runtime = AgentRuntime(provider=None, policy=SecurityPolicy(allowed=FULL))
         runtime.register_skills(*ALL_SKILLS)
-        result = runtime.execute_skill("analyze_filing", {"filing": {"id": "X", "domain": "sec", "raw_text": "t", "title": "t", "published_date": "2026-01-01", "source_url": "x"}})
+        result = runtime.execute_skill(
+            "analyze_filing",
+            {
+                "filing": {
+                    "id": "X",
+                    "domain": "sec",
+                    "raw_text": "t",
+                    "title": "t",
+                    "published_date": "2026-01-01",
+                    "source_url": "x",
+                }
+            },
+        )
         self.assertFalse(result.success)
         self.assertIn("LLM access denied", result.error)
 
@@ -419,11 +460,19 @@ class TestMemorySkills(unittest.TestCase):
         self.memory.close()
 
     def test_store_and_recall(self):
-        store_r = self.runtime.execute_skill("store_memory", {
-            "filing_id": "T-001",
-            "filing": {"title": "Climate SEC Test", "domain": "sec"},
-            "impact": {"severity": "high", "affected_business_lines": ["ESG"], "affected_regulations": ["Reg S-K"], "risk_summary": "Risk"},
-        })
+        store_r = self.runtime.execute_skill(
+            "store_memory",
+            {
+                "filing_id": "T-001",
+                "filing": {"title": "Climate SEC Test", "domain": "sec"},
+                "impact": {
+                    "severity": "high",
+                    "affected_business_lines": ["ESG"],
+                    "affected_regulations": ["Reg S-K"],
+                    "risk_summary": "Risk",
+                },
+            },
+        )
         self.assertTrue(store_r.success)
 
         recall_r = self.runtime.execute_skill("recall_memory", {"query": "climate SEC"})
@@ -431,29 +480,52 @@ class TestMemorySkills(unittest.TestCase):
         self.assertGreater(len(recall_r.data), 0)
 
     def test_feedback(self):
-        self.runtime.execute_skill("store_memory", {
-            "filing_id": "T-001", "filing": {"title": "A"}, "impact": {"severity": "low"},
-        })
-        fb = self.runtime.execute_skill("record_feedback", {
-            "filing_id": "T-001", "field": "severity",
-            "old_value": "low", "new_value": "high", "reason": "enforcement risk",
-        })
+        self.runtime.execute_skill(
+            "store_memory",
+            {
+                "filing_id": "T-001",
+                "filing": {"title": "A"},
+                "impact": {"severity": "low"},
+            },
+        )
+        fb = self.runtime.execute_skill(
+            "record_feedback",
+            {
+                "filing_id": "T-001",
+                "field": "severity",
+                "old_value": "low",
+                "new_value": "high",
+                "reason": "enforcement risk",
+            },
+        )
         self.assertTrue(fb.success)
 
     def test_build_context(self):
-        self.runtime.execute_skill("store_memory", {
-            "filing_id": "SEC-001",
-            "filing": {"id": "SEC-001", "title": "Climate Rule", "domain": "sec"},
-            "impact": {"severity": "critical", "affected_business_lines": ["ESG"], "affected_regulations": [], "risk_summary": "Risk"},
-        })
-        ctx = self.runtime.execute_skill("build_context", {"domain": "sec", "filing_text": "climate disclosure"})
+        self.runtime.execute_skill(
+            "store_memory",
+            {
+                "filing_id": "SEC-001",
+                "filing": {"id": "SEC-001", "title": "Climate Rule", "domain": "sec"},
+                "impact": {
+                    "severity": "critical",
+                    "affected_business_lines": ["ESG"],
+                    "affected_regulations": [],
+                    "risk_summary": "Risk",
+                },
+            },
+        )
+        ctx = self.runtime.execute_skill(
+            "build_context", {"domain": "sec", "filing_text": "climate disclosure"}
+        )
         self.assertTrue(ctx.success)
         self.assertIn("RELEVANT PAST ANALYSES", ctx.data)
 
     def test_denied_without_memory(self):
         runtime = AgentRuntime(memory=None, policy=SecurityPolicy(allowed=FULL))
         runtime.register_skills(*ALL_SKILLS)
-        r = self.runtime.execute_skill("store_memory", {"filing_id": "X", "filing": {}, "impact": {}})
+        _ = self.runtime.execute_skill(
+            "store_memory", {"filing_id": "X", "filing": {}, "impact": {}}
+        )
         # This should work since self.runtime HAS memory — test the other runtime
         r2 = runtime.execute_skill("recall_memory", {"query": "test"})
         self.assertFalse(r2.success)
@@ -509,6 +581,7 @@ class TestScanCycleSkill(unittest.TestCase):
 
         # Memory should be populated
         from naturalsentinel.memory.types import MemoryType
+
         self.assertEqual(self.memory.count(MemoryType.EPISODIC), expected)
 
     def test_second_cycle_deduped(self):
@@ -538,7 +611,8 @@ class TestExecutionPlan(unittest.TestCase):
     def setUp(self):
         self.memory = MemoryStore(":memory:")
         self.runtime = AgentRuntime(
-            provider=MockProvider(), memory=self.memory,
+            provider=MockProvider(),
+            memory=self.memory,
             state_path=os.path.join(tempfile.mkdtemp(), "state.json"),
             policy=SecurityPolicy(allowed=FULL),
         )

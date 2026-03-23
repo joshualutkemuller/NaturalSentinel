@@ -64,23 +64,23 @@ into coherent, high-level workflows.  They do NOT bypass the permission model â€
 all skill access is still gated by the SecurityPolicy on the underlying runtime.
 """
 
-from naturalsentinel.agents.compliance_tracker import ComplianceTrackerAgent
+from naturalsentinel.agents.agency_mortgage_agent import AgencyMortgageAgent
+from naturalsentinel.agents.ai_governance_agent import AIGovernanceAgent
 from naturalsentinel.agents.alert_agent import AlertAgent
 from naturalsentinel.agents.capital_optimization_agent import CapitalOptimizationAgent
-from naturalsentinel.agents.model_risk_agent import ModelRiskAgent
-from naturalsentinel.agents.securities_financing_agent import SecuritiesFinancingAgent
-from naturalsentinel.agents.liquidity_ratio_agent import LiquidityRatioAgent
-from naturalsentinel.agents.agency_mortgage_agent import AgencyMortgageAgent
+from naturalsentinel.agents.compliance_tracker import ComplianceTrackerAgent
 from naturalsentinel.agents.counterparty_risk_agent import CounterpartyRiskAgent
-from naturalsentinel.agents.regulatory_reporting_agent import RegulatoryReportingAgent
-from naturalsentinel.agents.optimization_constraint_agent import OptimizationConstraintAgent
-from naturalsentinel.agents.leveraged_lending_agent import LeveragedLendingAgent
-from naturalsentinel.agents.stress_testing_agent import StressTestingAgent
-from naturalsentinel.agents.platform_compliance_agent import PlatformComplianceAgent
-from naturalsentinel.agents.data_privacy_agent import DataPrivacyAgent
-from naturalsentinel.agents.ai_governance_agent import AIGovernanceAgent
-from naturalsentinel.agents.telecom_spectrum_agent import TelecomSpectrumAgent
 from naturalsentinel.agents.cybersecurity_agent import CybersecurityAgent
+from naturalsentinel.agents.data_privacy_agent import DataPrivacyAgent
+from naturalsentinel.agents.leveraged_lending_agent import LeveragedLendingAgent
+from naturalsentinel.agents.liquidity_ratio_agent import LiquidityRatioAgent
+from naturalsentinel.agents.model_risk_agent import ModelRiskAgent
+from naturalsentinel.agents.optimization_constraint_agent import OptimizationConstraintAgent
+from naturalsentinel.agents.platform_compliance_agent import PlatformComplianceAgent
+from naturalsentinel.agents.regulatory_reporting_agent import RegulatoryReportingAgent
+from naturalsentinel.agents.securities_financing_agent import SecuritiesFinancingAgent
+from naturalsentinel.agents.stress_testing_agent import StressTestingAgent
+from naturalsentinel.agents.telecom_spectrum_agent import TelecomSpectrumAgent
 
 __all__ = [
     "ComplianceTrackerAgent",

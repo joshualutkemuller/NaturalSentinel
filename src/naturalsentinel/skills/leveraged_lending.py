@@ -8,12 +8,16 @@ finance portfolios and CLO structuring.
 """
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES
 from naturalsentinel.utils.parsing import parse_llm_json
-
 
 LEVERAGED_LENDING_SYSTEM = """\
 You are a senior leveraged finance credit officer with deep expertise in US and EU \
@@ -91,13 +95,22 @@ class LeveragedLendingSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["leveraged-lending", "clo", "risk-retention", "covenants", "underwriting", "secured-lending"],
+        tags=[
+            "leveraged-lending",
+            "clo",
+            "risk-retention",
+            "covenants",
+            "underwriting",
+            "secured-lending",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="LLM access denied — this skill requires LLM_READ permission",
             )
 

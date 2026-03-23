@@ -1,6 +1,7 @@
 """Tests for naturalsentinel.agent — the core monitoring agent."""
 
 import json
+
 from naturalsentinel.models import RegulatoryDomain, Severity
 
 
@@ -55,6 +56,7 @@ class TestAgentMemoryIntegration:
         assert memory.count() >= 6
         # All should be episodic
         from naturalsentinel.memory.types import MemoryType
+
         assert memory.count(MemoryType.EPISODIC) >= 6
 
     def test_entity_relations_created(self, agent, memory):
@@ -72,6 +74,7 @@ class TestAgentMemoryIntegration:
     def test_agent_without_memory(self, mock_provider, tmp_path):
         """Agent should work fine without memory attached."""
         from naturalsentinel.agent import RegulatoryMonitorAgent
+
         agent = RegulatoryMonitorAgent(
             provider=mock_provider,
             memory=None,

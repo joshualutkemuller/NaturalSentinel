@@ -7,12 +7,16 @@ framework changes, and universal service fund modifications.
 """
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES
 from naturalsentinel.utils.parsing import parse_llm_json
-
 
 TELECOM_INFRASTRUCTURE_SYSTEM = """\
 You are a senior telecom infrastructure and national security regulatory expert with \
@@ -94,13 +98,24 @@ class TelecomInfrastructureSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["telecom", "infrastructure", "supply-chain", "huawei", "zte", "5g-security", "usf", "rip-replace"],
+        tags=[
+            "telecom",
+            "infrastructure",
+            "supply-chain",
+            "huawei",
+            "zte",
+            "5g-security",
+            "usf",
+            "rip-replace",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="LLM access denied — this skill requires LLM_READ permission",
             )
 

@@ -1,7 +1,8 @@
 """Similarity search engine with optional sklearn acceleration."""
 
 import logging
-from naturalsentinel.utils.text import tokenize, keyword_similarity
+
+from naturalsentinel.utils.text import keyword_similarity, tokenize
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class SimilarityEngine:
         try:
             from sklearn.feature_extraction.text import TfidfVectorizer
             from sklearn.metrics.pairwise import cosine_similarity
+
             self._vectorizer = TfidfVectorizer(max_features=5000, stop_words="english")
             self._cosine_similarity = cosine_similarity
             self._use_sklearn = True
@@ -46,13 +48,9 @@ class SimilarityEngine:
                 # Documents too short or all stop words — fall back to keyword
                 logger.debug("TF-IDF fit failed (short docs?), falling back to keyword")
                 self._matrix = None
-                self._doc_tokens = {
-                    did: tokenize(text) for did, text in documents.items()
-                }
+                self._doc_tokens = {did: tokenize(text) for did, text in documents.items()}
         else:
-            self._doc_tokens = {
-                did: tokenize(text) for did, text in documents.items()
-            }
+            self._doc_tokens = {did: tokenize(text) for did, text in documents.items()}
 
     def search(self, query: str, top_k: int = 5) -> list[tuple[str, float]]:
         """Return [(doc_id, score), ...] sorted by descending similarity."""

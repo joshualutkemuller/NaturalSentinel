@@ -87,7 +87,7 @@ class TelecomSpectrumAgent:
         params = {"filing": filing, "memory_context": memory_context}
 
         spectrum = self._run_spectrum_licensing_change(params)
-        infra    = self._run_telecom_infrastructure_security(params)
+        infra = self._run_telecom_infrastructure_security(params)
 
         return {
             "spectrum_licensing": spectrum,

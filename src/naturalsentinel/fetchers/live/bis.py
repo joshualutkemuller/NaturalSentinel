@@ -17,11 +17,13 @@ import logging
 import re
 import urllib.error
 from datetime import datetime, timedelta
-from typing import Optional
 
 from naturalsentinel.fetchers.live.http_client import HTTPClient
 from naturalsentinel.fetchers.live.parsers import (
-    html_to_text, detect_change_type, normalise_whitespace, truncate,
+    detect_change_type,
+    html_to_text,
+    normalise_whitespace,
+    truncate,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,7 +36,7 @@ def fetch(
     since_days: int = 90,
     limit: int = 20,
     fetch_full_text: bool = True,
-    client: Optional[HTTPClient] = None,
+    client: HTTPClient | None = None,
 ) -> list[dict]:
     """Fetch recent BCBS publications from BIS.org.
 
@@ -90,10 +92,10 @@ def _parse_index(html_content: str, cutoff: datetime, limit: int) -> list[dict]:
 
     # Find date + link pairs
     pattern = re.compile(
-        r'(\d{1,2}\s+\w+\s+\d{4})'           # date like "15 Mar 2026"
-        r'.*?'
-        r'href="(/(?:bcbs|publ|fsi)[^"]+)"'   # relative link
-        r'[^>]*>([^<]+)<',                    # link text = title
+        r"(\d{1,2}\s+\w+\s+\d{4})"  # date like "15 Mar 2026"
+        r".*?"
+        r'href="(/(?:bcbs|publ|fsi)[^"]+)"'  # relative link
+        r"[^>]*>([^<]+)<",  # link text = title
         re.DOTALL,
     )
 
@@ -126,15 +128,17 @@ def _parse_index(html_content: str, cutoff: datetime, limit: int) -> list[dict]:
 
         change_type = detect_change_type(title)
 
-        entries.append({
-            "id": doc_id,
-            "title": title,
-            "domain": "basel",
-            "source_url": pub_url,
-            "published_date": pub_date.strftime("%Y-%m-%d"),
-            "change_type": change_type,
-            "raw_text": title,   # Will be overwritten if full text is fetched
-            "pub_url": pub_url,
-        })
+        entries.append(
+            {
+                "id": doc_id,
+                "title": title,
+                "domain": "basel",
+                "source_url": pub_url,
+                "published_date": pub_date.strftime("%Y-%m-%d"),
+                "change_type": change_type,
+                "raw_text": title,  # Will be overwritten if full text is fetched
+                "pub_url": pub_url,
+            }
+        )
 
     return entries

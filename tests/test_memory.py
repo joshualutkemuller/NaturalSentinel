@@ -1,10 +1,10 @@
 """Tests for naturalsentinel.memory — persistent memory store."""
 
 import json
-import pytest
-from naturalsentinel.memory.store import MemoryStore
-from naturalsentinel.memory.types import MemoryType, MemoryRecord
+
 from naturalsentinel.memory.similarity import SimilarityEngine
+from naturalsentinel.memory.store import MemoryStore
+from naturalsentinel.memory.types import MemoryType
 
 
 class TestMemoryStoreBasics:
@@ -16,7 +16,12 @@ class TestMemoryStoreBasics:
         memory.store_episodic(
             "TEST-001",
             {"title": "Test Filing", "domain": "sec", "summary": "A test."},
-            {"severity": "high", "affected_business_lines": ["Equities"], "affected_regulations": ["Reg S-K"], "risk_summary": "Risk."},
+            {
+                "severity": "high",
+                "affected_business_lines": ["Equities"],
+                "affected_regulations": ["Reg S-K"],
+                "risk_summary": "Risk.",
+            },
         )
         assert memory.count() == 1
         assert memory.count(MemoryType.EPISODIC) == 1
@@ -27,7 +32,9 @@ class TestMemoryStoreBasics:
 
     def test_record_feedback(self, memory):
         # Need an episodic first for context
-        memory.store_episodic("TEST-001", {"title": "Test", "domain": "sec"}, {"severity": "medium"})
+        memory.store_episodic(
+            "TEST-001", {"title": "Test", "domain": "sec"}, {"severity": "medium"}
+        )
         memory.record_feedback("TEST-001", "severity", "medium", "high", "has enforcement risk")
         assert memory.count(MemoryType.PRECEDENT) == 1
         stats = memory.stats()
@@ -46,8 +53,26 @@ class TestMemoryRetrieval:
         assert memory.get("nonexistent:123") is None
 
     def test_recall_semantic(self, memory):
-        memory.store_episodic("SEC-001", {"title": "Climate Disclosure", "domain": "sec"}, {"severity": "high", "affected_business_lines": ["ESG"], "affected_regulations": [], "risk_summary": "SEC enforcement"})
-        memory.store_episodic("FDA-001", {"title": "Medical Device AI", "domain": "fda"}, {"severity": "medium", "affected_business_lines": ["Devices"], "affected_regulations": [], "risk_summary": "FDA guidance"})
+        memory.store_episodic(
+            "SEC-001",
+            {"title": "Climate Disclosure", "domain": "sec"},
+            {
+                "severity": "high",
+                "affected_business_lines": ["ESG"],
+                "affected_regulations": [],
+                "risk_summary": "SEC enforcement",
+            },
+        )
+        memory.store_episodic(
+            "FDA-001",
+            {"title": "Medical Device AI", "domain": "fda"},
+            {
+                "severity": "medium",
+                "affected_business_lines": ["Devices"],
+                "affected_regulations": [],
+                "risk_summary": "FDA guidance",
+            },
+        )
 
         results = memory.recall("climate SEC ESG", top_k=2)
         assert len(results) > 0
@@ -92,12 +117,32 @@ class TestEntityRelations:
         assert len(rels) > 0
 
     def test_relation_weight_accumulates(self, memory):
-        memory.store_episodic("T-001", {"title": "A", "domain": "sec"}, {"severity": "high", "affected_business_lines": ["Equities"], "affected_regulations": ["Reg S-K"], "risk_summary": "R"})
-        memory.store_episodic("T-002", {"title": "B", "domain": "sec"}, {"severity": "high", "affected_business_lines": ["Equities"], "affected_regulations": ["Reg S-K"], "risk_summary": "R"})
+        memory.store_episodic(
+            "T-001",
+            {"title": "A", "domain": "sec"},
+            {
+                "severity": "high",
+                "affected_business_lines": ["Equities"],
+                "affected_regulations": ["Reg S-K"],
+                "risk_summary": "R",
+            },
+        )
+        memory.store_episodic(
+            "T-002",
+            {"title": "B", "domain": "sec"},
+            {
+                "severity": "high",
+                "affected_business_lines": ["Equities"],
+                "affected_regulations": ["Reg S-K"],
+                "risk_summary": "R",
+            },
+        )
 
         rels = memory.get_related_entities("Reg S-K")
         # Weight should be > 1.0 after two filings referencing the same pair
-        equities_rels = [r for r in rels if r["target"] == "Equities" and r["relation"] == "impacts"]
+        equities_rels = [
+            r for r in rels if r["target"] == "Equities" and r["relation"] == "impacts"
+        ]
         assert len(equities_rels) > 0
         assert equities_rels[0]["weight"] > 1.0
 
@@ -107,7 +152,16 @@ class TestContextBlock:
         assert memory.build_context_block("sec", "some text") == ""
 
     def test_context_includes_past_analyses(self, memory):
-        memory.store_episodic("SEC-001", {"id": "SEC-001", "title": "Climate Rule", "domain": "sec"}, {"severity": "critical", "affected_business_lines": ["ESG"], "affected_regulations": [], "risk_summary": "R"})
+        memory.store_episodic(
+            "SEC-001",
+            {"id": "SEC-001", "title": "Climate Rule", "domain": "sec"},
+            {
+                "severity": "critical",
+                "affected_business_lines": ["ESG"],
+                "affected_regulations": [],
+                "risk_summary": "R",
+            },
+        )
         ctx = memory.build_context_block("sec", "climate disclosure")
         assert "RELEVANT PAST ANALYSES" in ctx
         assert "SEC-001" in ctx
@@ -138,11 +192,13 @@ class TestExportImport:
 class TestSimilarityEngine:
     def test_index_and_search(self):
         engine = SimilarityEngine()
-        engine.index({
-            "doc1": "climate disclosure SEC greenhouse gas emissions",
-            "doc2": "medical device AI machine learning FDA",
-            "doc3": "tariff semiconductor supply chain China",
-        })
+        engine.index(
+            {
+                "doc1": "climate disclosure SEC greenhouse gas emissions",
+                "doc2": "medical device AI machine learning FDA",
+                "doc3": "tariff semiconductor supply chain China",
+            }
+        )
         results = engine.search("climate SEC ESG", top_k=2)
         assert len(results) > 0
         assert results[0][0] == "doc1"  # most relevant
@@ -160,10 +216,22 @@ class TestEvidenceLedger:
     def test_recall_evidence_returns_weighted_entries(self, memory):
         memory.store_episodic(
             "SEC-001",
-            {"id": "SEC-001", "title": "Climate Disclosure Final Rule", "domain": "sec", "change_type": "final_rule"},
-            {"severity": "high", "affected_business_lines": ["ESG", "Asset Management"], "affected_regulations": ["Reg S-K"], "risk_summary": "Material disclosure risk"},
+            {
+                "id": "SEC-001",
+                "title": "Climate Disclosure Final Rule",
+                "domain": "sec",
+                "change_type": "final_rule",
+            },
+            {
+                "severity": "high",
+                "affected_business_lines": ["ESG", "Asset Management"],
+                "affected_regulations": ["Reg S-K"],
+                "risk_summary": "Material disclosure risk",
+            },
         )
-        memory.record_feedback("SEC-001", "severity", "high", "critical", "final rule increases urgency")
+        memory.record_feedback(
+            "SEC-001", "severity", "high", "critical", "final rule increases urgency"
+        )
 
         evidence = memory.recall_evidence(
             "sec climate disclosure esg",
@@ -181,8 +249,18 @@ class TestEvidenceLedger:
     def test_context_block_includes_weighted_evidence(self, memory):
         memory.store_episodic(
             "SEC-002",
-            {"id": "SEC-002", "title": "Climate Guidance", "domain": "sec", "change_type": "guidance"},
-            {"severity": "medium", "affected_business_lines": ["ESG"], "affected_regulations": [], "risk_summary": "Climate risk context"},
+            {
+                "id": "SEC-002",
+                "title": "Climate Guidance",
+                "domain": "sec",
+                "change_type": "guidance",
+            },
+            {
+                "severity": "medium",
+                "affected_business_lines": ["ESG"],
+                "affected_regulations": [],
+                "risk_summary": "Climate risk context",
+            },
         )
         ctx = memory.build_context_block("sec", "climate disclosure")
         assert "WEIGHTED EVIDENCE LEDGER" in ctx

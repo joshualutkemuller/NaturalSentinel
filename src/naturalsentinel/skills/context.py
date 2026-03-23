@@ -1,8 +1,13 @@
 """Skill: Assemble a memory context block for LLM prompt injection."""
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 
 
@@ -20,7 +25,9 @@ class BuildContextSkill(Skill):
         parameters=[
             SkillParameter("domain", "str", "Regulatory domain code (sec, cfpb, etc.)."),
             SkillParameter("filing_text", "str", "The filing text to find context for."),
-            SkillParameter("max_tokens", "int", "Soft cap on context length.", required=False, default=1500),
+            SkillParameter(
+                "max_tokens", "int", "Soft cap on context length.", required=False, default=1500
+            ),
         ],
         returns="str — formatted memory context block (empty if no relevant memories)",
         dependencies=[],
@@ -30,7 +37,12 @@ class BuildContextSkill(Skill):
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.memory is None:
-            return SkillResult(skill_name=self.metadata.name, success=True, data="", metadata={"reason": "no memory attached"})
+            return SkillResult(
+                skill_name=self.metadata.name,
+                success=True,
+                data="",
+                metadata={"reason": "no memory attached"},
+            )
 
         block = context.memory.build_context_block(
             context.params["domain"],
@@ -38,6 +50,8 @@ class BuildContextSkill(Skill):
             max_tokens=context.params.get("max_tokens", 1500),
         )
         return SkillResult(
-            skill_name=self.metadata.name, success=True, data=block,
+            skill_name=self.metadata.name,
+            success=True,
+            data=block,
             metadata={"length": len(block), "has_content": bool(block)},
         )

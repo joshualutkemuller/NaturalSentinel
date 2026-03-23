@@ -7,12 +7,16 @@ CFIUS foreign investment review triggers.
 """
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES
 from naturalsentinel.utils.parsing import parse_llm_json
-
 
 TECH_MERGER_REVIEW_SYSTEM = """\
 You are a senior technology and telecom M&A antitrust specialist with expertise in \
@@ -92,13 +96,25 @@ class TechMergerReviewSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["merger", "ma", "antitrust", "hsr", "fcc-transfer", "cfius", "doj", "ftc", "eu-merger"],
+        tags=[
+            "merger",
+            "ma",
+            "antitrust",
+            "hsr",
+            "fcc-transfer",
+            "cfius",
+            "doj",
+            "ftc",
+            "eu-merger",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="LLM access denied — this skill requires LLM_READ permission",
             )
 

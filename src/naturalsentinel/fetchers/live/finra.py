@@ -17,11 +17,13 @@ import logging
 import re
 import urllib.error
 from datetime import datetime, timedelta
-from typing import Optional
 
 from naturalsentinel.fetchers.live.http_client import HTTPClient
 from naturalsentinel.fetchers.live.parsers import (
-    html_to_text, detect_change_type, normalise_whitespace, truncate,
+    detect_change_type,
+    html_to_text,
+    normalise_whitespace,
+    truncate,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,7 +36,7 @@ def fetch(
     since_days: int = 60,
     limit: int = 20,
     fetch_full_text: bool = True,
-    client: Optional[HTTPClient] = None,
+    client: HTTPClient | None = None,
 ) -> list[dict]:
     """Fetch recent FINRA regulatory notices.
 
@@ -84,9 +86,9 @@ def _parse_index(html_content: str, cutoff: datetime, limit: int) -> list[dict]:
     entries: list[dict] = []
 
     # Pattern 1: look for FINRA notice number references (e.g. "24-15", "25-03")
-    notice_pattern = re.compile(
-        r'"(/rules-guidance/notices/(\d{2}-\d+))"'   # relative URL + notice ID
-        r'[^>]*>[^<]*</a>',
+    _notice_pattern = re.compile(
+        r'"(/rules-guidance/notices/(\d{2}-\d+))"'  # relative URL + notice ID
+        r"[^>]*>[^<]*</a>",
         re.DOTALL,
     )
 
@@ -98,7 +100,7 @@ def _parse_index(html_content: str, cutoff: datetime, limit: int) -> list[dict]:
 
     # Date pattern anywhere near a match
     date_pattern = re.compile(
-        r'(\w+\s+\d{1,2},\s+\d{4})'   # e.g. "March 15, 2026"
+        r"(\w+\s+\d{1,2},\s+\d{4})"  # e.g. "March 15, 2026"
     )
 
     # Extract all links first
@@ -111,7 +113,7 @@ def _parse_index(html_content: str, cutoff: datetime, limit: int) -> list[dict]:
 
     # Find all dates in the page (approximate association)
     all_dates = date_pattern.findall(html_content)
-    date_iter = iter(all_dates)
+    _date_iter = iter(all_dates)
 
     for rel_url, title in links_found:
         if len(entries) >= limit:
@@ -145,15 +147,17 @@ def _parse_index(html_content: str, cutoff: datetime, limit: int) -> list[dict]:
         notice_url = _FINRA_BASE + rel_url
         change_type = detect_change_type(title)
 
-        entries.append({
-            "id": doc_id,
-            "title": title,
-            "domain": "finra",
-            "source_url": notice_url,
-            "published_date": pub_date.strftime("%Y-%m-%d"),
-            "change_type": change_type,
-            "raw_text": title,  # Replaced by full text if fetched
-            "notice_url": notice_url,
-        })
+        entries.append(
+            {
+                "id": doc_id,
+                "title": title,
+                "domain": "finra",
+                "source_url": notice_url,
+                "published_date": pub_date.strftime("%Y-%m-%d"),
+                "change_type": change_type,
+                "raw_text": title,  # Replaced by full text if fetched
+                "notice_url": notice_url,
+            }
+        )
 
     return entries

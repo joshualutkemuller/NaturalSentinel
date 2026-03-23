@@ -1,11 +1,12 @@
 """Tests for naturalsentinel.providers — mock and provider factory."""
 
 import json
+
 import pytest
 
+from naturalsentinel.cli import build_provider
 from naturalsentinel.providers.base import ModelProvider
 from naturalsentinel.providers.mock import MockProvider
-from naturalsentinel.cli import build_provider
 
 
 class TestMockProvider:
@@ -31,7 +32,8 @@ class TestMockProvider:
         assert parsed["confidence"] == 0.3
 
     def test_all_sample_filings_have_analyses(self):
-        from naturalsentinel.fetchers.sample_data import SAMPLE_FILINGS, MOCK_ANALYSES
+        from naturalsentinel.fetchers.sample_data import MOCK_ANALYSES, SAMPLE_FILINGS
+
         for filing in SAMPLE_FILINGS:
             assert filing["id"] in MOCK_ANALYSES, f"Missing mock analysis for {filing['id']}"
 

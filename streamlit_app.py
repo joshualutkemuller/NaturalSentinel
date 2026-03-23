@@ -46,11 +46,15 @@ def main() -> None:
     )
 
     st.title("🛰️ NaturalSentinel")
-    st.caption("Upload regulatory or policy documents, analyze them, and review structured outputs.")
+    st.caption(
+        "Upload regulatory or policy documents, analyze them, and review structured outputs."
+    )
 
     with st.sidebar:
         st.header("Analysis settings")
-        provider_name = st.selectbox("Provider", ["mock", "anthropic", "openai", "gemini", "ollama"], index=0)
+        provider_name = st.selectbox(
+            "Provider", ["mock", "anthropic", "openai", "gemini", "ollama"], index=0
+        )
         model_override = st.text_input("Model override (optional)")
         domain = st.selectbox("Document domain", [d.value for d in RegulatoryDomain], index=0)
         memory_db = st.text_input("Memory DB path (optional)", value="")
@@ -107,7 +111,12 @@ def main() -> None:
                 )
 
             st.divider()
-            tabs = st.tabs([item["filing"]["title"][:40] or f"Document {i+1}" for i, item in enumerate(results)])
+            tabs = st.tabs(
+                [
+                    item["filing"]["title"][:40] or f"Document {i + 1}"
+                    for i, item in enumerate(results)
+                ]
+            )
             for tab, item in zip(tabs, results):
                 with tab:
                     left, right = st.columns([1, 1])
@@ -136,7 +145,9 @@ def main() -> None:
             st.error(str(exc))
 
     elif not uploaded_files:
-        st.info("Upload files to start. This UI is best for clean document review and local analysis workflows.")
+        st.info(
+            "Upload files to start. This UI is best for clean document review and local analysis workflows."
+        )
 
 
 if __name__ == "__main__":

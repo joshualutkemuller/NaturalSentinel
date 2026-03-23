@@ -36,7 +36,6 @@ import logging
 import os
 import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -47,29 +46,29 @@ try:
     from mcp.server import Server
     from mcp.server.stdio import stdio_server
     from mcp.types import (
-        Tool,
-        TextContent,
+        Prompt,
+        PromptArgument,
+        PromptMessage,
         Resource,
         ResourceTemplate,
-        Prompt,
-        PromptMessage,
-        PromptArgument,
+        TextContent,
+        Tool,
     )
+
     HAS_MCP = True
 except ImportError:
     HAS_MCP = False
 
 # Local imports
 from agent import (
-    RegulatoryMonitorAgent,
-    RegulatoryDomain,
-    ModelProvider,
-    AnthropicProvider,
-    OpenAIProvider,
-    GeminiProvider,
-    OllamaProvider,
-    fetch_filings,
     DOMAIN_BUSINESS_LINES,
+    AnthropicProvider,
+    GeminiProvider,
+    ModelProvider,
+    OllamaProvider,
+    OpenAIProvider,
+    RegulatoryDomain,
+    RegulatoryMonitorAgent,
 )
 from memory import MemoryStore, MemoryType
 
@@ -82,12 +81,14 @@ logger = logging.getLogger("RegMCP")
 _memory: MemoryStore | None = None
 _agent: RegulatoryMonitorAgent | None = None
 
+
 def _get_memory() -> MemoryStore:
     global _memory
     if _memory is None:
         db_path = os.getenv("REGMON_MEMORY_DB", "regmon_memory.db")
         _memory = MemoryStore(db_path)
     return _memory
+
 
 def _get_agent() -> RegulatoryMonitorAgent:
     global _agent
@@ -102,6 +103,7 @@ def _get_agent() -> RegulatoryMonitorAgent:
         # Attach memory to the agent
         _agent.memory = _get_memory()
     return _agent
+
 
 def _build_provider(name: str, model: str | None = None) -> ModelProvider:
     match name.lower():
@@ -120,6 +122,7 @@ def _build_provider(name: str, model: str | None = None) -> ModelProvider:
 # ═══════════════════════════════════════════════════════════════════════════
 # MCP SERVER DEFINITION
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 def create_mcp_server() -> "Server":
     """Build and configure the MCP server with all tools, resources, and prompts."""
@@ -151,7 +154,10 @@ def create_mcp_server() -> "Server":
                     "properties": {
                         "domains": {
                             "type": "array",
-                            "items": {"type": "string", "enum": ["sec", "cfpb", "fed", "fda", "epa", "ustr"]},
+                            "items": {
+                                "type": "string",
+                                "enum": ["sec", "cfpb", "fed", "fda", "epa", "ustr"],
+                            },
                             "description": "Regulatory agencies to scan. Omit for all.",
                         },
                         "days": {
@@ -172,7 +178,10 @@ def create_mcp_server() -> "Server":
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "title": {"type": "string", "description": "Title of the filing or document"},
+                        "title": {
+                            "type": "string",
+                            "description": "Title of the filing or document",
+                        },
                         "text": {"type": "string", "description": "The regulatory text to analyze"},
                         "domain": {
                             "type": "string",
@@ -226,7 +235,10 @@ def create_mcp_server() -> "Server":
                         },
                         "old_value": {"type": "string", "description": "The current/wrong value"},
                         "new_value": {"type": "string", "description": "The correct value"},
-                        "reason": {"type": "string", "description": "Why this correction is needed"},
+                        "reason": {
+                            "type": "string",
+                            "description": "Why this correction is needed",
+                        },
                     },
                     "required": ["filing_id", "field", "old_value", "new_value"],
                 },
@@ -241,7 +253,10 @@ def create_mcp_server() -> "Server":
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "entity": {"type": "string", "description": "Entity name (regulation, agency, business line)"},
+                        "entity": {
+                            "type": "string",
+                            "description": "Entity name (regulation, agency, business line)",
+                        },
                     },
                     "required": ["entity"],
                 },
@@ -276,6 +291,7 @@ def create_mcp_server() -> "Server":
 
             # Store results in memory
             from enum import Enum
+
             def _ser(obj):
                 if isinstance(obj, Enum):
                     return obj.value
@@ -291,15 +307,20 @@ def create_mcp_server() -> "Server":
                 mem.store_episodic(r.filing.id, f_dict, i_dict)
                 output.append({"filing": f_dict, "impact": i_dict})
 
-            return json.dumps({
-                "status": "success",
-                "filings_analyzed": len(results),
-                "results": output,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "success",
+                    "filings_analyzed": len(results),
+                    "results": output,
+                },
+                indent=2,
+            )
 
         elif name == "analyze_filing_text":
-            from agent import RegulatoryFiling, ChangeType, SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
             import hashlib
+
+            from agent import RegulatoryFiling
+
             agent = _get_agent()
             fid = f"CUSTOM-{hashlib.sha256(args['text'][:100].encode()).hexdigest()[:8]}"
             filing = RegulatoryFiling(
@@ -311,12 +332,14 @@ def create_mcp_server() -> "Server":
                 raw_text=args["text"],
             )
             # Inject memory context
-            mem_context = mem.build_context_block(args["domain"], args["text"])
+            _mem_context = mem.build_context_block(args["domain"], args["text"])
             result = agent._analyze_filing(filing)
 
             from enum import Enum
+
             def _ser(obj):
-                if isinstance(obj, Enum): return obj.value
+                if isinstance(obj, Enum):
+                    return obj.value
                 return str(obj)
             f_dict = json.loads(json.dumps(result.filing.model_dump(), default=_ser))
             i_dict = json.loads(json.dumps(result.impact.model_dump(), default=_ser))
@@ -326,18 +349,21 @@ def create_mcp_server() -> "Server":
         elif name == "recall_memory":
             mt = MemoryType(args["memory_type"]) if args.get("memory_type") else None
             results = mem.recall(args["query"], top_k=args.get("top_k", 5), memory_type=mt)
-            return json.dumps([
-                {
-                    "id": r.id,
-                    "type": r.memory_type.value,
-                    "key": r.key,
-                    "namespace": r.namespace,
-                    "relevance": round(r.relevance_score, 3),
-                    "content": r.content,
-                    "created_at": r.created_at,
-                }
-                for r in results
-            ], indent=2)
+            return json.dumps(
+                [
+                    {
+                        "id": r.id,
+                        "type": r.memory_type.value,
+                        "key": r.key,
+                        "namespace": r.namespace,
+                        "relevance": round(r.relevance_score, 3),
+                        "content": r.content,
+                        "created_at": r.created_at,
+                    }
+                    for r in results
+                ],
+                indent=2,
+            )
 
         elif name == "provide_feedback":
             mem.record_feedback(
@@ -347,11 +373,13 @@ def create_mcp_server() -> "Server":
                 new_value=args["new_value"],
                 reason=args.get("reason", ""),
             )
-            return json.dumps({
-                "status": "recorded",
-                "message": f"Feedback recorded for {args['filing_id']}.{args['field']}. "
-                           f"This correction will be used in future analyses.",
-            })
+            return json.dumps(
+                {
+                    "status": "recorded",
+                    "message": f"Feedback recorded for {args['filing_id']}.{args['field']}. "
+                    f"This correction will be used in future analyses.",
+                }
+            )
 
         elif name == "get_entity_relations":
             relations = mem.get_related_entities(args["entity"])
@@ -417,10 +445,13 @@ def create_mcp_server() -> "Server":
             return json.dumps(mem.stats(), indent=2)
 
         elif uri == "regmon://config/domains":
-            return json.dumps({
-                "domains": [d.value for d in RegulatoryDomain],
-                "business_lines": DOMAIN_BUSINESS_LINES,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "domains": [d.value for d in RegulatoryDomain],
+                    "business_lines": DOMAIN_BUSINESS_LINES,
+                },
+                indent=2,
+            )
 
         elif uri.startswith("regmon://filings/domain/"):
             domain = uri.split("/")[-1]
@@ -431,11 +462,15 @@ def create_mcp_server() -> "Server":
             entity = uri.split("/", 3)[-1]
             relations = mem.get_related_entities(entity)
             memories = mem.recall(entity, top_k=5, memory_type=MemoryType.ENTITY)
-            return json.dumps({
-                "entity": entity,
-                "relations": relations,
-                "memories": [{"key": m.key, "content": m.content} for m in memories],
-            }, indent=2, default=str)
+            return json.dumps(
+                {
+                    "entity": entity,
+                    "relations": relations,
+                    "memories": [{"key": m.key, "content": m.content} for m in memories],
+                },
+                indent=2,
+                default=str,
+            )
 
         return json.dumps({"error": f"Unknown resource: {uri}"})
 
@@ -492,82 +527,102 @@ def create_mcp_server() -> "Server":
         if name == "regulatory_briefing":
             audience = args.get("audience", "executive leadership")
             recent = mem.get_filing_history(limit=10)
-            context = "\n".join([
-                f"- {r.content.get('filing', {}).get('title', '?')} "
-                f"(severity: {r.content.get('impact', {}).get('severity', '?')})"
-                for r in recent
-            ]) or "No filings in memory yet. Run a scan first."
+            context = (
+                "\n".join(
+                    [
+                        f"- {r.content.get('filing', {}).get('title', '?')} "
+                        f"(severity: {r.content.get('impact', {}).get('severity', '?')})"
+                        for r in recent
+                    ]
+                )
+                or "No filings in memory yet. Run a scan first."
+            )
 
-            return [PromptMessage(
-                role="user",
-                content=TextContent(
-                    type="text",
-                    text=(
-                        f"Generate a concise regulatory briefing for {audience}.\n\n"
-                        f"Recent filings in the system:\n{context}\n\n"
-                        f"Use the scan_regulatory_filings tool to get the latest data, "
-                        f"then produce a structured briefing with:\n"
-                        f"1. Executive summary (3-4 sentences)\n"
-                        f"2. Critical items requiring immediate attention\n"
-                        f"3. Upcoming deadlines\n"
-                        f"4. Recommended actions by department"
+            return [
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            f"Generate a concise regulatory briefing for {audience}.\n\n"
+                            f"Recent filings in the system:\n{context}\n\n"
+                            f"Use the scan_regulatory_filings tool to get the latest data, "
+                            f"then produce a structured briefing with:\n"
+                            f"1. Executive summary (3-4 sentences)\n"
+                            f"2. Critical items requiring immediate attention\n"
+                            f"3. Upcoming deadlines\n"
+                            f"4. Recommended actions by department"
+                        ),
                     ),
-                ),
-            )]
+                )
+            ]
 
         elif name == "impact_deep_dive":
             filing_id = args.get("filing_id", "")
             record = mem.get(f"episodic:{filing_id}")
-            context = json.dumps(record.content, indent=2) if record else "Filing not found in memory."
+            context = (
+                json.dumps(record.content, indent=2) if record else "Filing not found in memory."
+            )
 
-            return [PromptMessage(
-                role="user",
-                content=TextContent(
-                    type="text",
-                    text=(
-                        f"Perform a deep-dive impact analysis for filing {filing_id}.\n\n"
-                        f"Filing data:\n{context}\n\n"
-                        f"Use recall_memory and get_entity_relations to find related "
-                        f"filings and entity connections. Then provide:\n"
-                        f"1. Detailed regulatory impact chain\n"
-                        f"2. Cross-references to related active regulations\n"
-                        f"3. Department-by-department action plan with timelines\n"
-                        f"4. Estimated compliance cost range\n"
-                        f"5. Risk scenarios if action is delayed"
+            return [
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            f"Perform a deep-dive impact analysis for filing {filing_id}.\n\n"
+                            f"Filing data:\n{context}\n\n"
+                            f"Use recall_memory and get_entity_relations to find related "
+                            f"filings and entity connections. Then provide:\n"
+                            f"1. Detailed regulatory impact chain\n"
+                            f"2. Cross-references to related active regulations\n"
+                            f"3. Department-by-department action plan with timelines\n"
+                            f"4. Estimated compliance cost range\n"
+                            f"5. Risk scenarios if action is delayed"
+                        ),
                     ),
-                ),
-            )]
+                )
+            ]
 
         elif name == "compliance_gap_analysis":
             biz_line = args.get("business_line", "")
             related = mem.recall(biz_line, top_k=10, memory_type=MemoryType.EPISODIC)
-            context = "\n".join([
-                f"- {r.key}: {r.content.get('impact', {}).get('severity', '?')}"
-                for r in related
-            ]) or "No related filings found."
+            context = (
+                "\n".join(
+                    [
+                        f"- {r.key}: {r.content.get('impact', {}).get('severity', '?')}"
+                        for r in related
+                    ]
+                )
+                or "No related filings found."
+            )
 
-            return [PromptMessage(
-                role="user",
-                content=TextContent(
-                    type="text",
-                    text=(
-                        f"Perform a compliance gap analysis for the '{biz_line}' business line.\n\n"
-                        f"Related filings:\n{context}\n\n"
-                        f"Use recall_memory to search for all relevant filings and precedents. "
-                        f"Then produce:\n"
-                        f"1. Summary of all regulatory requirements affecting this business line\n"
-                        f"2. Current compliance posture (based on action items)\n"
-                        f"3. Identified gaps\n"
-                        f"4. Prioritized remediation roadmap\n"
-                        f"5. Cross-regulatory dependencies"
+            return [
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            f"Perform a compliance gap analysis for the '{biz_line}' business line.\n\n"
+                            f"Related filings:\n{context}\n\n"
+                            f"Use recall_memory to search for all relevant filings and precedents. "
+                            f"Then produce:\n"
+                            f"1. Summary of all regulatory requirements affecting this business line\n"
+                            f"2. Current compliance posture (based on action items)\n"
+                            f"3. Identified gaps\n"
+                            f"4. Prioritized remediation roadmap\n"
+                            f"5. Cross-regulatory dependencies"
+                        ),
                     ),
-                ),
-            )]
+                )
+            ]
 
-        return [PromptMessage(
-            role="user",
-            content=TextContent(type="text", text=f"Unknown prompt: {name}"),
-        )]
+        return [
+            PromptMessage(
+                role="user",
+                content=TextContent(type="text", text=f"Unknown prompt: {name}"),
+            )
+        ]
 
     return server
 
@@ -576,6 +631,7 @@ def create_mcp_server() -> "Server":
 # STANDALONE MODE — When MCP SDK is not available, expose the same
 # capabilities as a simple JSON-RPC style interface over stdin/stdout
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 class StandaloneServer:
     """
@@ -610,11 +666,13 @@ class StandaloneServer:
                 return {"result": self.tools[tool_name](args)}
             return {"error": f"Unknown tool: {tool_name}"}
         elif method == "resources/list":
-            return {"resources": [
-                "regmon://filings/recent",
-                "regmon://memory/stats",
-                "regmon://config/domains",
-            ]}
+            return {
+                "resources": [
+                    "regmon://filings/recent",
+                    "regmon://memory/stats",
+                    "regmon://config/domains",
+                ]
+            }
         elif method == "resources/read":
             uri = params.get("uri", "")
             return {"result": self._read_resource(uri)}
@@ -622,15 +680,27 @@ class StandaloneServer:
             return {"error": f"Unknown method: {method}"}
 
     def _scan(self, args: dict) -> dict:
-        return {"status": "use the full MCP server for scanning", "memory_stats": self.memory.stats()}
+        return {
+            "status": "use the full MCP server for scanning",
+            "memory_stats": self.memory.stats(),
+        }
 
     def _recall(self, args: dict) -> list:
         mt = MemoryType(args["memory_type"]) if args.get("memory_type") else None
         results = self.memory.recall(args["query"], top_k=args.get("top_k", 5), memory_type=mt)
-        return [{"id": r.id, "key": r.key, "relevance": r.relevance_score, "content": r.content} for r in results]
+        return [
+            {"id": r.id, "key": r.key, "relevance": r.relevance_score, "content": r.content}
+            for r in results
+        ]
 
     def _feedback(self, args: dict) -> dict:
-        self.memory.record_feedback(args["filing_id"], args["field"], args["old_value"], args["new_value"], args.get("reason", ""))
+        self.memory.record_feedback(
+            args["filing_id"],
+            args["field"],
+            args["old_value"],
+            args["new_value"],
+            args.get("reason", ""),
+        )
         return {"status": "recorded"}
 
     def _relations(self, args: dict) -> list:
@@ -643,12 +713,17 @@ class StandaloneServer:
         if uri == "regmon://memory/stats":
             return self.memory.stats()
         elif uri == "regmon://config/domains":
-            return {"domains": [d.value for d in RegulatoryDomain], "business_lines": DOMAIN_BUSINESS_LINES}
+            return {
+                "domains": [d.value for d in RegulatoryDomain],
+                "business_lines": DOMAIN_BUSINESS_LINES,
+            }
         return {"error": f"Unknown resource: {uri}"}
 
     def run_stdio(self):
         """Read JSON lines from stdin, write responses to stdout."""
-        print(json.dumps({"status": "ready", "server": "regulatory-monitor-standalone"}), flush=True)
+        print(
+            json.dumps({"status": "ready", "server": "regulatory-monitor-standalone"}), flush=True
+        )
         for line in sys.stdin:
             line = line.strip()
             if not line:
@@ -665,6 +740,7 @@ class StandaloneServer:
 # ENTRY POINT
 # ═══════════════════════════════════════════════════════════════════════════
 
+
 async def run_mcp_server(transport: str = "stdio"):
     """Run the full MCP server."""
     server = create_mcp_server()
@@ -673,22 +749,27 @@ async def run_mcp_server(transport: str = "stdio"):
         async with stdio_server() as (read_stream, write_stream):
             await server.run(read_stream, write_stream)
     elif transport == "sse":
+        import uvicorn
         from mcp.server.sse import SseServerTransport
         from starlette.applications import Starlette
         from starlette.routing import Route
-        import uvicorn
 
         sse = SseServerTransport("/messages")
-        app = Starlette(routes=[
-            Route("/sse", endpoint=sse.handle_sse_connection),
-            Route("/messages", endpoint=sse.handle_post_message, methods=["POST"]),
-        ])
+        app = Starlette(
+            routes=[
+                Route("/sse", endpoint=sse.handle_sse_connection),
+                Route("/messages", endpoint=sse.handle_post_message, methods=["POST"]),
+            ]
+        )
         uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
     elif transport == "streamable":
-        from mcp.server.streamable_http import StreamableHTTPServerTransport
         import uvicorn
+        from mcp.server.streamable_http import StreamableHTTPServerTransport
+
         # Streamable HTTP is the newest MCP transport
-        transport_obj = StreamableHTTPServerTransport(host="0.0.0.0", port=int(os.getenv("PORT", "8080")))
+        transport_obj = StreamableHTTPServerTransport(
+            host="0.0.0.0", port=int(os.getenv("PORT", "8080"))
+        )
         await server.run_with_transport(transport_obj)
     else:
         raise ValueError(f"Unknown transport: {transport}")
@@ -696,13 +777,15 @@ async def run_mcp_server(transport: str = "stdio"):
 
 def main():
     import argparse
+
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 
     parser = argparse.ArgumentParser(description="Regulatory Monitor MCP Server")
     parser.add_argument(
-        "--transport", default="stdio",
+        "--transport",
+        default="stdio",
         choices=["stdio", "sse", "streamable", "standalone"],
-        help="Transport mode: stdio (Claude Desktop), sse (web), streamable (HTTP), standalone (no MCP SDK)"
+        help="Transport mode: stdio (Claude Desktop), sse (web), streamable (HTTP), standalone (no MCP SDK)",
     )
     args = parser.parse_args()
 
@@ -713,6 +796,7 @@ def main():
         server.run_stdio()
     else:
         import asyncio
+
         asyncio.run(run_mcp_server(args.transport))
 
 

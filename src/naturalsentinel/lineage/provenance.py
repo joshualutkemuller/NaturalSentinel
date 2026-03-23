@@ -20,21 +20,20 @@ Usage::
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass, asdict
-from typing import Optional
+from dataclasses import asdict, dataclass
 
 
 @dataclass
 class ModelProvenance:
     """Provenance record for a single pipeline step that calls the LLM."""
 
-    provider: str               # "anthropic" | "openai" | "gemini" | "unknown"
-    model: str                  # Model identifier, e.g. "claude-sonnet-4-6"
-    model_version: str          # API version / date string if available
-    temperature: float          # Sampling temperature used
-    max_tokens: int             # Token limit configured
-    prompt_template_hash: str   # SHA-256[:16] of the system prompt template
-    skill_version: str = ""     # Version of the skill that invoked the LLM
+    provider: str  # "anthropic" | "openai" | "gemini" | "unknown"
+    model: str  # Model identifier, e.g. "claude-sonnet-4-6"
+    model_version: str  # API version / date string if available
+    temperature: float  # Sampling temperature used
+    max_tokens: int  # Token limit configured
+    prompt_template_hash: str  # SHA-256[:16] of the system prompt template
+    skill_version: str = ""  # Version of the skill that invoked the LLM
     notes: str = ""
 
     def to_dict(self) -> dict:
@@ -53,7 +52,7 @@ class ModelProvenance:
         skill_version: str = "",
         temperature: float = 0.1,
         max_tokens: int = 4096,
-    ) -> "ModelProvenance":
+    ) -> ModelProvenance:
         """Build a :class:`ModelProvenance` from a :class:`SkillContext`.
 
         Extracts provider and model from ``context.llm`` if available, falling
@@ -87,7 +86,7 @@ class ModelProvenance:
         )
 
     @classmethod
-    def unknown(cls) -> "ModelProvenance":
+    def unknown(cls) -> ModelProvenance:
         """Sentinel provenance for cases where the LLM was not called."""
         return cls(
             provider="unknown",

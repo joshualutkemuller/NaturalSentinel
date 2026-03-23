@@ -1,6 +1,5 @@
 """Tests for naturalsentinel.cli local document ingestion and parser behavior."""
 
-import json
 import os
 import sys
 import tempfile

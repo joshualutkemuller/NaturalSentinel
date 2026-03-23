@@ -1,6 +1,7 @@
 """Google Gemini provider."""
 
 import os
+
 from naturalsentinel.providers.base import ModelProvider
 
 
@@ -17,12 +18,11 @@ class GeminiProvider(ModelProvider):
 
     def complete(self, system: str, user: str, temperature: float = 0.2) -> str:
         from google.genai import types
+
         resp = self.client.models.generate_content(
             model=self.model,
             contents=f"{system}\n\n{user}",
-            config=types.GenerateContentConfig(
-                temperature=temperature, max_output_tokens=4096
-            ),
+            config=types.GenerateContentConfig(temperature=temperature, max_output_tokens=4096),
         )
         return resp.text
 

@@ -73,26 +73,25 @@ class ComplianceTrackerAgent:
 
     def overdue(self, domain_filter: str = "", limit: int = 100) -> list[dict]:
         """Return only overdue compliance items — fast path for alerts."""
-        calendar = self._get_calendar(
-            look_ahead_days=1, domain_filter=domain_filter, limit=limit
-        )
+        calendar = self._get_calendar(look_ahead_days=1, domain_filter=domain_filter, limit=limit)
         return calendar.get("overdue", [])
 
     def due_soon(self, look_ahead_days: int = 30, domain_filter: str = "") -> list[dict]:
         """Return compliance items due within look_ahead_days."""
-        calendar = self._get_calendar(
-            look_ahead_days=look_ahead_days, domain_filter=domain_filter
-        )
+        calendar = self._get_calendar(look_ahead_days=look_ahead_days, domain_filter=domain_filter)
         return calendar.get("due_soon", [])
 
     def export(self, fmt: str = "markdown", domain_filter: str = "", limit: int = 25) -> str:
         """Render a compliance report in the specified format and return the content."""
-        result = self.runtime.execute_skill("export_report", {
-            "format": fmt,
-            "domain_filter": domain_filter,
-            "limit": limit,
-            "min_severity": "low",
-        })
+        result = self.runtime.execute_skill(
+            "export_report",
+            {
+                "format": fmt,
+                "domain_filter": domain_filter,
+                "limit": limit,
+                "min_severity": "low",
+            },
+        )
         if result.success:
             return result.data.get("content", "")
         return f"[Export failed: {result.error}]"
@@ -100,25 +99,34 @@ class ComplianceTrackerAgent:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _get_calendar(self, look_ahead_days: int, domain_filter: str, limit: int = 100) -> dict:
-        result = self.runtime.execute_skill("compliance_deadline", {
-            "look_ahead_days": look_ahead_days,
-            "domain_filter": domain_filter,
-            "limit": limit,
-        })
+        result = self.runtime.execute_skill(
+            "compliance_deadline",
+            {
+                "look_ahead_days": look_ahead_days,
+                "domain_filter": domain_filter,
+                "limit": limit,
+            },
+        )
         if result.success:
             return result.data
         return {
-            "overdue": [], "due_soon": [], "upcoming": [], "no_deadline": [],
+            "overdue": [],
+            "due_soon": [],
+            "upcoming": [],
+            "no_deadline": [],
             "summary": {"error": result.error},
         }
 
     def _get_export(self, fmt: str, domain_filter: str, limit: int) -> dict:
-        result = self.runtime.execute_skill("export_report", {
-            "format": fmt,
-            "domain_filter": domain_filter,
-            "limit": min(limit, 25),
-            "min_severity": "low",
-        })
+        result = self.runtime.execute_skill(
+            "export_report",
+            {
+                "format": fmt,
+                "domain_filter": domain_filter,
+                "limit": min(limit, 25),
+                "min_severity": "low",
+            },
+        )
         if result.success:
             return result.data
         return {"format": fmt, "content": f"[Export failed: {result.error}]", "row_count": 0}
@@ -126,10 +134,13 @@ class ComplianceTrackerAgent:
     def _get_briefing(self, include: bool) -> str | None:
         if not include:
             return None
-        result = self.runtime.execute_skill("generate_briefing", {
-            "audience": "compliance team",
-            "limit": 10,
-        })
+        result = self.runtime.execute_skill(
+            "generate_briefing",
+            {
+                "audience": "compliance team",
+                "limit": 10,
+            },
+        )
         if result.success:
             return result.data
         return f"[Briefing unavailable: {result.error}]"

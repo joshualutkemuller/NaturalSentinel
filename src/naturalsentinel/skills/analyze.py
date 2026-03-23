@@ -15,17 +15,22 @@ This skill wraps the core LLM call and enriches its output with:
 """
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
-from naturalsentinel.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES
-from naturalsentinel.utils.parsing import parse_llm_json
-from naturalsentinel.lineage.citation import parse_citations
-from naturalsentinel.lineage.trace import DecisionTrace
-from naturalsentinel.lineage.provenance import ModelProvenance
 from naturalsentinel.governance.audit import AuditEvent, AuditEventType, AuditSeverity
 from naturalsentinel.governance.policy import EscalationPolicy, FallbackPolicy
+from naturalsentinel.lineage.citation import parse_citations
+from naturalsentinel.lineage.provenance import ModelProvenance
+from naturalsentinel.lineage.trace import DecisionTrace
+from naturalsentinel.prompts import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
+from naturalsentinel.utils.parsing import parse_llm_json
 
 
 class AnalyzeFilingSkill(Skill):
@@ -44,23 +49,30 @@ class AnalyzeFilingSkill(Skill):
         latency=LatencyClass.MODERATE,
         parameters=[
             SkillParameter(
-                "filing", "dict",
+                "filing",
+                "dict",
                 "Serialised RegulatoryFiling with id, title, domain, raw_text, etc.",
             ),
             SkillParameter(
-                "memory_context", "str",
+                "memory_context",
+                "str",
                 "Pre-built memory context block to append to the prompt.",
-                required=False, default="",
+                required=False,
+                default="",
             ),
             SkillParameter(
-                "calibration_ece", "float",
+                "calibration_ece",
+                "float",
                 "Latest ECE from the calibration report — used by escalation policy.",
-                required=False, default=None,
+                required=False,
+                default=None,
             ),
             SkillParameter(
-                "drift_detected", "bool",
+                "drift_detected",
+                "bool",
                 "Whether extraction drift was flagged in the latest eval run.",
-                required=False, default=None,
+                required=False,
+                default=None,
             ),
         ],
         returns=(
@@ -74,23 +86,25 @@ class AnalyzeFilingSkill(Skill):
     )
 
     _escalation_policy = EscalationPolicy.default()
-    _fallback_policy   = FallbackPolicy.default()
+    _fallback_policy = FallbackPolicy.default()
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="LLM access denied — this skill requires LLM_READ permission",
             )
 
         filing = context.params["filing"]
-        memory_context   = context.params.get("memory_context", "")
-        calibration_ece  = context.params.get("calibration_ece")
-        drift_detected   = context.params.get("drift_detected")
-        filing_id        = filing.get("id", "UNKNOWN")
-        domain           = filing.get("domain", "")
-        source_url       = filing.get("source_url", "")
-        domain_lines     = DOMAIN_BUSINESS_LINES.get(domain, [])
+        memory_context = context.params.get("memory_context", "")
+        calibration_ece = context.params.get("calibration_ece")
+        drift_detected = context.params.get("drift_detected")
+        filing_id = filing.get("id", "UNKNOWN")
+        domain = filing.get("domain", "")
+        source_url = filing.get("source_url", "")
+        domain_lines = DOMAIN_BUSINESS_LINES.get(domain, [])
 
         # ── 1. Start decision trace ──────────────────────────────────────
         trace = DecisionTrace.start(filing_id=filing_id)
@@ -117,14 +131,20 @@ class AnalyzeFilingSkill(Skill):
                 raw = context.llm.complete(SYSTEM_PROMPT, user_prompt, temperature=0.1)
             except Exception as exc:
                 step.status = "error"
-                step.notes  = str(exc)
+                step.notes = str(exc)
                 # Emit ANALYSIS_FAILED audit event if memory is available
                 self._emit_audit(
-                    context, AuditEventType.ANALYSIS_FAILED, filing_id, trace.trace_id,
-                    payload={"error": str(exc)}, severity=AuditSeverity.WARNING,
+                    context,
+                    AuditEventType.ANALYSIS_FAILED,
+                    filing_id,
+                    trace.trace_id,
+                    payload={"error": str(exc)},
+                    severity=AuditSeverity.WARNING,
                 )
                 return SkillResult(
-                    skill_name=self.metadata.name, success=False, data=None,
+                    skill_name=self.metadata.name,
+                    success=False,
+                    data=None,
                     error=f"LLM inference failed: {exc}",
                 )
 
@@ -133,10 +153,10 @@ class AnalyzeFilingSkill(Skill):
                 prompt_template=SYSTEM_PROMPT,
                 skill_version=self.metadata.version,
             )
-            step.provider      = prov.provider
-            step.model         = prov.model
+            step.provider = prov.provider
+            step.model = prov.model
             step.model_version = prov.model_version
-            step.token_usage   = len(user_prompt) // 4 + len(raw) // 4
+            step.token_usage = len(user_prompt) // 4 + len(raw) // 4
             step.output_summary = f"response={len(raw)} chars"
 
         # ── 4. Parse response ─────────────────────────────────────────────
@@ -154,7 +174,7 @@ class AnalyzeFilingSkill(Skill):
             }
             parsed = parse_llm_json(raw, fallback=fallback)
             parsed["filing_id"] = filing_id
-            parsed["domain"]    = domain
+            parsed["domain"] = domain
             step.output_summary = (
                 f"severity={parsed.get('severity')}, "
                 f"confidence={parsed.get('confidence')}, "
@@ -164,9 +184,9 @@ class AnalyzeFilingSkill(Skill):
         # ── 5. Extract citations ──────────────────────────────────────────
         with trace.step("extract_citations") as step:
             overall_conf = float(parsed.get("confidence", 0.0))
-            bundle = parse_citations(parsed, filing_id=filing_id,
-                                     source_url=source_url,
-                                     overall_confidence=overall_conf)
+            bundle = parse_citations(
+                parsed, filing_id=filing_id, source_url=source_url, overall_confidence=overall_conf
+            )
             parsed["citations"] = bundle.as_flat_dict()
             step.output_summary = f"{len(bundle.citations)} field citations"
 
@@ -181,10 +201,10 @@ class AnalyzeFilingSkill(Skill):
             parsed["escalation_reasons"] = escalation_reasons
             if escalation_reasons:
                 step.status = "warning"
-                step.notes  = "; ".join(escalation_reasons)
+                step.notes = "; ".join(escalation_reasons)
 
         # ── 7. Record provenance on impact dict ───────────────────────────
-        parsed["trace_id"]   = trace.trace_id
+        parsed["trace_id"] = trace.trace_id
         parsed["provenance"] = prov.to_dict()
 
         # ── 8. Finish trace and store ─────────────────────────────────────
@@ -200,13 +220,18 @@ class AnalyzeFilingSkill(Skill):
         # ── 9. Emit audit event ───────────────────────────────────────────
         if escalation_reasons:
             self._emit_audit(
-                context, AuditEventType.ESCALATION_TRIGGERED, filing_id,
+                context,
+                AuditEventType.ESCALATION_TRIGGERED,
+                filing_id,
                 trace.trace_id,
                 payload={"reasons": escalation_reasons, "severity": parsed.get("severity")},
                 severity=AuditSeverity.HIGH,
             )
         self._emit_audit(
-            context, AuditEventType.ANALYSIS_COMPLETED, filing_id, trace.trace_id,
+            context,
+            AuditEventType.ANALYSIS_COMPLETED,
+            filing_id,
+            trace.trace_id,
             payload={
                 "severity": parsed.get("severity"),
                 "confidence": parsed.get("confidence"),
@@ -222,11 +247,11 @@ class AnalyzeFilingSkill(Skill):
             data=parsed,
             token_usage=sum(s.token_usage for s in trace.steps),
             metadata={
-                "filing_id":          filing_id,
-                "severity":           parsed.get("severity"),
-                "trace_id":           trace.trace_id,
+                "filing_id": filing_id,
+                "severity": parsed.get("severity"),
+                "trace_id": trace.trace_id,
                 "escalation_reasons": escalation_reasons,
-                "n_citations":        len(bundle.citations),
+                "n_citations": len(bundle.citations),
             },
         )
 

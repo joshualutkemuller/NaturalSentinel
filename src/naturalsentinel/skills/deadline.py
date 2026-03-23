@@ -7,11 +7,16 @@ Tracks overdue, due-soon (≤30 days), and future obligations.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 
 _DATE_FORMATS = ["%Y-%m-%d", "%B %d, %Y", "%b %d, %Y", "%m/%d/%Y"]
@@ -22,14 +27,14 @@ def _parse_date(raw: str | None) -> datetime | None:
         return None
     for fmt in _DATE_FORMATS:
         try:
-            return datetime.strptime(raw.strip(), fmt).replace(tzinfo=timezone.utc)
+            return datetime.strptime(raw.strip(), fmt).replace(tzinfo=UTC)
         except ValueError:
             continue
     return None
 
 
 def _days_until(deadline: datetime) -> int:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return (deadline - now).days
 
 
@@ -83,7 +88,9 @@ class ComplianceDeadlineSkill(Skill):
     def execute(self, context: SkillContext) -> SkillResult:
         if context.memory is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="Memory access denied — requires MEMORY_READ permission",
             )
 

@@ -50,33 +50,141 @@ agent = RegulatoryMonitorAgent(
 **Who:** Telehealth platforms, PBMs, multi-state prescribing groups
 
 **The problem:**
-Post-COVID DEA telehealth rules are still in flux.  The rules differ by:
-- Controlled substance schedule (Schedule II vs. III–V)
-- Prescribing specialty (psychiatry has a different carve-out than pain management)
-- Modality (audio-only vs. audio-video)
-- State of prescriber vs. state of patient
+Post-COVID DEA telehealth rules are still in flux.  The rules differ across
+four simultaneous dimensions:
+
+| Dimension | Values |
+|---|---|
+| Controlled substance schedule | Schedule II vs. III–V vs. buprenorphine (separate rule) |
+| Prescribing specialty | Psychiatry, pain management, primary care, addiction medicine |
+| Visit modality | Audio-video vs. audio-only |
+| Prescriber state × patient state | 30-state operator = up to 900 state-pair combinations |
 
 A telehealth company operating in 30 states with psychiatrists and internists
 has an extremely specific compliance matrix that changes every time DEA issues
-a new proposed rule, interim final rule, or extension of COVID-era exceptions.
+a new proposed rule, interim final rule, or COVID-era extension.  Two open
+proposed rulemakings (88 FR 12875 and 88 FR 12890) and one buprenorphine-
+specific final rule are all active simultaneously — each with different
+effective dates and specialty carve-outs.
 
 **How NaturalSentinel helps:**
-Its business-line impact mapping can be pre-configured for
+Its business-line impact mapping is pre-configured for
 `specialty × schedule × modality` so that a DEA rule change triggers an alert
 scoped to exactly which service lines are affected — not a generic "DEA updated
-telehealth rules" notification.
+telehealth rules" notification.  Episodic memory tracks the chain of extensions
+(COVID PHE → extension 1 → extension 2 → proposed rule) so the system knows
+*which temporary authority is expiring* and *which service line loses coverage*
+when an extension lapses without a final rule.
 
 **Why it's hard to replicate:**
 The intersection of modality, specialty, and schedule creates a sparse matrix
 that requires structured metadata encoding most compliance tools don't support.
+Standard alert tools fire once per Federal Register document — they cannot
+track whether a given extension is the 2nd or 3rd in a chain, or reason about
+which service lines are still covered by the prior extension vs. the new one.
 
-**NaturalSentinel config:**
+---
+
+### MCP Tools Wired In
+
+| MCP Server | Tool | Role |
+|---|---|---|
+| `fetch` | `fetch` | Pull Federal Register JSON API (`api.federalregister.gov/v1/documents?agencies[]=drug-enforcement-administration`) for new DEA filings in real time |
+| `sqlite` | `read_query`, `write_query` | Query and update the compliance matrix table; no patient data — rows are `(schedule, specialty, modality, prescriber_state, patient_state, authority, expiration_date)` |
+| `memory` | `create_entities`, `add_observations`, `search_nodes` | Persist the extension chain as a knowledge graph: `Extension_3 → supersedes → Extension_2 → supersedes → COVID_PHE_Waiver` |
+| `brave_search` | `brave_web_search` | Detect DEA press releases or ONDCP announcements before Federal Register publication (1–5 day lead time) |
+| `time` | `get_current_time`, `convert_time` | Calculate days-remaining to extension expiration in Eastern Time (DEA deadlines are ET) |
+
+**Federal Register API call (via `fetch` MCP):**
 ```python
-custom_business_lines={
-    "telehealth_schedule_ii_psychiatry":   ["DEA 21 CFR 1306", "Ryan Haight Act"],
-    "telehealth_schedule_iii_v_primary":   ["DEA 21 CFR 1306", "DEA Telemedicine Rules"],
-    "telehealth_audio_only_prescribing":   ["DEA Special Registration", "State PDMP"],
+# NaturalSentinel calls this endpoint on each monitoring cycle
+FR_API = (
+    "https://api.federalregister.gov/v1/documents.json"
+    "?conditions[agencies][]=drug-enforcement-administration"
+    "&conditions[type][]=RULE"
+    "&conditions[type][]=PRORULE"
+    "&conditions[type][]=NOTICE"
+    "&order=newest"
+    "&per_page=20"
+    "&fields[]=document_number,title,publication_date,effective_on,"
+    "abstract,regulation_id_numbers,full_text_xml_url"
+)
+```
+
+---
+
+### HIPAA-Safe Metadata Schema
+
+All fields are regulatory metadata — no PHI, no patient identifiers, no
+clinical data.  The compliance matrix rows and alert payloads contain only:
+
+```python
+# Per-rule metadata stored in SQLite via mcp-server-sqlite
+{
+    # Document identity
+    "document_number":      "2023-03936",          # FR document number
+    "regulation_id":        "DEA-407",             # RIN
+    "rule_type":            "interim_final_rule",  # proposed | interim_final | final | notice
+    "fr_citation":          "88 FR 12875",
+    "publication_date":     "2023-03-01",
+    "effective_date":       "2023-03-01",
+    "expiration_date":      "2024-03-21",          # null if permanent
+
+    # Rule scope — no PHI, purely regulatory taxonomy
+    "schedule":             "II",                  # II | III-V | buprenorphine
+    "specialty_carve_out":  ["psychiatry"],        # [] means all specialties covered
+    "modality":             "audio_video",         # audio_video | audio_only | both
+    "prescriber_state":     "*",                   # * = all states, or ISO 3166-2 list
+    "patient_state":        "*",
+
+    # Chain-of-authority tracking (via Memory MCP entity graph)
+    "supersedes":           "DEA-407-ext2",        # prior authority this replaces
+    "authority_status":     "active",              # active | expired | superseded
+    "days_to_expiration":   47,                    # computed by Time MCP at alert time
+
+    # Business-line impact (NaturalSentinel internal)
+    "affected_business_lines": [
+        "telehealth_schedule_ii_psychiatry",
+        "telehealth_schedule_ii_pain_management",
+    ],
+    "alert_severity":       "high",                # high = expiration within 60 days
 }
+```
+
+---
+
+### NaturalSentinel Config
+
+```python
+agent = RegulatoryMonitorAgent(
+    provider=provider,
+    domains=[RegulatoryDomain.DEA, RegulatoryDomain.HHS],
+    custom_business_lines={
+        "telehealth_schedule_ii_psychiatry":    ["DEA 21 CFR 1306", "Ryan Haight Act"],
+        "telehealth_schedule_ii_pain_mgmt":     ["DEA 21 CFR 1306", "Ryan Haight Act"],
+        "telehealth_schedule_iii_v_primary":    ["DEA 21 CFR 1306", "DEA Telemedicine Rules"],
+        "telehealth_buprenorphine_addiction":   ["DEA-407", "SUPPORT Act", "21 CFR 1306.07"],
+        "telehealth_audio_only_prescribing":    ["DEA Special Registration", "State PDMP"],
+    },
+    # Alert when any business line loses its prescribing authority
+    alert_conditions=[
+        "rule_type IN ('interim_final_rule','final_rule') AND schedule IS NOT NULL",
+        "expiration_date IS NOT NULL AND days_to_expiration <= 60",
+        "authority_status = 'superseded' AND affected_business_lines != []",
+    ],
+)
+```
+
+**Sample alert output** (no PHI — purely regulatory):
+```
+[HIGH] DEA telehealth extension expiring in 47 days
+Rule:        DEA-407 / 88 FR 12875 (Interim Final Rule)
+Expiration:  2024-03-21
+Affects:     telehealth_schedule_ii_psychiatry, telehealth_schedule_ii_pain_mgmt
+States:      All (prescriber) × All (patient)
+Supersedes:  DEA-407-ext2 (expired 2023-03-01)
+Next action: Monitor for DEA-408 final rule; if not published by 2024-03-07,
+             Schedule II audio-video prescribing authority lapses for all specialties.
 ```
 
 ---

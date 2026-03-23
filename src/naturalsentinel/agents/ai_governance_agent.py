@@ -86,7 +86,7 @@ class AIGovernanceAgent:
         params = {"filing": filing, "memory_context": memory_context}
 
         regulatory_impact = self._run_ai_regulatory_impact(params)
-        accountability    = self._run_algorithmic_accountability(params)
+        accountability = self._run_algorithmic_accountability(params)
 
         return {
             "ai_regulatory_impact": regulatory_impact,

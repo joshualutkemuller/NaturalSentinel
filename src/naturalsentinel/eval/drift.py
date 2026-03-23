@@ -31,7 +31,7 @@ class DriftMetric:
     field: str
     window_a_stats: dict
     window_b_stats: dict
-    shift_magnitude: float      # 0.0–1.0 normalised distance
+    shift_magnitude: float  # 0.0–1.0 normalised distance
     drift_detected: bool
     description: str = ""
 
@@ -218,18 +218,13 @@ def build_drift_report(
         )
 
     detected = [m for m in metrics if m.drift_detected]
-    overall = (
-        round(sum(m.shift_magnitude for m in metrics) / len(metrics), 4)
-        if metrics
-        else 0.0
-    )
+    overall = round(sum(m.shift_magnitude for m in metrics) / len(metrics), 4) if metrics else 0.0
 
     if not metrics:
         summary = "Insufficient data for drift analysis"
     elif detected:
-        summary = (
-            f"Drift detected in {len(detected)}/{len(metrics)} fields: "
-            + ", ".join(m.field for m in detected)
+        summary = f"Drift detected in {len(detected)}/{len(metrics)} fields: " + ", ".join(
+            m.field for m in detected
         )
     else:
         summary = f"No significant drift across {len(metrics)} fields"

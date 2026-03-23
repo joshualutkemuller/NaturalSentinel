@@ -1,11 +1,9 @@
 """Tests for naturalsentinel.utils — parsing, serialization, and text helpers."""
 
 import json
+
 import pytest
 
-from naturalsentinel.utils.parsing import extract_json_block, parse_llm_json
-from naturalsentinel.utils.serialization import enum_serializer, serialize_result
-from naturalsentinel.utils.text import tokenize, keyword_similarity
 from naturalsentinel.models import (
     ChangeType,
     DecisionFrame,
@@ -15,9 +13,12 @@ from naturalsentinel.models import (
     RegulatoryFiling,
     Severity,
 )
-
+from naturalsentinel.utils.parsing import extract_json_block, parse_llm_json
+from naturalsentinel.utils.serialization import enum_serializer, serialize_result
+from naturalsentinel.utils.text import keyword_similarity, tokenize
 
 # ── Text utilities ────────────────────────────────────────────────────────
+
 
 class TestTokenize:
     def test_basic(self):
@@ -49,6 +50,7 @@ class TestKeywordSimilarity:
 
 
 # ── JSON parsing ──────────────────────────────────────────────────────────
+
 
 class TestExtractJsonBlock:
     def test_clean_json(self):
@@ -92,6 +94,7 @@ class TestParseLlmJson:
 
 # ── Serialization ─────────────────────────────────────────────────────────
 
+
 class TestEnumSerializer:
     def test_enum_value(self):
         assert enum_serializer(Severity.HIGH) == "high"
@@ -99,6 +102,7 @@ class TestEnumSerializer:
 
     def test_non_enum_str(self):
         from datetime import datetime
+
         result = enum_serializer(datetime(2026, 1, 1))
         assert "2026" in result
 
@@ -106,17 +110,23 @@ class TestEnumSerializer:
 class TestSerializeResult:
     def test_roundtrip(self):
         filing = RegulatoryFiling(
-            id="T-001", title="Test", domain=RegulatoryDomain.SEC,
-            source_url="https://x.com", published_date="2026-01-01",
-            raw_text="text", change_type=ChangeType.FINAL_RULE,
+            id="T-001",
+            title="Test",
+            domain=RegulatoryDomain.SEC,
+            source_url="https://x.com",
+            published_date="2026-01-01",
+            raw_text="text",
+            change_type=ChangeType.FINAL_RULE,
         )
         impact = ImpactAssessment(
-            filing_id="T-001", severity=Severity.CRITICAL,
+            filing_id="T-001",
+            severity=Severity.CRITICAL,
             affected_business_lines=["Equities"],
             affected_regulations=["Reg S-K"],
             compliance_deadline="2026-12-15",
             action_items=["Do something"],
-            risk_summary="Big risk", confidence=0.95,
+            risk_summary="Big risk",
+            confidence=0.95,
         )
         decision = DecisionFrame(
             decision_id="decision::T-001",

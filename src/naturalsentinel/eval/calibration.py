@@ -20,18 +20,17 @@ callers can render a plot if desired.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 
 
 @dataclass
 class CalibrationBucket:
-    lower: float                # Bucket lower bound (inclusive)
-    upper: float                # Bucket upper bound (exclusive)
-    count: int                  # Predictions in this bucket
-    mean_confidence: float      # Mean predicted confidence
-    mean_accuracy: float        # Fraction of cases correct (score >= 0.5)
-    calibration_error: float    # |mean_accuracy − mean_confidence|
+    lower: float  # Bucket lower bound (inclusive)
+    upper: float  # Bucket upper bound (exclusive)
+    count: int  # Predictions in this bucket
+    mean_confidence: float  # Mean predicted confidence
+    mean_accuracy: float  # Fraction of cases correct (score >= 0.5)
+    calibration_error: float  # |mean_accuracy − mean_confidence|
 
 
 @dataclass
@@ -95,11 +94,7 @@ def build_calibration_report(
         )
 
     n_total = sum(len(items) for items in raw_buckets)
-    ece = (
-        sum(b.count * b.calibration_error for b in buckets) / n_total
-        if n_total > 0
-        else 0.0
-    )
+    ece = sum(b.count * b.calibration_error for b in buckets) / n_total if n_total > 0 else 0.0
     mce = max((b.calibration_error for b in buckets), default=0.0)
 
     all_scores = [cs.overall_score for cs in case_scores]
@@ -111,14 +106,9 @@ def build_calibration_report(
     elif ece < 0.10:
         assessment = "Moderately calibrated (ECE 0.05–0.10)"
     elif ece < 0.20:
-        assessment = (
-            "Poorly calibrated (ECE 0.10–0.20) — confidence tuning recommended"
-        )
+        assessment = "Poorly calibrated (ECE 0.10–0.20) — confidence tuning recommended"
     else:
-        assessment = (
-            "Severely miscalibrated (ECE ≥ 0.20) — "
-            "systemic over/under-confidence detected"
-        )
+        assessment = "Severely miscalibrated (ECE ≥ 0.20) — systemic over/under-confidence detected"
 
     return CalibrationReport(
         buckets=buckets,

@@ -16,12 +16,17 @@ import sys
 import time
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from naturalsentinel.memory.store import MemoryStore
-from naturalsentinel.lineage.citation import FieldCitation, CitationBundle, parse_citations, CITABLE_FIELDS
-from naturalsentinel.lineage.trace import TraceStep, DecisionTrace
+from naturalsentinel.lineage.citation import (
+    CITABLE_FIELDS,
+    CitationBundle,
+    FieldCitation,
+    parse_citations,
+)
 from naturalsentinel.lineage.provenance import ModelProvenance
+from naturalsentinel.lineage.trace import DecisionTrace
+from naturalsentinel.memory.store import MemoryStore
 from naturalsentinel.skills.analyze import AnalyzeFilingSkill
 
 
@@ -32,6 +37,7 @@ def make_mem():
 # ---------------------------------------------------------------------------
 # FieldCitation
 # ---------------------------------------------------------------------------
+
 
 class TestFieldCitation(unittest.TestCase):
     def test_to_dict_has_required_keys(self):
@@ -57,15 +63,30 @@ class TestFieldCitation(unittest.TestCase):
 # CitationBundle
 # ---------------------------------------------------------------------------
 
+
 class TestCitationBundle(unittest.TestCase):
     def _make_bundle(self):
         return CitationBundle(
             filing_id="SEC-001",
             source_url="https://example.com",
             citations=[
-                FieldCitation("severity", "high", "immediate effect", "https://example.com", confidence=0.9),
-                FieldCitation("change_type", "final_rule", "final rule adopted", "https://example.com", confidence=0.95),
-                FieldCitation("compliance_deadline", "2026-12-31", "by year end", "https://example.com", confidence=0.8),
+                FieldCitation(
+                    "severity", "high", "immediate effect", "https://example.com", confidence=0.9
+                ),
+                FieldCitation(
+                    "change_type",
+                    "final_rule",
+                    "final rule adopted",
+                    "https://example.com",
+                    confidence=0.95,
+                ),
+                FieldCitation(
+                    "compliance_deadline",
+                    "2026-12-31",
+                    "by year end",
+                    "https://example.com",
+                    confidence=0.8,
+                ),
             ],
         )
 
@@ -101,6 +122,7 @@ class TestCitationBundle(unittest.TestCase):
 # parse_citations
 # ---------------------------------------------------------------------------
 
+
 class TestParseCitations(unittest.TestCase):
     def test_parses_citations_from_llm_response(self):
         parsed = {
@@ -114,8 +136,10 @@ class TestParseCitations(unittest.TestCase):
         bundle = parse_citations(parsed, filing_id="SEC-001", source_url="https://sec.gov")
         self.assertEqual(len(bundle.citations), 2)
         self.assertIsNotNone(bundle.get("severity"))
-        self.assertEqual(bundle.get("severity").source_passage,
-                         "All covered entities must comply within 30 days.")
+        self.assertEqual(
+            bundle.get("severity").source_passage,
+            "All covered entities must comply within 30 days.",
+        )
 
     def test_empty_citations_key_returns_empty_bundle(self):
         parsed = {"severity": "medium", "confidence": 0.6, "citations": {}}
@@ -157,6 +181,7 @@ class TestParseCitations(unittest.TestCase):
 # DecisionTrace
 # ---------------------------------------------------------------------------
 
+
 class TestDecisionTrace(unittest.TestCase):
     def test_start_creates_trace(self):
         trace = DecisionTrace.start("F-001")
@@ -182,14 +207,14 @@ class TestDecisionTrace(unittest.TestCase):
 
     def test_step_records_duration(self):
         trace = DecisionTrace.start("F-001")
-        with trace.step("slow_step") as s:
+        with trace.step("slow_step") as _s:
             time.sleep(0.01)
         self.assertGreater(trace.steps[0].duration_ms, 5)
 
     def test_step_error_sets_status(self):
         trace = DecisionTrace.start("F-001")
         try:
-            with trace.step("failing_step") as s:
+            with trace.step("failing_step") as _s:
                 raise ValueError("test error")
         except ValueError:
             pass
@@ -242,6 +267,7 @@ class TestDecisionTrace(unittest.TestCase):
 # ModelProvenance
 # ---------------------------------------------------------------------------
 
+
 class TestModelProvenance(unittest.TestCase):
     class FakeLLM:
         provider = "anthropic"
@@ -287,14 +313,21 @@ class TestModelProvenance(unittest.TestCase):
     def test_to_dict_has_all_fields(self):
         prov = ModelProvenance.unknown()
         d = prov.to_dict()
-        for key in ("provider", "model", "model_version", "temperature",
-                    "max_tokens", "prompt_template_hash"):
+        for key in (
+            "provider",
+            "model",
+            "model_version",
+            "temperature",
+            "max_tokens",
+            "prompt_template_hash",
+        ):
             self.assertIn(key, d)
 
 
 # ---------------------------------------------------------------------------
 # MemoryStore decision_traces and citations CRUD
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryStoreTraces(unittest.TestCase):
     def setUp(self):
@@ -391,9 +424,13 @@ class TestMemoryStoreCitations(unittest.TestCase):
         bundle = self._make_bundle()
         self.mem.store_citations(bundle)
         # Replace with single citation
-        bundle2 = CitationBundle("F-001", "https://example.com", citations=[
-            FieldCitation("severity", "low", "updated passage", "https://example.com"),
-        ])
+        bundle2 = CitationBundle(
+            "F-001",
+            "https://example.com",
+            citations=[
+                FieldCitation("severity", "low", "updated passage", "https://example.com"),
+            ],
+        )
         self.mem.store_citations(bundle2)
         r = self.mem.get_citations("F-001")
         self.assertEqual(len(r["citations"]), 1)
@@ -403,6 +440,7 @@ class TestMemoryStoreCitations(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # AnalyzeFilingSkill integration — lineage and governance wiring
 # ---------------------------------------------------------------------------
+
 
 class FakeLLM:
     provider = "anthropic"
@@ -525,10 +563,13 @@ class TestAnalyzeFilingSkillLineage(unittest.TestCase):
     def test_escalation_triggered_for_critical_severity(self):
         class CriticalFakeLLM(FakeLLM):
             def complete(self, system, user, temperature=0.1):
-                import re
-                return super().complete(system, user, temperature).replace(
-                    '"severity": "high"', '"severity": "critical"'
-                ).replace('"confidence": 0.82', '"confidence": 0.10')
+
+                return (
+                    super()
+                    .complete(system, user, temperature)
+                    .replace('"severity": "high"', '"severity": "critical"')
+                    .replace('"confidence": 0.82', '"confidence": 0.10')
+                )
 
         ctx = self._ctx()
         ctx.llm = CriticalFakeLLM()
@@ -543,9 +584,12 @@ class TestAnalyzeFilingSkillLineage(unittest.TestCase):
         self.assertGreater(result.metadata["n_citations"], 0)
 
     def test_llm_denied_returns_failure(self):
-        ctx = FakeContext(memory=self.mem, params={
-            "filing": {"id": "X", "domain": "sec", "raw_text": "test"},
-        })
+        ctx = FakeContext(
+            memory=self.mem,
+            params={
+                "filing": {"id": "X", "domain": "sec", "raw_text": "test"},
+            },
+        )
         ctx.llm = None
         result = self.skill.execute(ctx)
         self.assertFalse(result.success)

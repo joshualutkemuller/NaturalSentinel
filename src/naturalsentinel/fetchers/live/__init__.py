@@ -15,14 +15,14 @@ All fetchers accept an optional ``client`` kwarg for dependency injection
 during testing (pass a mock HTTPClient to avoid live network calls).
 """
 
+from naturalsentinel.fetchers.live import bis, edgar, federal_register, finra
 from naturalsentinel.fetchers.live.http_client import HTTPClient
 from naturalsentinel.fetchers.live.parsers import (
-    html_to_text,
     detect_change_type,
+    html_to_text,
     normalise_whitespace,
     truncate,
 )
-from naturalsentinel.fetchers.live import federal_register, edgar, bis, finra
 
 __all__ = [
     "HTTPClient",

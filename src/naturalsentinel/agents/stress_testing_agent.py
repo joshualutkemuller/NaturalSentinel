@@ -9,7 +9,9 @@ them to desk-level P&L drivers — directly actionable for stress testing teams,
 capital planning, and the repo/securities financing desks (the exploratory
 repo shock scenario is particularly relevant).
 """
+
 from __future__ import annotations
+
 from typing import Any
 
 STRESS_DOMAINS = ["fed"]
@@ -50,7 +52,8 @@ class StressTestingAgent:
             "desk_pl_drivers": _extract_field(analyses, "desk_pl_drivers"),
             "submission_deadlines": [
                 {"filing_id": a.get("filing_id"), "deadline": a.get("submission_deadline")}
-                for a in analyses if a.get("submission_deadline")
+                for a in analyses
+                if a.get("submission_deadline")
             ],
             "model_update_requirements": _extract_field(analyses, "model_update_requirements"),
             "capital_adequacy_impacts": _extract_field(analyses, "capital_adequacy_impacts"),
@@ -64,12 +67,17 @@ class StressTestingAgent:
         repo_stresses = []
         for a in analyses:
             for stress in a.get("securities_financing_stress", []):
-                if any(kw in str(stress).lower() for kw in ["repo", "financing", "collateral", "margin"]):
-                    repo_stresses.append({
-                        "filing_id": a.get("filing_id"),
-                        "scenario_type": a.get("scenario_type"),
-                        **stress,
-                    })
+                if any(
+                    kw in str(stress).lower()
+                    for kw in ["repo", "financing", "collateral", "margin"]
+                ):
+                    repo_stresses.append(
+                        {
+                            "filing_id": a.get("filing_id"),
+                            "scenario_type": a.get("scenario_type"),
+                            **stress,
+                        }
+                    )
         return repo_stresses
 
     def nearest_submission_deadline(self) -> str | None:
@@ -91,7 +99,9 @@ class StressTestingAgent:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {"domains": domains, "since_days": since_days})
+        result = self.runtime.execute_skill(
+            "scan_cycle", {"domains": domains, "since_days": since_days}
+        )
         return result.data.get("stats", {}) if result.success else {}
 
     def _analyze_stress_filings(self) -> list[dict]:

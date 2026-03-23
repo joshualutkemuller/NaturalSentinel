@@ -7,12 +7,16 @@ data engineering and reporting pipeline teams managing regulatory submissions.
 """
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES
 from naturalsentinel.utils.parsing import parse_llm_json
-
 
 REGULATORY_REPORTING_SYSTEM = """\
 You are a senior regulatory reporting specialist with deep expertise in US and EU \
@@ -92,7 +96,9 @@ class RegulatoryReportingSkill(Skill):
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="LLM access denied — this skill requires LLM_READ permission",
             )
 

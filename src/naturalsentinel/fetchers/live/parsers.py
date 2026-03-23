@@ -10,21 +10,55 @@ import html
 import re
 from html.parser import HTMLParser
 
-
 # ---------------------------------------------------------------------------
 # HTML → plain-text extractor
 # ---------------------------------------------------------------------------
 
-_SKIP_TAGS = frozenset({
-    "script", "style", "noscript", "nav", "header", "footer",
-    "aside", "figure", "figcaption", "form", "button", "input",
-    "select", "option", "meta", "link", "head",
-})
+_SKIP_TAGS = frozenset(
+    {
+        "script",
+        "style",
+        "noscript",
+        "nav",
+        "header",
+        "footer",
+        "aside",
+        "figure",
+        "figcaption",
+        "form",
+        "button",
+        "input",
+        "select",
+        "option",
+        "meta",
+        "link",
+        "head",
+    }
+)
 
-_BLOCK_TAGS = frozenset({
-    "p", "div", "section", "article", "h1", "h2", "h3", "h4", "h5", "h6",
-    "li", "td", "th", "blockquote", "pre", "table", "tr", "br", "hr",
-})
+_BLOCK_TAGS = frozenset(
+    {
+        "p",
+        "div",
+        "section",
+        "article",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "li",
+        "td",
+        "th",
+        "blockquote",
+        "pre",
+        "table",
+        "tr",
+        "br",
+        "hr",
+    }
+)
 
 
 class _TextExtractorParser(HTMLParser):
@@ -100,6 +134,7 @@ def _regex_strip_tags(html_content: str) -> str:
 # ---------------------------------------------------------------------------
 # Normalisation helpers
 # ---------------------------------------------------------------------------
+
 
 def normalise_whitespace(text: str) -> str:
     """Collapse whitespace and strip leading/trailing space."""

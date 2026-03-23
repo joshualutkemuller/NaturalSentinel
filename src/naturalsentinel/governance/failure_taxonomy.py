@@ -21,9 +21,8 @@ Usage::
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass
@@ -33,10 +32,10 @@ class FailureCategory:
     code: str
     name: str
     description: str
-    severity: str           # "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
-    remediation: str        # Suggested corrective action
-    auto_escalate: bool     # Whether this class of failure triggers auto-escalation
-    impacts: list[str] = field(default_factory=list)   # Downstream systems affected
+    severity: str  # "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+    remediation: str  # Suggested corrective action
+    auto_escalate: bool  # Whether this class of failure triggers auto-escalation
+    impacts: list[str] = field(default_factory=list)  # Downstream systems affected
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -49,7 +48,7 @@ class FailureRecord:
     failure_id: str
     failure_code: str
     timestamp: str
-    filing_id: Optional[str] = None
+    filing_id: str | None = None
     context: dict = field(default_factory=dict)
     resolved: bool = False
     resolution_notes: str = ""
@@ -61,9 +60,9 @@ class FailureRecord:
     def create(
         cls,
         failure_code: str,
-        filing_id: Optional[str] = None,
-        context: Optional[dict] = None,
-    ) -> "FailureRecord":
+        filing_id: str | None = None,
+        context: dict | None = None,
+    ) -> FailureRecord:
         """Factory that generates failure_id and timestamp."""
         return cls(
             failure_id=str(uuid.uuid4()),
@@ -238,7 +237,7 @@ FAILURE_TAXONOMY: dict[str, FailureCategory] = {
             "3. After human review, mark the escalation as ESCALATION_RESOLVED "
             "in the audit_log."
         ),
-        auto_escalate=False,   # Already the result of escalation
+        auto_escalate=False,  # Already the result of escalation
         impacts=["alerting", "compliance"],
     ),
     "MEMORY_ERROR": FailureCategory(
@@ -261,7 +260,7 @@ FAILURE_TAXONOMY: dict[str, FailureCategory] = {
 }
 
 
-def classify(code: str) -> Optional[FailureCategory]:
+def classify(code: str) -> FailureCategory | None:
     """Look up a failure category by code.  Returns None for unknown codes."""
     return FAILURE_TAXONOMY.get(code)
 

@@ -27,14 +27,18 @@ Two-pass execution:
 from __future__ import annotations
 
 import re
-from typing import Any, Optional
+from typing import Any
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 from naturalsentinel.utils.parsing import parse_llm_json
-
 
 # ── Regime taxonomy ─────────────────────────────────────────────────────────
 
@@ -50,13 +54,27 @@ REGIME_ARCHETYPES: list[dict] = [
             "or reduced IRB optionality."
         ),
         "signal_terms": [
-            "output floor", "standardised approach floor", "irb constraints",
-            "gsib surcharge", "stress capital buffer", "scb", "higher capital",
-            "capital add-on", "pillar 2 add-on", "rwa inflation",
-            "risk weight floor", "model constraints", "revised standardised approach",
-            "internal ratings-based", "irba restrictions",
-            "leverage ratio buffer", "tier 1 capital", "cet1 requirement",
-            "capital surcharge", "conservation buffer", "countercyclical buffer",
+            "output floor",
+            "standardised approach floor",
+            "irb constraints",
+            "gsib surcharge",
+            "stress capital buffer",
+            "scb",
+            "higher capital",
+            "capital add-on",
+            "pillar 2 add-on",
+            "rwa inflation",
+            "risk weight floor",
+            "model constraints",
+            "revised standardised approach",
+            "internal ratings-based",
+            "irba restrictions",
+            "leverage ratio buffer",
+            "tier 1 capital",
+            "cet1 requirement",
+            "capital surcharge",
+            "conservation buffer",
+            "countercyclical buffer",
         ],
         "domains": ["BASEL", "FED", "OCC", "FDIC"],
     },
@@ -70,14 +88,26 @@ REGIME_ARCHETYPES: list[dict] = [
             "enforcement actions or consent orders."
         ),
         "signal_terms": [
-            "matters requiring attention", "mra",
-            "matters requiring immediate attention", "mria",
-            "horizontal review", "supervisory expectations", "exam findings",
-            "supervisory letter", "heightened standards", "safety and soundness",
-            "corporate governance", "risk management expectations",
-            "model governance", "third-party risk management", "tprm",
-            "board oversight", "audit findings", "deficiency letter",
-            "supervisory guidance", "cease and desist",
+            "matters requiring attention",
+            "mra",
+            "matters requiring immediate attention",
+            "mria",
+            "horizontal review",
+            "supervisory expectations",
+            "exam findings",
+            "supervisory letter",
+            "heightened standards",
+            "safety and soundness",
+            "corporate governance",
+            "risk management expectations",
+            "model governance",
+            "third-party risk management",
+            "tprm",
+            "board oversight",
+            "audit findings",
+            "deficiency letter",
+            "supervisory guidance",
+            "cease and desist",
         ],
         "domains": ["FED", "OCC", "FDIC", "CFPB"],
     },
@@ -91,13 +121,27 @@ REGIME_ARCHETYPES: list[dict] = [
             "failures or pronounced market dislocation."
         ),
         "signal_terms": [
-            "hqla", "high-quality liquid assets", "lcr",
-            "liquidity coverage ratio", "nsfr", "net stable funding ratio",
-            "uninsured deposits", "concentrated funding",
-            "contingency funding plan", "cfp", "intraday liquidity", "ilaap",
-            "liquidity stress", "funding concentration", "fdic insurance limit",
-            "liquidity risk management", "alt-m", "alternative metric",
-            "runoff rate", "stable funding", "available stable funding",
+            "hqla",
+            "high-quality liquid assets",
+            "lcr",
+            "liquidity coverage ratio",
+            "nsfr",
+            "net stable funding ratio",
+            "uninsured deposits",
+            "concentrated funding",
+            "contingency funding plan",
+            "cfp",
+            "intraday liquidity",
+            "ilaap",
+            "liquidity stress",
+            "funding concentration",
+            "fdic insurance limit",
+            "liquidity risk management",
+            "alt-m",
+            "alternative metric",
+            "runoff rate",
+            "stable funding",
+            "available stable funding",
         ],
         "domains": ["FED", "FDIC", "OCC", "BASEL"],
     },
@@ -111,12 +155,26 @@ REGIME_ARCHETYPES: list[dict] = [
             "timelines or CFTC clearing mandate expansions."
         ),
         "signal_terms": [
-            "initial margin", "im requirements", "sa-ccr", "simm", "isda simm",
-            "uncleared margin", "umr", "phase-in", "threshold amount",
-            "cleared derivatives", "bilateral margin", "variation margin",
-            "ccp margin", "cem replacement", "current exposure method",
-            "alpha factor", "supervisory factor", "netting set",
-            "eligible collateral", "segregation requirements",
+            "initial margin",
+            "im requirements",
+            "sa-ccr",
+            "simm",
+            "isda simm",
+            "uncleared margin",
+            "umr",
+            "phase-in",
+            "threshold amount",
+            "cleared derivatives",
+            "bilateral margin",
+            "variation margin",
+            "ccp margin",
+            "cem replacement",
+            "current exposure method",
+            "alpha factor",
+            "supervisory factor",
+            "netting set",
+            "eligible collateral",
+            "segregation requirements",
         ],
         "domains": ["CFTC", "FED", "BASEL"],
     },
@@ -129,12 +187,28 @@ REGIME_ARCHETYPES: list[dict] = [
             "risk weight adjustments, or mandatory disclosure regimes."
         ),
         "signal_terms": [
-            "climate risk", "transition risk", "physical risk", "climate scenario",
-            "scope 3", "green asset", "sustainable finance", "esg",
-            "climate stress test", "taxonomy", "sfdr", "tcfd", "ifrs s2",
-            "climate-related financial risk", "stranded assets", "net zero",
-            "carbon intensity", "climate scenario analysis", "paris agreement",
-            "greenwashing", "sustainability disclosure", "environmental risk",
+            "climate risk",
+            "transition risk",
+            "physical risk",
+            "climate scenario",
+            "scope 3",
+            "green asset",
+            "sustainable finance",
+            "esg",
+            "climate stress test",
+            "taxonomy",
+            "sfdr",
+            "tcfd",
+            "ifrs s2",
+            "climate-related financial risk",
+            "stranded assets",
+            "net zero",
+            "carbon intensity",
+            "climate scenario analysis",
+            "paris agreement",
+            "greenwashing",
+            "sustainability disclosure",
+            "environmental risk",
         ],
         "domains": ["FED", "SEC", "OCC", "FDIC", "BASEL"],
     },
@@ -147,13 +221,26 @@ REGIME_ARCHETYPES: list[dict] = [
             "securities. Characterised by rapid, sometimes conflicting, guidance."
         ),
         "signal_terms": [
-            "digital asset", "crypto", "stablecoin", "cryptocurrency",
-            "virtual currency", "sab 121", "sab 122",
-            "custody of digital assets", "tokenized", "tokenised",
-            "distributed ledger", "blockchain", "defi",
-            "decentralised finance", "crypto-asset", "cbdc",
-            "central bank digital currency", "digital wallet",
-            "spot bitcoin etf", "crypto exchange",
+            "digital asset",
+            "crypto",
+            "stablecoin",
+            "cryptocurrency",
+            "virtual currency",
+            "sab 121",
+            "sab 122",
+            "custody of digital assets",
+            "tokenized",
+            "tokenised",
+            "distributed ledger",
+            "blockchain",
+            "defi",
+            "decentralised finance",
+            "crypto-asset",
+            "cbdc",
+            "central bank digital currency",
+            "digital wallet",
+            "spot bitcoin etf",
+            "crypto exchange",
         ],
         "domains": ["SEC", "CFTC", "OCC", "FED"],
     },
@@ -167,12 +254,25 @@ REGIME_ARCHETYPES: list[dict] = [
             "concerns or post-crisis reviews."
         ),
         "signal_terms": [
-            "tlac", "total loss-absorbing capacity", "mrel", "internal tlac",
-            "resolution plan", "living will", "gone-concern", "bail-in",
-            "recapitalisation", "point of non-viability", "ponv",
-            "resolution strategy", "preferred resolution", "spoe", "mpoe",
-            "issuance requirement", "eligible instruments",
-            "resolution liquidity", "resolution funding",
+            "tlac",
+            "total loss-absorbing capacity",
+            "mrel",
+            "internal tlac",
+            "resolution plan",
+            "living will",
+            "gone-concern",
+            "bail-in",
+            "recapitalisation",
+            "point of non-viability",
+            "ponv",
+            "resolution strategy",
+            "preferred resolution",
+            "spoe",
+            "mpoe",
+            "issuance requirement",
+            "eligible instruments",
+            "resolution liquidity",
+            "resolution funding",
         ],
         "domains": ["FED", "FDIC", "FSOC", "BASEL"],
     },
@@ -186,13 +286,23 @@ REGIME_ARCHETYPES: list[dict] = [
             "implemented or revised."
         ),
         "signal_terms": [
-            "frtb", "fundamental review of the trading book",
-            "internal model approach", "ima", "expected shortfall",
-            "p&l attribution", "pla test", "trading book boundary",
-            "risk factor eligibility", "nmrf",
-            "non-modellable risk factor", "backtesting exceptions",
-            "sensitivities-based method", "default risk charge", "drc",
-            "stressed expected shortfall", "desk-level approval",
+            "frtb",
+            "fundamental review of the trading book",
+            "internal model approach",
+            "ima",
+            "expected shortfall",
+            "p&l attribution",
+            "pla test",
+            "trading book boundary",
+            "risk factor eligibility",
+            "nmrf",
+            "non-modellable risk factor",
+            "backtesting exceptions",
+            "sensitivities-based method",
+            "default risk charge",
+            "drc",
+            "stressed expected shortfall",
+            "desk-level approval",
         ],
         "domains": ["BASEL", "FED", "OCC"],
     },
@@ -206,12 +316,24 @@ REGIME_ARCHETYPES: list[dict] = [
             "agency mortgage origination and securitisation."
         ),
         "signal_terms": [
-            "conforming loan limit", "cll", "g-fee", "guarantee fee",
-            "credit risk transfer", "crt", "gse",
+            "conforming loan limit",
+            "cll",
+            "g-fee",
+            "guarantee fee",
+            "credit risk transfer",
+            "crt",
+            "gse",
             "government-sponsored enterprise",
-            "fannie mae", "freddie mac", "fhfa", "conservatorship",
-            "enterprise capital", "tba market", "agency mbs",
-            "prepayment", "housing finance reform", "single-family pricing",
+            "fannie mae",
+            "freddie mac",
+            "fhfa",
+            "conservatorship",
+            "enterprise capital",
+            "tba market",
+            "agency mbs",
+            "prepayment",
+            "housing finance reform",
+            "single-family pricing",
         ],
         "domains": ["FHFA"],
     },
@@ -225,17 +347,28 @@ REGIME_ARCHETYPES: list[dict] = [
             "DOJ referrals."
         ),
         "signal_terms": [
-            "udap", "udaap", "unfair deceptive", "fair lending",
-            "disparate impact", "redlining", "fair housing", "ecoa", "hmda",
-            "cra", "community reinvestment", "fair credit reporting", "fcra",
-            "consumer complaint", "abusive act", "prohibited basis",
-            "supervisory examination", "enforcement action",
+            "udap",
+            "udaap",
+            "unfair deceptive",
+            "fair lending",
+            "disparate impact",
+            "redlining",
+            "fair housing",
+            "ecoa",
+            "hmda",
+            "cra",
+            "community reinvestment",
+            "fair credit reporting",
+            "fcra",
+            "consumer complaint",
+            "abusive act",
+            "prohibited basis",
+            "supervisory examination",
+            "enforcement action",
         ],
         "domains": ["CFPB", "OCC", "FED", "FDIC"],
     },
-
     # ── Technology / Telecom Regime Archetypes ────────────────────────────────
-
     {
         "id": "platform_antitrust_enforcement",
         "label": "Platform Antitrust Enforcement Cycle",
@@ -247,12 +380,26 @@ REGIME_ARCHETYPES: list[dict] = [
             "or gatekeeper designation for major tech operators."
         ),
         "signal_terms": [
-            "digital markets act", "dma", "gatekeeper", "self-preferencing",
-            "interoperability", "data portability", "platform conduct",
-            "dominant position", "merger challenge", "hsr", "second request",
-            "ftc complaint", "doj antitrust", "structural remedy", "divestiture",
-            "vertical integration", "app store", "default agreements",
-            "platform neutrality", "algorithmic fairness",
+            "digital markets act",
+            "dma",
+            "gatekeeper",
+            "self-preferencing",
+            "interoperability",
+            "data portability",
+            "platform conduct",
+            "dominant position",
+            "merger challenge",
+            "hsr",
+            "second request",
+            "ftc complaint",
+            "doj antitrust",
+            "structural remedy",
+            "divestiture",
+            "vertical integration",
+            "app store",
+            "default agreements",
+            "platform neutrality",
+            "algorithmic fairness",
         ],
         "domains": ["FTC", "DOJ"],
     },
@@ -268,12 +415,27 @@ REGIME_ARCHETYPES: list[dict] = [
             "processors and controllers."
         ),
         "signal_terms": [
-            "gdpr", "ccpa", "cpra", "data subject rights", "right to erasure",
-            "consent requirement", "data processing agreement", "dpa",
-            "standard contractual clauses", "scc", "adequacy decision",
-            "cross-border transfer", "data localisation", "data residency",
-            "personal data", "sensitive data", "data broker", "opt-out",
-            "privacy notice", "legitimate interest", "biometric data",
+            "gdpr",
+            "ccpa",
+            "cpra",
+            "data subject rights",
+            "right to erasure",
+            "consent requirement",
+            "data processing agreement",
+            "dpa",
+            "standard contractual clauses",
+            "scc",
+            "adequacy decision",
+            "cross-border transfer",
+            "data localisation",
+            "data residency",
+            "personal data",
+            "sensitive data",
+            "data broker",
+            "opt-out",
+            "privacy notice",
+            "legitimate interest",
+            "biometric data",
         ],
         "domains": ["FTC", "CISA"],
     },
@@ -289,12 +451,26 @@ REGIME_ARCHETYPES: list[dict] = [
             "High-risk AI system operators face the most acute obligations."
         ),
         "signal_terms": [
-            "eu ai act", "high-risk ai", "ai system", "conformity assessment",
-            "ai risk tier", "foundation model", "general purpose ai",
-            "algorithmic accountability", "bias audit", "ai transparency",
-            "explainability", "ai governance", "ai oversight",
-            "automated decision", "profiling", "ftc ai", "ai liability",
-            "ai regulatory sandbox", "responsible ai", "ai impact assessment",
+            "eu ai act",
+            "high-risk ai",
+            "ai system",
+            "conformity assessment",
+            "ai risk tier",
+            "foundation model",
+            "general purpose ai",
+            "algorithmic accountability",
+            "bias audit",
+            "ai transparency",
+            "explainability",
+            "ai governance",
+            "ai oversight",
+            "automated decision",
+            "profiling",
+            "ftc ai",
+            "ai liability",
+            "ai regulatory sandbox",
+            "responsible ai",
+            "ai impact assessment",
         ],
         "domains": ["FTC", "SEC"],
     },
@@ -309,12 +485,26 @@ REGIME_ARCHETYPES: list[dict] = [
             "critical infrastructure sectors face simultaneous sector-specific mandates."
         ),
         "signal_terms": [
-            "cisa kev", "known exploited vulnerability", "binding operational directive",
-            "bod", "sec 8-k cybersecurity", "incident disclosure", "material breach",
-            "cybersecurity incident", "zero day", "patch deadline", "eo 14028",
-            "supply chain security", "sbom", "software bill of materials",
-            "critical infrastructure", "network security", "ransomware",
-            "vulnerability disclosure", "fcc cyber", "telecom security",
+            "cisa kev",
+            "known exploited vulnerability",
+            "binding operational directive",
+            "bod",
+            "sec 8-k cybersecurity",
+            "incident disclosure",
+            "material breach",
+            "cybersecurity incident",
+            "zero day",
+            "patch deadline",
+            "eo 14028",
+            "supply chain security",
+            "sbom",
+            "software bill of materials",
+            "critical infrastructure",
+            "network security",
+            "ransomware",
+            "vulnerability disclosure",
+            "fcc cyber",
+            "telecom security",
         ],
         "domains": ["CISA", "FCC", "SEC"],
     },
@@ -330,12 +520,27 @@ REGIME_ARCHETYPES: list[dict] = [
             "obligations for mobile network operators and rural providers."
         ),
         "signal_terms": [
-            "spectrum auction", "fcc auction", "c-band", "cbrs", "mid-band",
-            "mmwave", "build-out obligation", "coverage requirement",
-            "universal service fund", "usf", "e-rate", "lifeline",
-            "ntia", "bead", "broadband equity", "rural broadband",
-            "interference protection", "dynamic spectrum sharing",
-            "spectrum licence", "frequency allocation", "tv white space",
+            "spectrum auction",
+            "fcc auction",
+            "c-band",
+            "cbrs",
+            "mid-band",
+            "mmwave",
+            "build-out obligation",
+            "coverage requirement",
+            "universal service fund",
+            "usf",
+            "e-rate",
+            "lifeline",
+            "ntia",
+            "bead",
+            "broadband equity",
+            "rural broadband",
+            "interference protection",
+            "dynamic spectrum sharing",
+            "spectrum licence",
+            "frequency allocation",
+            "tv white space",
         ],
         "domains": ["FCC", "NTIA"],
     },
@@ -350,12 +555,27 @@ REGIME_ARCHETYPES: list[dict] = [
             "are key compliance signals for major social, video, and search platforms."
         ),
         "signal_terms": [
-            "section 230", "platform liability", "dsa", "digital services act",
-            "vlop", "very large online platform", "notice and takedown", "ntd",
-            "content moderation", "trusted flagger", "algorithmic amplification",
-            "transparency report", "crisis protocol", "systemic risk",
-            "recommender system", "illegal content", "hate speech",
-            "csam", "counter-terrorism", "online safety", "age verification",
+            "section 230",
+            "platform liability",
+            "dsa",
+            "digital services act",
+            "vlop",
+            "very large online platform",
+            "notice and takedown",
+            "ntd",
+            "content moderation",
+            "trusted flagger",
+            "algorithmic amplification",
+            "transparency report",
+            "crisis protocol",
+            "systemic risk",
+            "recommender system",
+            "illegal content",
+            "hate speech",
+            "csam",
+            "counter-terrorism",
+            "online safety",
+            "age verification",
         ],
         "domains": ["FTC", "SEC"],
     },
@@ -370,12 +590,26 @@ REGIME_ARCHETYPES: list[dict] = [
             "network function virtualisation security are secondary signals."
         ),
         "signal_terms": [
-            "rip and replace", "huawei", "zte", "supply chain security",
-            "covered equipment", "fcc covered list", "calea", "lawful intercept",
-            "roaming security", "ss7 vulnerability", "network slicing",
-            "open ran", "trusted vendor", "foreign adversary", "banning order",
-            "reimbursement programme", "network function virtualisation",
-            "telecom supply chain", "subsea cable", "landing station",
+            "rip and replace",
+            "huawei",
+            "zte",
+            "supply chain security",
+            "covered equipment",
+            "fcc covered list",
+            "calea",
+            "lawful intercept",
+            "roaming security",
+            "ss7 vulnerability",
+            "network slicing",
+            "open ran",
+            "trusted vendor",
+            "foreign adversary",
+            "banning order",
+            "reimbursement programme",
+            "network function virtualisation",
+            "telecom supply chain",
+            "subsea cable",
+            "landing station",
         ],
         "domains": ["FCC", "CISA", "NTIA"],
     },
@@ -390,12 +624,25 @@ REGIME_ARCHETYPES: list[dict] = [
             "vectors. Cloud and payments operators face the highest compliance burden."
         ),
         "signal_terms": [
-            "data localisation", "data sovereignty", "data residency",
-            "cross-border data transfer", "eu-us data privacy framework",
-            "schrems", "privacy shield", "china pipl", "dsl", "data security law",
-            "india dpdp", "digital personal data", "government access",
-            "cloud act", "fisa 702", "data border", "mirror data",
-            "local storage requirement", "data export restriction",
+            "data localisation",
+            "data sovereignty",
+            "data residency",
+            "cross-border data transfer",
+            "eu-us data privacy framework",
+            "schrems",
+            "privacy shield",
+            "china pipl",
+            "dsl",
+            "data security law",
+            "india dpdp",
+            "digital personal data",
+            "government access",
+            "cloud act",
+            "fisa 702",
+            "data border",
+            "mirror data",
+            "local storage requirement",
+            "data export restriction",
             "third country transfer",
         ],
         "domains": ["FTC", "CISA"],
@@ -476,6 +723,7 @@ Output schema:
 
 # ── Skill ────────────────────────────────────────────────────────────────────
 
+
 class RegimeDetectionSkill(Skill):
     """
     Detect active macro-prudential regulatory regimes from filing language.
@@ -503,24 +751,32 @@ class RegimeDetectionSkill(Skill):
         latency=LatencyClass.MODERATE,
         parameters=[
             SkillParameter(
-                "window_days", "int",
+                "window_days",
+                "int",
                 "Look-back window in days for filing analysis.",
-                required=False, default=90,
+                required=False,
+                default=90,
             ),
             SkillParameter(
-                "domains", "list[str]",
+                "domains",
+                "list[str]",
                 "Filter to specific regulatory domains (None = all).",
-                required=False, default=None,
+                required=False,
+                default=None,
             ),
             SkillParameter(
-                "signal_threshold", "float",
+                "signal_threshold",
+                "float",
                 "Minimum normalised signal strength (0-1) to report a regime as active.",
-                required=False, default=0.10,
+                required=False,
+                default=0.10,
             ),
             SkillParameter(
-                "raw_filings", "list[dict]",
+                "raw_filings",
+                "list[dict]",
                 "Optional list of raw filing dicts for offline / test use.",
-                required=False, default=None,
+                required=False,
+                default=None,
             ),
         ],
         returns=(
@@ -535,7 +791,7 @@ class RegimeDetectionSkill(Skill):
 
     def execute(self, context: SkillContext) -> SkillResult:
         window_days: int = context.params.get("window_days", 90)
-        domains: Optional[list[str]] = context.params.get("domains", None)
+        domains: list[str] | None = context.params.get("domains", None)
         signal_threshold: float = float(context.params.get("signal_threshold", 0.10))
         raw_filings: list[dict] = list(context.params.get("raw_filings") or [])
 
@@ -544,13 +800,22 @@ class RegimeDetectionSkill(Skill):
 
         if context.memory is not None:
             query_domains = domains or [
-                "BASEL", "FED", "OCC", "FDIC", "CFTC", "SEC", "CFPB", "FHFA",
-                "FTC", "DOJ", "FCC", "CISA", "NTIA",
+                "BASEL",
+                "FED",
+                "OCC",
+                "FDIC",
+                "CFTC",
+                "SEC",
+                "CFPB",
+                "FHFA",
+                "FTC",
+                "DOJ",
+                "FCC",
+                "CISA",
+                "NTIA",
             ]
             for domain in query_domains:
-                records = context.memory.get_filing_history(
-                    domain=domain.lower(), limit=20
-                )
+                records = context.memory.get_filing_history(domain=domain.lower(), limit=20)
                 filings.extend(records)
 
         if not filings:
@@ -563,22 +828,16 @@ class RegimeDetectionSkill(Skill):
                 "confidence": 0.0,
                 "summary": "No filings available in memory for regime detection.",
             }
-            return SkillResult(
-                skill_name=self.metadata.name, success=True, data=empty
-            )
+            return SkillResult(skill_name=self.metadata.name, success=True, data=empty)
 
         # ── 2. Keyword scoring (no LLM) ──────────────────────────────────────
         scored = self._score_regimes(filings)
 
         # ── 3. LLM synthesis or keyword-only fallback ────────────────────────
         if context.llm is not None:
-            data = self._llm_synthesis(
-                context, filings, scored, window_days, signal_threshold
-            )
+            data = self._llm_synthesis(context, filings, scored, window_days, signal_threshold)
         else:
-            data = self._keyword_only_result(
-                scored, filings, window_days, signal_threshold
-            )
+            data = self._keyword_only_result(scored, filings, window_days, signal_threshold)
 
         token_usage = data.pop("_token_usage", 0)
         return SkillResult(
@@ -593,23 +852,27 @@ class RegimeDetectionSkill(Skill):
 
     def _filing_text_and_domain(self, filing: Any) -> tuple[str, str]:
         if isinstance(filing, dict):
-            text = " ".join([
-                str(filing.get("title", "")),
-                str(filing.get("raw_text", "")),
-                str(filing.get("summary", "")),
-                str(filing.get("risk_summary", "")),
-            ])
+            text = " ".join(
+                [
+                    str(filing.get("title", "")),
+                    str(filing.get("raw_text", "")),
+                    str(filing.get("summary", "")),
+                    str(filing.get("risk_summary", "")),
+                ]
+            )
             domain = str(filing.get("domain", "")).upper()
         else:
             content = getattr(filing, "content", {}) or {}
             inner_filing = content.get("filing", {}) if isinstance(content, dict) else {}
             inner_impact = content.get("impact", {}) if isinstance(content, dict) else {}
-            text = " ".join([
-                str(inner_filing.get("title", "")),
-                str(inner_filing.get("raw_text", "")),
-                str(inner_impact.get("summary", "")),
-                str(inner_impact.get("risk_summary", "")),
-            ])
+            text = " ".join(
+                [
+                    str(inner_filing.get("title", "")),
+                    str(inner_filing.get("raw_text", "")),
+                    str(inner_impact.get("summary", "")),
+                    str(inner_impact.get("risk_summary", "")),
+                ]
+            )
             domain = str(
                 inner_filing.get("domain") or getattr(filing, "namespace", "") or ""
             ).upper()
@@ -628,7 +891,7 @@ class RegimeDetectionSkill(Skill):
             for text, domain in filing_pairs:
                 hit = False
                 for term in regime["signal_terms"]:
-                    pattern = r'\b' + re.escape(term.lower()) + r'\b'
+                    pattern = r"\b" + re.escape(term.lower()) + r"\b"
                     if re.search(pattern, text):
                         terms_found.add(term)
                         hit = True
@@ -637,15 +900,17 @@ class RegimeDetectionSkill(Skill):
                     if domain in regime["domains"]:
                         bodies_active.add(domain)
 
-            scored.append({
-                "regime_id": regime["id"],
-                "regime_label": regime["label"],
-                "signal_strength": round(filings_with_signal / max(total, 1), 3),
-                "evidence_count": filings_with_signal,
-                "signal_terms_found": sorted(terms_found),
-                "regulatory_bodies_active": sorted(bodies_active),
-                "regime_description": regime["description"],
-            })
+            scored.append(
+                {
+                    "regime_id": regime["id"],
+                    "regime_label": regime["label"],
+                    "signal_strength": round(filings_with_signal / max(total, 1), 3),
+                    "evidence_count": filings_with_signal,
+                    "signal_terms_found": sorted(terms_found),
+                    "regulatory_bodies_active": sorted(bodies_active),
+                    "regime_description": regime["description"],
+                }
+            )
 
         scored.sort(key=lambda x: x["signal_strength"], reverse=True)
         return scored
@@ -687,23 +952,17 @@ class RegimeDetectionSkill(Skill):
         window_days: int,
         signal_threshold: float,
     ) -> dict:
-        domains_covered = sorted({
-            self._filing_text_and_domain(f)[1] for f in filings
-        } - {""})
+        domains_covered = sorted({self._filing_text_and_domain(f)[1] for f in filings} - {""})
 
         memory_block = "(none)"
         if context.memory is not None:
             try:
-                records = context.memory.recall(
-                    "regulatory regime cycle prudential phase", top_k=3
-                )
+                records = context.memory.recall("regulatory regime cycle prudential phase", top_k=3)
                 snippets = []
                 for rec in records:
                     content = getattr(rec, "content", {}) or {}
                     if isinstance(content, dict):
-                        snippets.append(
-                            str(content.get("impact", {}).get("summary", ""))[:200]
-                        )
+                        snippets.append(str(content.get("impact", {}).get("summary", ""))[:200])
                 memory_block = "\n".join(snippets) or "(none)"
             except Exception:
                 pass
@@ -730,11 +989,11 @@ class RegimeDetectionSkill(Skill):
                     "regime_phase": "unknown",
                     "summary": s["regime_description"],
                 }
-                for s in scored if s["signal_strength"] > signal_threshold
+                for s in scored
+                if s["signal_strength"] > signal_threshold
             ],
             "dormant_regimes": [
-                s["regime_id"] for s in scored
-                if s["signal_strength"] <= signal_threshold
+                s["regime_id"] for s in scored if s["signal_strength"] <= signal_threshold
             ],
             "regime_transitions": [],
             "analysis_window_days": window_days,
@@ -744,7 +1003,9 @@ class RegimeDetectionSkill(Skill):
         }
 
         raw = context.llm.complete(
-            system=_REGIME_SYSTEM, user=user_prompt, temperature=0.1,
+            system=_REGIME_SYSTEM,
+            user=user_prompt,
+            temperature=0.1,
         )
         parsed = parse_llm_json(raw, fallback=fallback)
         parsed.setdefault("analysis_window_days", window_days)

@@ -1,8 +1,8 @@
 """Shared utility functions used across naturalsentinel."""
 
+from naturalsentinel.utils.parsing import extract_json_block, parse_llm_json
 from naturalsentinel.utils.serialization import enum_serializer, serialize_result
-from naturalsentinel.utils.parsing import parse_llm_json, extract_json_block
-from naturalsentinel.utils.text import tokenize, keyword_similarity
+from naturalsentinel.utils.text import keyword_similarity, tokenize
 
 __all__ = [
     "enum_serializer",

@@ -14,8 +14,13 @@ from __future__ import annotations
 from collections import defaultdict
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 
 _CROSS_DOMAIN_SYSTEM = """\
@@ -87,7 +92,9 @@ class CrossDomainCorrelationSkill(Skill):
     def execute(self, context: SkillContext) -> SkillResult:
         if context.memory is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="Memory access denied — requires MEMORY_READ permission",
             )
 
@@ -98,7 +105,8 @@ class CrossDomainCorrelationSkill(Skill):
         records = context.memory.get_filing_history(limit=limit)
         if not records:
             return SkillResult(
-                skill_name=self.metadata.name, success=True,
+                skill_name=self.metadata.name,
+                success=True,
                 data={"intersections": [], "assessment": "No data in memory."},
                 metadata={"message": "No analyses found."},
             )
@@ -106,7 +114,7 @@ class CrossDomainCorrelationSkill(Skill):
         # ── Build: business_line → {domain → [filing info]} ─────────────────
         bl_to_domains: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
 
-        _SEVERITY_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        severity_rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 
         for rec in records:
             filing = rec.content.get("filing", {})
@@ -114,14 +122,16 @@ class CrossDomainCorrelationSkill(Skill):
 
             domain = (filing.get("domain") or "unknown").lower()
             for bl in impact.get("affected_business_lines", []):
-                bl_to_domains[bl][domain].append({
-                    "filing_id": filing.get("id", rec.key),
-                    "title": filing.get("title", "Unknown"),
-                    "severity": (impact.get("severity") or "unknown").lower(),
-                    "action_items": impact.get("action_items", []),
-                    "affected_regulations": impact.get("affected_regulations", []),
-                    "deadline": impact.get("compliance_deadline"),
-                })
+                bl_to_domains[bl][domain].append(
+                    {
+                        "filing_id": filing.get("id", rec.key),
+                        "title": filing.get("title", "Unknown"),
+                        "severity": (impact.get("severity") or "unknown").lower(),
+                        "action_items": impact.get("action_items", []),
+                        "affected_regulations": impact.get("affected_regulations", []),
+                        "deadline": impact.get("compliance_deadline"),
+                    }
+                )
 
         # ── Filter to intersections spanning ≥ min_domains ──────────────────
         intersections: list[dict] = []
@@ -139,7 +149,7 @@ class CrossDomainCorrelationSkill(Skill):
                 for f in filings:
                     all_actions.extend(f["action_items"])
                     all_regs.extend(f["affected_regulations"])
-                    all_severities.append(_SEVERITY_RANK.get(f["severity"], 0))
+                    all_severities.append(severity_rank.get(f["severity"], 0))
 
             # Deduplicate while preserving order
             seen_actions: set[str] = set()
@@ -159,22 +169,29 @@ class CrossDomainCorrelationSkill(Skill):
             max_sev_rank = max(all_severities) if all_severities else 0
             rank_to_name = {0: "low", 1: "medium", 2: "high", 3: "critical"}
 
-            intersections.append({
-                "business_line": bl,
-                "domains": sorted(domain_map.keys()),
-                "domain_count": len(domain_map),
-                "filing_count": filing_count,
-                "max_severity": rank_to_name[max_sev_rank],
-                "combined_action_items": deduped_actions,
-                "combined_regulations": deduped_regs,
-                "domain_breakdown": {
-                    dom: [{"id": f["filing_id"], "title": f["title"], "severity": f["severity"]} for f in filings]
-                    for dom, filings in domain_map.items()
-                },
-            })
+            intersections.append(
+                {
+                    "business_line": bl,
+                    "domains": sorted(domain_map.keys()),
+                    "domain_count": len(domain_map),
+                    "filing_count": filing_count,
+                    "max_severity": rank_to_name[max_sev_rank],
+                    "combined_action_items": deduped_actions,
+                    "combined_regulations": deduped_regs,
+                    "domain_breakdown": {
+                        dom: [
+                            {"id": f["filing_id"], "title": f["title"], "severity": f["severity"]}
+                            for f in filings
+                        ]
+                        for dom, filings in domain_map.items()
+                    },
+                }
+            )
 
         # Sort: most domains first, then max severity descending
-        intersections.sort(key=lambda x: (-x["domain_count"], -_SEVERITY_RANK.get(x["max_severity"], 0)))
+        intersections.sort(
+            key=lambda x: (-x["domain_count"], -severity_rank.get(x["max_severity"], 0))
+        )
 
         # ── Optional LLM assessment ───────────────────────────────────────────
         assessment: str | None = None

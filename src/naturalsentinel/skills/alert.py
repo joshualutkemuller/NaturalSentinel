@@ -8,8 +8,13 @@ Useful for real-time triage dashboards and Slack/webhook integrations.
 from __future__ import annotations
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 
 # Severity rank used for comparisons (lower index = lower severity)
@@ -58,7 +63,9 @@ class AlertThresholdSkill(Skill):
     def execute(self, context: SkillContext) -> SkillResult:
         if context.memory is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="Memory access denied — requires MEMORY_READ permission",
             )
 
@@ -72,7 +79,14 @@ class AlertThresholdSkill(Skill):
             return SkillResult(
                 skill_name=self.metadata.name,
                 success=True,
-                data={"alerts": [], "summary": {"total_inspected": 0, "alerts_raised": 0, "threshold": raw_threshold}},
+                data={
+                    "alerts": [],
+                    "summary": {
+                        "total_inspected": 0,
+                        "alerts_raised": 0,
+                        "threshold": raw_threshold,
+                    },
+                },
                 metadata={"message": "No analyses in memory. Run a scan cycle first."},
             )
 
@@ -92,25 +106,29 @@ class AlertThresholdSkill(Skill):
             deadline = impact.get("compliance_deadline")
             urgency_tier = _classify_urgency(severity, deadline)
 
-            alerts.append({
-                "filing_id": filing.get("id", rec.key),
-                "title": filing.get("title", "Unknown"),
-                "domain": filing.get("domain", "unknown").upper(),
-                "severity": severity,
-                "deadline": deadline,
-                "urgency_tier": urgency_tier,
-                "action_items": impact.get("action_items", []),
-                "affected_business_lines": impact.get("affected_business_lines", []),
-                "confidence": impact.get("confidence", 0.0),
-                "risk_summary": impact.get("risk_summary", ""),
-            })
+            alerts.append(
+                {
+                    "filing_id": filing.get("id", rec.key),
+                    "title": filing.get("title", "Unknown"),
+                    "domain": filing.get("domain", "unknown").upper(),
+                    "severity": severity,
+                    "deadline": deadline,
+                    "urgency_tier": urgency_tier,
+                    "action_items": impact.get("action_items", []),
+                    "affected_business_lines": impact.get("affected_business_lines", []),
+                    "confidence": impact.get("confidence", 0.0),
+                    "risk_summary": impact.get("risk_summary", ""),
+                }
+            )
 
         # Sort: critical first, then high; within tier sort by deadline presence
-        alerts.sort(key=lambda a: (
-            -_SEVERITY_RANK.get(a["severity"], 0),
-            a["deadline"] is None,
-            a["deadline"] or "",
-        ))
+        alerts.sort(
+            key=lambda a: (
+                -_SEVERITY_RANK.get(a["severity"], 0),
+                a["deadline"] is None,
+                a["deadline"] or "",
+            )
+        )
 
         return SkillResult(
             skill_name=self.metadata.name,

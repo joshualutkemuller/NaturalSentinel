@@ -9,11 +9,25 @@ regulatory text and the mathematical language of optimization models.
 Designed for Lead Data Scientists running balance sheet, capital, and
 portfolio optimization frameworks.
 """
+
 from __future__ import annotations
+
 from typing import Any
 
-ALL_DOMAINS = ["sec", "cfpb", "fed", "fda", "epa", "ustr",
-               "fhfa", "occ", "finra", "cftc", "fdic", "basel"]
+ALL_DOMAINS = [
+    "sec",
+    "cfpb",
+    "fed",
+    "fda",
+    "epa",
+    "ustr",
+    "fhfa",
+    "occ",
+    "finra",
+    "cftc",
+    "fdic",
+    "basel",
+]
 
 
 class OptimizationConstraintAgent:
@@ -65,15 +79,17 @@ class OptimizationConstraintAgent:
         report = []
         for a in analyses:
             for expr in a.get("constraint_expressions", []):
-                report.append({
-                    "filing_id": a.get("filing_id"),
-                    "domain": a.get("domain"),
-                    "constraint_name": expr.get("name"),
-                    "expression": expr.get("expression_text"),
-                    "direction": expr.get("constraint_direction"),
-                    "binding_scenario": expr.get("binding_scenario"),
-                    "models_affected": expr.get("affected_model_types", []),
-                })
+                report.append(
+                    {
+                        "filing_id": a.get("filing_id"),
+                        "domain": a.get("domain"),
+                        "constraint_name": expr.get("name"),
+                        "expression": expr.get("expression_text"),
+                        "direction": expr.get("constraint_direction"),
+                        "binding_scenario": expr.get("binding_scenario"),
+                        "models_affected": expr.get("affected_model_types", []),
+                    }
+                )
         return report
 
     def parameter_update_log(self) -> list[dict]:
@@ -82,17 +98,21 @@ class OptimizationConstraintAgent:
         updates = []
         for a in analyses:
             for p in a.get("parameter_updates", []):
-                updates.append({
-                    "filing_id": a.get("filing_id"),
-                    "domain": a.get("domain"),
-                    **p,
-                })
+                updates.append(
+                    {
+                        "filing_id": a.get("filing_id"),
+                        "domain": a.get("domain"),
+                        **p,
+                    }
+                )
         return updates
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {"domains": domains, "since_days": since_days})
+        result = self.runtime.execute_skill(
+            "scan_cycle", {"domains": domains, "since_days": since_days}
+        )
         return result.data.get("stats", {}) if result.success else {}
 
     def _analyze_all_filings(self, domains: list[str]) -> list[dict]:
@@ -104,8 +124,7 @@ class OptimizationConstraintAgent:
                 continue
             result = self.runtime.execute_skill("optimization_constraint", {"filing": filing})
             if result.success and (
-                result.data.get("constraint_expressions") or
-                result.data.get("parameter_updates")
+                result.data.get("constraint_expressions") or result.data.get("parameter_updates")
             ):
                 analyses.append(result.data)
         return analyses

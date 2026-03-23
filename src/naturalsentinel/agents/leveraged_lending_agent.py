@@ -8,7 +8,9 @@ Monitors OCC, Fed, and FDIC filings for leveraged lending guidance updates
 and maps them to portfolio exceptions, documentation requirements, and
 supervisory review triggers for Secured Lending and Financing Solutions desks.
 """
+
 from __future__ import annotations
+
 from typing import Any
 
 LL_DOMAINS = ["occ", "fed", "fdic"]
@@ -65,11 +67,13 @@ class LeveragedLendingAgent:
         exceptions = []
         for a in analyses:
             for impact in a.get("portfolio_classification_impacts", []):
-                exceptions.append({
-                    "filing_id": a.get("filing_id"),
-                    "domain": a.get("domain"),
-                    "impact": impact,
-                })
+                exceptions.append(
+                    {
+                        "filing_id": a.get("filing_id"),
+                        "domain": a.get("domain"),
+                        "impact": impact,
+                    }
+                )
         return exceptions
 
     def new_supervisory_review_threshold(self) -> float | None:
@@ -87,7 +91,9 @@ class LeveragedLendingAgent:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {"domains": domains, "since_days": since_days})
+        result = self.runtime.execute_skill(
+            "scan_cycle", {"domains": domains, "since_days": since_days}
+        )
         return result.data.get("stats", {}) if result.success else {}
 
     def _analyze_ll_filings(self) -> list[dict]:

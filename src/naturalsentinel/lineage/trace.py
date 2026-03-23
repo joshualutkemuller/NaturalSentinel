@@ -25,10 +25,8 @@ from __future__ import annotations
 
 import time
 import uuid
-from contextlib import contextmanager
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Generator, Optional
 
 
 @dataclass
@@ -39,12 +37,12 @@ class TraceStep:
     started_at: str
     finished_at: str = ""
     duration_ms: float = 0.0
-    status: str = "ok"          # "ok" | "warning" | "error"
+    status: str = "ok"  # "ok" | "warning" | "error"
     input_summary: str = ""
     output_summary: str = ""
-    provider: Optional[str] = None
-    model: Optional[str] = None
-    model_version: Optional[str] = None
+    provider: str | None = None
+    model: str | None = None
+    model_version: str | None = None
     token_usage: int = 0
     notes: str = ""
 
@@ -70,7 +68,7 @@ class _StepContext:
         if exc_type is not None:
             self._step.status = "error"
             self._step.notes = f"{exc_type.__name__}: {exc_val}"
-        return False   # Do not suppress exceptions
+        return False  # Do not suppress exceptions
 
 
 @dataclass
@@ -132,7 +130,7 @@ class DecisionTrace:
         }
 
     @classmethod
-    def start(cls, filing_id: str, trace_id: Optional[str] = None) -> "DecisionTrace":
+    def start(cls, filing_id: str, trace_id: str | None = None) -> DecisionTrace:
         """Create and start a new trace."""
         t = cls(
             trace_id=trace_id or str(uuid.uuid4()),

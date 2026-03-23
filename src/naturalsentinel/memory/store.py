@@ -6,11 +6,10 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
+from naturalsentinel.evidence import EvidenceLedgerEntry
 from naturalsentinel.memory.schema import SCHEMA_SQL
 from naturalsentinel.memory.similarity import SimilarityEngine
-from naturalsentinel.evidence import EvidenceLedgerEntry
 from naturalsentinel.memory.types import MemoryRecord, MemoryType
 
 logger = logging.getLogger(__name__)
@@ -213,7 +212,7 @@ class MemoryStore:
 
     # -- Retrieval ----------------------------------------------------------
 
-    def get(self, memory_id: str) -> Optional[MemoryRecord]:
+    def get(self, memory_id: str) -> MemoryRecord | None:
         """Retrieve a specific memory by ID."""
         row = self.conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
         if not row:
@@ -264,8 +263,7 @@ class MemoryStore:
         memory_candidates = self.recall(query, top_k=top_k * 3)
         if namespace:
             memory_candidates = [
-                rec for rec in memory_candidates
-                if rec.namespace in {namespace, "global"}
+                rec for rec in memory_candidates if rec.namespace in {namespace, "global"}
             ]
         ledger = [
             self._to_evidence_entry(
@@ -296,9 +294,7 @@ class MemoryStore:
             memory_type=MemoryType.PRECEDENT,
         )
 
-    def get_filing_history(
-        self, domain: str | None = None, limit: int = 20
-    ) -> list[MemoryRecord]:
+    def get_filing_history(self, domain: str | None = None, limit: int = 20) -> list[MemoryRecord]:
         """Retrieve recent episodic memories, optionally filtered by domain."""
         if domain:
             rows = self.conn.execute(
@@ -339,7 +335,9 @@ class MemoryStore:
                 )
             sections.append("WEIGHTED EVIDENCE LEDGER:\n" + "\n".join(lines))
 
-        past = self.recall(filing_text[:500], top_k=3, memory_type=MemoryType.EPISODIC, namespace=filing_domain)
+        past = self.recall(
+            filing_text[:500], top_k=3, memory_type=MemoryType.EPISODIC, namespace=filing_domain
+        )
         if past:
             lines = []
             for rec in past:
@@ -417,20 +415,21 @@ class MemoryStore:
             ),
         )
         self.conn.commit()
-        logger.debug("Stored eval run %s (n=%d, acc=%.3f)", run_id, report.get("n_cases", 0), report.get("overall_accuracy", 0.0))
+        logger.debug(
+            "Stored eval run %s (n=%d, acc=%.3f)",
+            run_id,
+            report.get("n_cases", 0),
+            report.get("overall_accuracy", 0.0),
+        )
 
-    def get_eval_run(self, run_id: str) -> Optional[dict]:
+    def get_eval_run(self, run_id: str) -> dict | None:
         """Retrieve a single evaluation run by ID."""
-        row = self.conn.execute(
-            "SELECT * FROM eval_runs WHERE run_id = ?", (run_id,)
-        ).fetchone()
+        row = self.conn.execute("SELECT * FROM eval_runs WHERE run_id = ?", (run_id,)).fetchone()
         if not row:
             return None
         return self._deserialise_eval_row(dict(row))
 
-    def list_eval_runs(
-        self, provider_tag: Optional[str] = None, limit: int = 20
-    ) -> list[dict]:
+    def list_eval_runs(self, provider_tag: str | None = None, limit: int = 20) -> list[dict]:
         """List evaluation runs, newest first, optionally filtered by provider_tag."""
         if provider_tag:
             rows = self.conn.execute(
@@ -465,10 +464,18 @@ class MemoryStore:
             per_field_delta[f] = round(vb - va, 4)
 
         return {
-            "run_a": {"run_id": run_id_a, "provider_tag": a.get("provider_tag"), "run_at": a.get("run_at")},
-            "run_b": {"run_id": run_id_b, "provider_tag": b.get("provider_tag"), "run_at": b.get("run_at")},
+            "run_a": {
+                "run_id": run_id_a,
+                "provider_tag": a.get("provider_tag"),
+                "run_at": a.get("run_at"),
+            },
+            "run_b": {
+                "run_id": run_id_b,
+                "provider_tag": b.get("provider_tag"),
+                "run_at": b.get("run_at"),
+            },
             "delta_overall_accuracy": _delta("overall_accuracy"),
-            "delta_ece": _delta("ece"),           # Negative = better calibration
+            "delta_ece": _delta("ece"),  # Negative = better calibration
             "delta_mce": _delta("mce"),
             "per_field_delta": per_field_delta,
             "n_cases_a": a.get("n_cases", 0),
@@ -477,8 +484,13 @@ class MemoryStore:
 
     @staticmethod
     def _deserialise_eval_row(row: dict) -> dict:
-        for key in ("per_field_accuracy", "domain_breakdown", "n_fields_evaluated",
-                    "calibration_json", "drift_json"):
+        for key in (
+            "per_field_accuracy",
+            "domain_breakdown",
+            "n_fields_evaluated",
+            "calibration_json",
+            "drift_json",
+        ):
             if key in row and isinstance(row[key], str):
                 row[key] = json.loads(row[key])
         # Normalise key names
@@ -519,9 +531,9 @@ class MemoryStore:
 
     def get_audit_events(
         self,
-        event_type: Optional[str] = None,
-        filing_id: Optional[str] = None,
-        severity: Optional[str] = None,
+        event_type: str | None = None,
+        filing_id: str | None = None,
+        severity: str | None = None,
         limit: int = 100,
     ) -> list[dict]:
         """Query audit log with optional filters, newest first."""
@@ -554,6 +566,7 @@ class MemoryStore:
     def store_decision_trace(self, trace) -> None:
         """Persist a completed :class:`~naturalsentinel.lineage.trace.DecisionTrace`."""
         import json as _json
+
         steps_json = _json.dumps([s.to_dict() for s in trace.steps])
         self.conn.execute(
             """
@@ -582,7 +595,7 @@ class MemoryStore:
         self.conn.commit()
         logger.debug("Stored decision trace %s for filing %s", trace.trace_id, trace.filing_id)
 
-    def get_decision_trace(self, trace_id: str) -> Optional[dict]:
+    def get_decision_trace(self, trace_id: str) -> dict | None:
         """Retrieve a decision trace by ID."""
         row = self.conn.execute(
             "SELECT * FROM decision_traces WHERE trace_id = ?", (trace_id,)
@@ -624,7 +637,7 @@ class MemoryStore:
         self.conn.commit()
         logger.debug("Stored %d citations for filing %s", len(bundle.citations), bundle.filing_id)
 
-    def get_citations(self, filing_id: str) -> Optional[dict]:
+    def get_citations(self, filing_id: str) -> dict | None:
         """Return the citation bundle dict for *filing_id*, or None."""
         row = self.conn.execute(
             "SELECT * FROM citations WHERE filing_id = ?", (filing_id,)
@@ -637,7 +650,7 @@ class MemoryStore:
 
     # -- Belief-state CRUD (Priority 3) -------------------------------------
 
-    def get_belief_state(self, topic: str, domain: str) -> Optional[dict]:
+    def get_belief_state(self, topic: str, domain: str) -> dict | None:
         """Retrieve the current belief state for a (topic, domain) pair."""
         row = self.conn.execute(
             "SELECT * FROM belief_states WHERE topic = ? AND domain = ?",
@@ -705,15 +718,14 @@ class MemoryStore:
         self.conn.commit()
         logger.debug(
             "Stored belief state for %s/%s: prior=%.2f → posterior=%.2f (Δ=%.2f)",
-            domain, topic,
+            domain,
+            topic,
             belief.get("prior_confidence", 0.5),
             belief.get("posterior_confidence", 0.5),
             belief.get("delta_confidence", 0.0),
         )
 
-    def get_belief_history(
-        self, topic: str, domain: str, limit: int = 20
-    ) -> list[dict]:
+    def get_belief_history(self, topic: str, domain: str, limit: int = 20) -> list[dict]:
         """Return chronological history of confidence observations for a topic."""
         rows = self.conn.execute(
             """
@@ -869,7 +881,9 @@ class MemoryStore:
         }
         return scores.get(change_type, 0.55)
 
-    def _jurisdiction_relevance(self, rec: MemoryRecord, query: str, namespace: str | None) -> float:
+    def _jurisdiction_relevance(
+        self, rec: MemoryRecord, query: str, namespace: str | None
+    ) -> float:
         q = query.lower()
         if namespace and rec.namespace == namespace:
             return 1.0
@@ -879,7 +893,9 @@ class MemoryStore:
             return 0.6
         return 0.4
 
-    def _business_line_proximity(self, rec: MemoryRecord, query: str, business_lines: list[str]) -> float:
+    def _business_line_proximity(
+        self, rec: MemoryRecord, query: str, business_lines: list[str]
+    ) -> float:
         q = query.lower()
         impact = rec.content.get("impact", {})
         filing_lines = {line.lower() for line in impact.get("affected_business_lines", [])}
@@ -904,7 +920,11 @@ class MemoryStore:
         if rec.memory_type == MemoryType.PRECEDENT:
             risk += 0.35
         contradiction_markers = ["unless", "except", "however", "but", "challenge", "contradict"]
-        risk += 0.1 * sum(1 for marker in contradiction_markers if marker in content_blob or marker in query.lower())
+        risk += 0.1 * sum(
+            1
+            for marker in contradiction_markers
+            if marker in content_blob or marker in query.lower()
+        )
         return min(1.0, risk)
 
     def _novelty_score(self, rec: MemoryRecord, query: str) -> float:
@@ -926,7 +946,11 @@ class MemoryStore:
         if rec.memory_type == MemoryType.PRECEDENT:
             return [f"Challenges prior view on {rec.content.get('field', 'assessment')}"]
         if candidate_actions:
-            return [f"May challenge action: {candidate_actions[0]}"] if rec.relevance_score < 0.35 else []
+            return (
+                [f"May challenge action: {candidate_actions[0]}"]
+                if rec.relevance_score < 0.35
+                else []
+            )
         return []
 
     def _summary_for_record(self, rec: MemoryRecord) -> str:
@@ -956,7 +980,9 @@ class MemoryStore:
         """Export all memories as JSON for backup/migration."""
         return json.dumps(
             {
-                "memories": [dict(r) for r in self.conn.execute("SELECT * FROM memories ORDER BY created_at")],
+                "memories": [
+                    dict(r) for r in self.conn.execute("SELECT * FROM memories ORDER BY created_at")
+                ],
                 "relations": [dict(r) for r in self.conn.execute("SELECT * FROM entity_relations")],
                 "feedback": [dict(r) for r in self.conn.execute("SELECT * FROM feedback_log")],
                 "exported_at": datetime.utcnow().isoformat(),
@@ -974,9 +1000,16 @@ class MemoryStore:
                 "created_at, updated_at, access_count, relevance_score) "
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
-                    rec["id"], rec["memory_type"], rec["namespace"], rec["key"],
-                    rec["content"], rec["embedding_text"], rec["created_at"],
-                    rec["updated_at"], rec["access_count"], rec["relevance_score"],
+                    rec["id"],
+                    rec["memory_type"],
+                    rec["namespace"],
+                    rec["key"],
+                    rec["content"],
+                    rec["embedding_text"],
+                    rec["created_at"],
+                    rec["updated_at"],
+                    rec["access_count"],
+                    rec["relevance_score"],
                 ),
             )
         self.conn.commit()

@@ -4,7 +4,6 @@ from naturalsentinel.models import (
     ChangeType,
     DecisionFrame,
     ImpactAssessment,
-    MonitorResult,
     RegulatoryDomain,
     RegulatoryFiling,
     Severity,

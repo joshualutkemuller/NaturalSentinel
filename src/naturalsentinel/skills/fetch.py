@@ -1,10 +1,15 @@
 """Skill: Fetch regulatory filings from configured sources."""
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
-from naturalsentinel.fetchers import fetch_filings, DOMAIN_BUSINESS_LINES
+from naturalsentinel.fetchers import fetch_filings
 from naturalsentinel.models import RegulatoryDomain
 
 
@@ -17,11 +22,19 @@ class FetchFilingsSkill(Skill):
             "version would hit real APIs (EDGAR, Federal Register, etc.)."
         ),
         version="1.0.0",
-        permissions=Permission.FETCH_LOCAL,   # Read-only, no LLM, no memory
+        permissions=Permission.FETCH_LOCAL,  # Read-only, no LLM, no memory
         latency=LatencyClass.FAST,
         parameters=[
-            SkillParameter("domains", "list[str]", "Agency codes to fetch (e.g. ['sec','fda']). Empty = all.", required=False, default=[]),
-            SkillParameter("since_days", "int", "Look-back window in days.", required=False, default=30),
+            SkillParameter(
+                "domains",
+                "list[str]",
+                "Agency codes to fetch (e.g. ['sec','fda']). Empty = all.",
+                required=False,
+                default=[],
+            ),
+            SkillParameter(
+                "since_days", "int", "Look-back window in days.", required=False, default=30
+            ),
         ],
         returns="list[dict] — serialized RegulatoryFiling objects",
         dependencies=[],

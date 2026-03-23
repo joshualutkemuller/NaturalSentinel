@@ -20,9 +20,8 @@ Usage::
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -36,10 +35,10 @@ class ModelCard:
     # Identity
     name: str
     version: str
-    provider: str                       # LLM provider used at analysis time
-    model_id: str                       # Provider model identifier
-    release_date: str                   # ISO date of this card version
-    last_reviewed: str                  # ISO date of last governance review
+    provider: str  # LLM provider used at analysis time
+    model_id: str  # Provider model identifier
+    release_date: str  # ISO date of this card version
+    last_reviewed: str  # ISO date of last governance review
 
     # Use
     intended_use: str
@@ -47,7 +46,7 @@ class ModelCard:
     out_of_scope_uses: list[str]
 
     # Factors
-    evaluated_domains: list[str]        # Regulatory domains covered
+    evaluated_domains: list[str]  # Regulatory domains covered
     known_limitations: list[str]
     ethical_considerations: list[str]
 
@@ -83,7 +82,7 @@ class ModelCard:
         return warnings
 
     @classmethod
-    def from_json(cls, path: str) -> "ModelCard":
+    def from_json(cls, path: str) -> ModelCard:
         """Load a model card from a JSON file, merging with defaults."""
         with Path(path).open() as fh:
             data = json.load(fh)
@@ -92,7 +91,7 @@ class ModelCard:
         return cls(**{k: v for k, v in defaults.items() if k in cls.__dataclass_fields__})
 
     @classmethod
-    def default(cls) -> "ModelCard":
+    def default(cls) -> ModelCard:
         """Return the canonical NaturalSentinel model card."""
         return cls(
             name="NaturalSentinel Regulatory Extraction Pipeline",
@@ -149,9 +148,21 @@ class ModelCard:
                 "Model card, control matrix, and evaluation reports should be shared "
                 "with relevant audit and compliance stakeholders.",
             ],
-            evaluated_domains=["sec", "fed", "cfpb", "occ", "fdic", "cftc",
-                               "fhfa", "finra", "epa", "ustr", "fda", "basel"],
-            evaluation_metrics={},      # Populated after first evaluation run
+            evaluated_domains=[
+                "sec",
+                "fed",
+                "cfpb",
+                "occ",
+                "fdic",
+                "cftc",
+                "fhfa",
+                "finra",
+                "epa",
+                "ustr",
+                "fda",
+                "basel",
+            ],
+            evaluation_metrics={},  # Populated after first evaluation run
             evaluation_notes=(
                 "Run `run_evaluation` skill (mode='historical') after accumulating "
                 "at least 20 human feedback corrections to populate accuracy metrics."

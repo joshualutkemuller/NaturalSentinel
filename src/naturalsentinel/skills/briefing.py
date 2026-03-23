@@ -1,10 +1,14 @@
 """Skill: Generate an executive regulatory briefing from stored analyses."""
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
-
 
 BRIEFING_SYSTEM = """\
 You are a regulatory intelligence analyst preparing an executive briefing.
@@ -39,8 +43,20 @@ class GenerateBriefingSkill(Skill):
         permissions=Permission.LLM_READ | Permission.MEMORY_READ,
         latency=LatencyClass.MODERATE,
         parameters=[
-            SkillParameter("audience", "str", "Target audience (e.g. 'board', 'compliance_team', 'general_counsel').", required=False, default="executive leadership"),
-            SkillParameter("limit", "int", "Max number of recent analyses to include.", required=False, default=10),
+            SkillParameter(
+                "audience",
+                "str",
+                "Target audience (e.g. 'board', 'compliance_team', 'general_counsel').",
+                required=False,
+                default="executive leadership",
+            ),
+            SkillParameter(
+                "limit",
+                "int",
+                "Max number of recent analyses to include.",
+                required=False,
+                default=10,
+            ),
         ],
         returns="str — formatted briefing text",
         dependencies=["recall_memory"],
@@ -50,9 +66,16 @@ class GenerateBriefingSkill(Skill):
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
-            return SkillResult(skill_name=self.metadata.name, success=False, data=None, error="LLM access denied")
+            return SkillResult(
+                skill_name=self.metadata.name, success=False, data=None, error="LLM access denied"
+            )
         if context.memory is None:
-            return SkillResult(skill_name=self.metadata.name, success=False, data=None, error="Memory access denied")
+            return SkillResult(
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
+                error="Memory access denied",
+            )
 
         audience = context.params.get("audience", "executive leadership")
         limit = context.params.get("limit", 10)
@@ -60,7 +83,8 @@ class GenerateBriefingSkill(Skill):
         records = context.memory.get_filing_history(limit=limit)
         if not records:
             return SkillResult(
-                skill_name=self.metadata.name, success=True,
+                skill_name=self.metadata.name,
+                success=True,
                 data="No analyses in memory. Run a scan cycle first.",
                 metadata={"filings_used": 0},
             )
@@ -80,7 +104,9 @@ class GenerateBriefingSkill(Skill):
         raw = context.llm.complete(BRIEFING_SYSTEM, prompt, temperature=0.3)
 
         return SkillResult(
-            skill_name=self.metadata.name, success=True, data=raw,
+            skill_name=self.metadata.name,
+            success=True,
+            data=raw,
             token_usage=len(prompt) // 4 + len(raw) // 4,
             metadata={"filings_used": len(records), "audience": audience},
         )

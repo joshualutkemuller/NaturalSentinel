@@ -5,8 +5,7 @@ No API keys needed.
     python examples/basic_demo.py
 """
 
-import json
-from naturalsentinel import RegulatoryMonitorAgent, MockProvider, MemoryStore
+from naturalsentinel import MemoryStore, MockProvider, RegulatoryMonitorAgent
 
 
 def main():
@@ -29,7 +28,9 @@ def main():
     for r in results:
         sev = r.impact.severity.value
         print(f"  {sev_icon.get(sev, '⚪')} [{sev.upper()}] {r.filing.title}")
-        print(f"     {r.filing.domain.value.upper()} | {r.filing.change_type.value} | {r.filing.published_date}")
+        print(
+            f"     {r.filing.domain.value.upper()} | {r.filing.change_type.value} | {r.filing.published_date}"
+        )
         print(f"     {r.impact.risk_summary[:100]}…")
         print(f"     Actions: {len(r.impact.action_items)} | Confidence: {r.impact.confidence:.0%}")
         if r.impact.compliance_deadline:

@@ -15,11 +15,13 @@ import logging
 import re
 import urllib.error
 from datetime import datetime, timedelta
-from typing import Optional
 
 from naturalsentinel.fetchers.live.http_client import HTTPClient
 from naturalsentinel.fetchers.live.parsers import (
-    html_to_text, detect_change_type, normalise_whitespace, truncate,
+    detect_change_type,
+    html_to_text,
+    normalise_whitespace,
+    truncate,
 )
 
 logger = logging.getLogger(__name__)
@@ -43,7 +45,7 @@ def fetch(
     since_days: int = 30,
     per_query: int = 10,
     fetch_full_text: bool = False,
-    client: Optional[HTTPClient] = None,
+    client: HTTPClient | None = None,
 ) -> list[dict]:
     """Fetch recent SEC regulatory filings via EDGAR full-text search.
 
@@ -103,7 +105,7 @@ def _normalise(
     hit: dict,
     http: HTTPClient,
     fetch_full_text: bool,
-) -> Optional[dict]:
+) -> dict | None:
     """Convert an EDGAR EFTS hit to a NaturalSentinel filing dict."""
     src = hit.get("_source", {})
     acc = src.get("accession_no", "")

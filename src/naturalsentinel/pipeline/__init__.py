@@ -27,6 +27,7 @@ Usage
 """
 
 from naturalsentinel.pipeline.stages import (
+    EXTRACTION_SCHEMAS,
     ClassificationResult,
     ClassificationStage,
     DecompositionStage,
@@ -38,7 +39,6 @@ from naturalsentinel.pipeline.stages import (
     SpanGround,
     ValidationResult,
     ValidationStage,
-    EXTRACTION_SCHEMAS,
 )
 
 __all__ = [

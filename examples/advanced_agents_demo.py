@@ -14,14 +14,15 @@ No API keys needed — uses MockProvider throughout.
 """
 
 import sys
-from naturalsentinel.providers import MockProvider
-from naturalsentinel.memory import MemoryStore
-from naturalsentinel.agent_framework import AgentRuntime
-from naturalsentinel.skills import ALL_SKILLS
-from naturalsentinel.agents import AlertAgent, ComplianceTrackerAgent
 
+from naturalsentinel.agent_framework import AgentRuntime
+from naturalsentinel.agents import AlertAgent, ComplianceTrackerAgent
+from naturalsentinel.memory import MemoryStore
+from naturalsentinel.providers import MockProvider
+from naturalsentinel.skills import ALL_SKILLS
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
+
 
 def _header(title: str) -> None:
     width = 68
@@ -37,6 +38,7 @@ def _section(label: str) -> None:
 def _build_runtime() -> AgentRuntime:
     """Build a pre-loaded runtime: scan sample data → 6 analyses in memory."""
     import os
+
     state_path = "/tmp/naturalsentinel_adv_state.json"
     # Remove stale state so all sample filings are treated as new each run
     try:
@@ -56,14 +58,17 @@ def _build_runtime() -> AgentRuntime:
     result = runtime.execute_skill("scan_cycle", {"domains": [], "since_days": 90})
     if result.success:
         stats = result.data.get("stats", {})
-        print(f"  Scanned {stats.get('total_fetched', 0)} filings, "
-              f"analyzed {stats.get('new_analyzed', 0)} new.\n")
+        print(
+            f"  Scanned {stats.get('total_fetched', 0)} filings, "
+            f"analyzed {stats.get('new_analyzed', 0)} new.\n"
+        )
     else:
         print(f"  Scan failed: {result.error}\n", file=sys.stderr)
     return runtime
 
 
 # ── Demo sections ─────────────────────────────────────────────────────────────
+
 
 def demo_alert_agent(runtime: AgentRuntime) -> None:
     _header("1 / 5  AlertAgent — Threshold Monitoring + Trend Analysis")
@@ -98,8 +103,10 @@ def demo_alert_agent(runtime: AgentRuntime) -> None:
         _section("Trend Signals")
         for sig in trends.get("trend_signals", [])[:4]:
             arrow = {"escalating": "▲", "stable": "→", "de-escalating": "▼"}.get(sig["signal"], "?")
-            print(f"  {arrow} {sig['domain']}: {sig['signal']} "
-                  f"(older={sig['avg_severity_older']}, recent={sig['avg_severity_recent']})")
+            print(
+                f"  {arrow} {sig['domain']}: {sig['signal']} "
+                f"(older={sig['avg_severity_older']}, recent={sig['avg_severity_recent']})"
+            )
 
 
 def demo_compliance_tracker(runtime: AgentRuntime) -> None:
@@ -162,9 +169,14 @@ def demo_trend_analysis(runtime: AgentRuntime) -> None:
 def demo_cross_domain(runtime: AgentRuntime) -> None:
     _header("4 / 5  CrossDomainCorrelationSkill — Multi-Agency Overlaps")
 
-    result = runtime.execute_skill("cross_domain_correlation", {
-        "min_domains": 2, "limit": 100, "include_assessment": False,
-    })
+    result = runtime.execute_skill(
+        "cross_domain_correlation",
+        {
+            "min_domains": 2,
+            "limit": 100,
+            "include_assessment": False,
+        },
+    )
     if not result.success:
         print(f"  Failed: {result.error}")
         return
@@ -185,15 +197,22 @@ def demo_cross_domain(runtime: AgentRuntime) -> None:
             print(f"    Agencies: {domains_str} | Filings: {ix['filing_count']}")
     else:
         print("  No multi-agency overlaps found in current data set.")
-        print("  (With more filings from real APIs, overlaps across SEC+CFPB+FED would appear here.)")
+        print(
+            "  (With more filings from real APIs, overlaps across SEC+CFPB+FED would appear here.)"
+        )
 
 
 def demo_export_report(runtime: AgentRuntime) -> None:
     _header("5 / 5  ExportReportSkill — CSV Compliance Register")
 
-    result = runtime.execute_skill("export_report", {
-        "format": "csv", "limit": 10, "min_severity": "low",
-    })
+    result = runtime.execute_skill(
+        "export_report",
+        {
+            "format": "csv",
+            "limit": 10,
+            "min_severity": "low",
+        },
+    )
     if not result.success:
         print(f"  Failed: {result.error}")
         return
@@ -207,21 +226,30 @@ def demo_export_report(runtime: AgentRuntime) -> None:
         print(f"  … ({len(lines) - 7} more rows) …")
 
     # JSON sample
-    json_result = runtime.execute_skill("export_report", {
-        "format": "json", "limit": 2, "min_severity": "high",
-    })
+    json_result = runtime.execute_skill(
+        "export_report",
+        {
+            "format": "json",
+            "limit": 2,
+            "min_severity": "high",
+        },
+    )
     if json_result.success:
         _section("JSON Export Sample (high+ severity)")
         import json as _json
+
         try:
             records = _json.loads(json_result.data["content"])
             for rec in records[:2]:
-                print(f"  {rec.get('filing_id')} | {rec.get('severity', '').upper()} | {rec.get('title', '')[:55]}")
+                print(
+                    f"  {rec.get('filing_id')} | {rec.get('severity', '').upper()} | {rec.get('title', '')[:55]}"
+                )
         except Exception:
             pass
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
+
 
 def main() -> None:
     print("\n" + "=" * 68)

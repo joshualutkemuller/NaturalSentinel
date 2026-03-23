@@ -17,6 +17,12 @@ uv run mypy  --version
 uv run pytest --version
 
 # ------------------------------------------------------------------
+# Pre-commit hooks
+# ------------------------------------------------------------------
+echo "==> Installing pre-commit hooks..."
+uv run pre-commit install
+
+# ------------------------------------------------------------------
 # Shell aliases — written to ~/.bashrc so they persist in every
 # terminal the developer opens inside the container.
 # ------------------------------------------------------------------

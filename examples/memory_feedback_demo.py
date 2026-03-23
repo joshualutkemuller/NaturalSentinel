@@ -4,8 +4,7 @@ Memory + feedback demo — shows the learning loop.
     python examples/memory_feedback_demo.py
 """
 
-import json
-from naturalsentinel import RegulatoryMonitorAgent, MockProvider, MemoryStore, MemoryType
+from naturalsentinel import MemoryStore, MemoryType, MockProvider, RegulatoryMonitorAgent
 
 
 def section(title):
@@ -30,8 +29,20 @@ def main():
     # Step 2: Human feedback
     section("STEP 2: Human Feedback")
     feedbacks = [
-        ("CFPB-2026-0228-B", "affected_business_lines", "6 lines", "6 lines + Student Loans + BNPL", "BNPL uses AI decisioning too"),
-        ("FED-2026-0305-C", "severity", "high", "critical", "We have $500M crypto custody exposure"),
+        (
+            "CFPB-2026-0228-B",
+            "affected_business_lines",
+            "6 lines",
+            "6 lines + Student Loans + BNPL",
+            "BNPL uses AI decisioning too",
+        ),
+        (
+            "FED-2026-0305-C",
+            "severity",
+            "high",
+            "critical",
+            "We have $500M crypto custody exposure",
+        ),
     ]
     for fid, field, old, new, reason in feedbacks:
         memory.record_feedback(fid, field, old, new, reason)
@@ -48,7 +59,7 @@ def main():
     ]
     for q in queries:
         results = memory.recall(q, top_k=2)
-        print(f"  \"{q}\"")
+        print(f'  "{q}"')
         for r in results:
             print(f"    → [{r.memory_type.value}] {r.key}  (score: {r.relevance_score:.3f})")
         print()
@@ -62,7 +73,7 @@ def main():
     section("STEP 5: Entity Graph")
     for entity in ["Regulation S-K", "NAAQS"]:
         rels = memory.get_related_entities(entity)
-        print(f"  \"{entity}\" — {len(rels)} relations")
+        print(f'  "{entity}" — {len(rels)} relations')
         for r in rels[:4]:
             other = r["target"] if r["source"] == entity else r["source"]
             print(f"    ─{r['relation']}→ {other}  (weight: {r['weight']})")

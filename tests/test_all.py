@@ -6,40 +6,40 @@ Comprehensive test suite for naturalsentinel — runs with stdlib unittest.
 
 import json
 import os
-import tempfile
-import unittest
 
 # Ensure src is importable
 import sys
+import tempfile
+import unittest
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "src"))
 
 from naturalsentinel import (
-    RegulatoryMonitorAgent,
-    MockProvider,
-    MemoryStore,
+    ChangeType,
+    DecisionFrame,
     EvidenceLedgerEntry,
-    MemoryRecord,
+    ImpactAssessment,
+    MemoryStore,
     MemoryType,
+    MockProvider,
+    MonitorResult,
     RegulatoryDomain,
     RegulatoryFiling,
-    ImpactAssessment,
-    DecisionFrame,
-    MonitorResult,
+    RegulatoryMonitorAgent,
     Severity,
-    ChangeType,
 )
+from naturalsentinel.cli import build_provider
+from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES, fetch_filings
+from naturalsentinel.fetchers.sample_data import MOCK_ANALYSES, SAMPLE_FILINGS
+from naturalsentinel.memory.similarity import SimilarityEngine
 from naturalsentinel.utils.parsing import extract_json_block, parse_llm_json
 from naturalsentinel.utils.serialization import enum_serializer, serialize_result
-from naturalsentinel.utils.text import tokenize, keyword_similarity
-from naturalsentinel.fetchers import fetch_filings, DOMAIN_BUSINESS_LINES
-from naturalsentinel.fetchers.sample_data import SAMPLE_FILINGS, MOCK_ANALYSES
-from naturalsentinel.memory.similarity import SimilarityEngine
-from naturalsentinel.cli import build_provider
-
+from naturalsentinel.utils.text import keyword_similarity, tokenize
 
 # ══════════════════════════════════════════════════════════════════════════
 # MODELS
 # ══════════════════════════════════════════════════════════════════════════
+
 
 class TestEnums(unittest.TestCase):
     def test_domain_values(self):
@@ -61,8 +61,12 @@ class TestEnums(unittest.TestCase):
 class TestDataclasses(unittest.TestCase):
     def test_filing_defaults(self):
         f = RegulatoryFiling(
-            id="T-001", title="Test", domain=RegulatoryDomain.SEC,
-            source_url="https://x.com", published_date="2026-01-01", raw_text="text",
+            id="T-001",
+            title="Test",
+            domain=RegulatoryDomain.SEC,
+            source_url="https://x.com",
+            published_date="2026-01-01",
+            raw_text="text",
         )
         self.assertEqual(f.change_type, ChangeType.NOTICE)
         self.assertEqual(f.summary, "")
@@ -70,10 +74,14 @@ class TestDataclasses(unittest.TestCase):
 
     def test_impact_assessment(self):
         ia = ImpactAssessment(
-            filing_id="T-001", severity=Severity.HIGH,
-            affected_business_lines=["Lending"], affected_regulations=["ECOA"],
-            compliance_deadline="2026-12-31", action_items=["[Legal] Review"],
-            risk_summary="High risk.", confidence=0.85,
+            filing_id="T-001",
+            severity=Severity.HIGH,
+            affected_business_lines=["Lending"],
+            affected_regulations=["ECOA"],
+            compliance_deadline="2026-12-31",
+            action_items=["[Legal] Review"],
+            risk_summary="High risk.",
+            confidence=0.85,
         )
         self.assertEqual(ia.confidence, 0.85)
 
@@ -81,6 +89,7 @@ class TestDataclasses(unittest.TestCase):
 # ══════════════════════════════════════════════════════════════════════════
 # UTILS — TEXT
 # ══════════════════════════════════════════════════════════════════════════
+
 
 class TestTokenize(unittest.TestCase):
     def test_basic(self):
@@ -112,6 +121,7 @@ class TestKeywordSimilarity(unittest.TestCase):
 # UTILS — PARSING
 # ══════════════════════════════════════════════════════════════════════════
 
+
 class TestExtractJsonBlock(unittest.TestCase):
     def test_clean(self):
         self.assertEqual(extract_json_block('{"k": "v"}'), '{"k": "v"}')
@@ -142,26 +152,54 @@ class TestParseLlmJson(unittest.TestCase):
 # UTILS — SERIALIZATION
 # ══════════════════════════════════════════════════════════════════════════
 
+
 class TestSerialization(unittest.TestCase):
     def _make_result(self):
         f = RegulatoryFiling(
-            id="T-001", title="Test", domain=RegulatoryDomain.SEC,
-            source_url="https://x.com", published_date="2026-01-01",
-            raw_text="text", change_type=ChangeType.FINAL_RULE,
+            id="T-001",
+            title="Test",
+            domain=RegulatoryDomain.SEC,
+            source_url="https://x.com",
+            published_date="2026-01-01",
+            raw_text="text",
+            change_type=ChangeType.FINAL_RULE,
         )
         i = ImpactAssessment(
-            filing_id="T-001", severity=Severity.CRITICAL,
-            affected_business_lines=["Eq"], affected_regulations=["Reg"],
-            compliance_deadline="2026-12-15", action_items=["Do it"],
-            risk_summary="Risk", confidence=0.95,
+            filing_id="T-001",
+            severity=Severity.CRITICAL,
+            affected_business_lines=["Eq"],
+            affected_regulations=["Reg"],
+            compliance_deadline="2026-12-15",
+            action_items=["Do it"],
+            risk_summary="Risk",
+            confidence=0.95,
         )
         d = DecisionFrame(
-            decision_id="decision::T-001", question="What action is warranted?", scope="SEC review", time_horizon="near-term",
-            affected_entities=["Eq"], candidate_actions=["Escalate"], constraints=["Legal review required"],
-            evidence_items=["Source filing"], assumptions=["No implementation delay"], counterarguments=["Scope may narrow"],
-            confidence=0.9, expected_revisit_date="2026-12-01", owner="Compliance", audit_refs=["T-001"]
+            decision_id="decision::T-001",
+            question="What action is warranted?",
+            scope="SEC review",
+            time_horizon="near-term",
+            affected_entities=["Eq"],
+            candidate_actions=["Escalate"],
+            constraints=["Legal review required"],
+            evidence_items=["Source filing"],
+            assumptions=["No implementation delay"],
+            counterarguments=["Scope may narrow"],
+            confidence=0.9,
+            expected_revisit_date="2026-12-01",
+            owner="Compliance",
+            audit_refs=["T-001"],
         )
-        e = EvidenceLedgerEntry(evidence_id="episodic:T-001", source_type="episodic", supports=["Escalate"], contradicts=[], strength_score=0.9, novelty_score=0.4, trace=["memory_id=episodic:T-001"], summary="Test evidence")
+        e = EvidenceLedgerEntry(
+            evidence_id="episodic:T-001",
+            source_type="episodic",
+            supports=["Escalate"],
+            contradicts=[],
+            strength_score=0.9,
+            novelty_score=0.4,
+            trace=["memory_id=episodic:T-001"],
+            summary="Test evidence",
+        )
         return MonitorResult(filing=f, impact=i, decision=d, evidence_ledger=[e], raw_analysis="{}")
 
     def test_enum_serializer(self):
@@ -179,6 +217,7 @@ class TestSerialization(unittest.TestCase):
 # ══════════════════════════════════════════════════════════════════════════
 # FETCHERS
 # ══════════════════════════════════════════════════════════════════════════
+
 
 class TestSampleData(unittest.TestCase):
     def test_not_empty(self):
@@ -218,6 +257,7 @@ class TestDomainBusinessLines(unittest.TestCase):
 # PROVIDERS
 # ══════════════════════════════════════════════════════════════════════════
 
+
 class TestMockProvider(unittest.TestCase):
     def test_known_filing(self):
         p = MockProvider()
@@ -246,6 +286,7 @@ class TestBuildProvider(unittest.TestCase):
 # MEMORY
 # ══════════════════════════════════════════════════════════════════════════
 
+
 class TestMemoryStore(unittest.TestCase):
     def setUp(self):
         self.mem = MemoryStore(":memory:")
@@ -257,7 +298,16 @@ class TestMemoryStore(unittest.TestCase):
         self.assertEqual(self.mem.count(), 0)
 
     def test_store_episodic(self):
-        self.mem.store_episodic("T-001", {"title": "A", "domain": "sec"}, {"severity": "high", "affected_business_lines": ["Eq"], "affected_regulations": ["R"], "risk_summary": "X"})
+        self.mem.store_episodic(
+            "T-001",
+            {"title": "A", "domain": "sec"},
+            {
+                "severity": "high",
+                "affected_business_lines": ["Eq"],
+                "affected_regulations": ["R"],
+                "risk_summary": "X",
+            },
+        )
         self.assertEqual(self.mem.count(MemoryType.EPISODIC), 1)
 
     def test_store_entity(self):
@@ -280,8 +330,26 @@ class TestMemoryStore(unittest.TestCase):
         self.assertIsNone(self.mem.get("nope:123"))
 
     def test_recall_semantic(self):
-        self.mem.store_episodic("SEC-001", {"title": "Climate", "domain": "sec"}, {"severity": "high", "affected_business_lines": ["ESG"], "affected_regulations": [], "risk_summary": "SEC"})
-        self.mem.store_episodic("FDA-001", {"title": "Device AI", "domain": "fda"}, {"severity": "med", "affected_business_lines": ["Dev"], "affected_regulations": [], "risk_summary": "FDA"})
+        self.mem.store_episodic(
+            "SEC-001",
+            {"title": "Climate", "domain": "sec"},
+            {
+                "severity": "high",
+                "affected_business_lines": ["ESG"],
+                "affected_regulations": [],
+                "risk_summary": "SEC",
+            },
+        )
+        self.mem.store_episodic(
+            "FDA-001",
+            {"title": "Device AI", "domain": "fda"},
+            {
+                "severity": "med",
+                "affected_business_lines": ["Dev"],
+                "affected_regulations": [],
+                "risk_summary": "FDA",
+            },
+        )
         results = self.mem.recall("climate SEC ESG", top_k=2)
         self.assertGreater(len(results), 0)
         self.assertEqual(results[0].key, "SEC-001")
@@ -299,14 +367,32 @@ class TestMemoryStore(unittest.TestCase):
         self.assertEqual(len(self.mem.get_filing_history(domain="sec")), 1)
 
     def test_entity_relations_auto_created(self):
-        self.mem.store_episodic("T-001", {"title": "A", "domain": "sec"}, {"severity": "h", "affected_business_lines": ["Eq"], "affected_regulations": ["Reg"], "risk_summary": "R"})
+        self.mem.store_episodic(
+            "T-001",
+            {"title": "A", "domain": "sec"},
+            {
+                "severity": "h",
+                "affected_business_lines": ["Eq"],
+                "affected_regulations": ["Reg"],
+                "risk_summary": "R",
+            },
+        )
         self.assertGreater(len(self.mem.get_related_entities("Reg")), 0)
 
     def test_context_block_empty(self):
         self.assertEqual(self.mem.build_context_block("sec", "text"), "")
 
     def test_context_block_with_data(self):
-        self.mem.store_episodic("SEC-001", {"id": "SEC-001", "title": "Climate", "domain": "sec"}, {"severity": "critical", "affected_business_lines": ["ESG"], "affected_regulations": [], "risk_summary": "R"})
+        self.mem.store_episodic(
+            "SEC-001",
+            {"id": "SEC-001", "title": "Climate", "domain": "sec"},
+            {
+                "severity": "critical",
+                "affected_business_lines": ["ESG"],
+                "affected_regulations": [],
+                "risk_summary": "R",
+            },
+        )
         ctx = self.mem.build_context_block("sec", "climate disclosure")
         self.assertIn("WEIGHTED EVIDENCE LEDGER", ctx)
         self.assertIn("RELEVANT PAST ANALYSES", ctx)
@@ -334,7 +420,13 @@ class TestMemoryStore(unittest.TestCase):
 class TestSimilarityEngine(unittest.TestCase):
     def test_index_and_search(self):
         e = SimilarityEngine()
-        e.index({"d1": "climate SEC emissions", "d2": "medical device FDA AI", "d3": "tariff semiconductor China"})
+        e.index(
+            {
+                "d1": "climate SEC emissions",
+                "d2": "medical device FDA AI",
+                "d3": "tariff semiconductor China",
+            }
+        )
         results = e.search("climate SEC", top_k=2)
         self.assertGreater(len(results), 0)
         self.assertEqual(results[0][0], "d1")
@@ -350,6 +442,7 @@ class TestSimilarityEngine(unittest.TestCase):
 # ══════════════════════════════════════════════════════════════════════════
 # AGENT
 # ══════════════════════════════════════════════════════════════════════════
+
 
 class TestAgent(unittest.TestCase):
     def setUp(self):
@@ -414,7 +507,8 @@ class TestAgent(unittest.TestCase):
 
     def test_agent_without_memory(self):
         agent = RegulatoryMonitorAgent(
-            provider=MockProvider(), memory=None,
+            provider=MockProvider(),
+            memory=None,
             state_path=os.path.join(self.tmpdir, "state2.json"),
         )
         results = agent.run(since_days=90)
@@ -425,19 +519,27 @@ class TestAgent(unittest.TestCase):
 # MCP STANDALONE
 # ══════════════════════════════════════════════════════════════════════════
 
+
 class TestMCPStandalone(unittest.TestCase):
     def setUp(self):
         self.mem = MemoryStore(":memory:")
         self.mem.store_episodic(
             "SEC-001",
             {"id": "SEC-001", "title": "Climate Rule", "domain": "sec", "summary": "SEC climate."},
-            {"severity": "critical", "affected_business_lines": ["ESG"], "affected_regulations": ["Reg S-K"], "risk_summary": "Risk"},
+            {
+                "severity": "critical",
+                "affected_business_lines": ["ESG"],
+                "affected_regulations": ["Reg S-K"],
+                "risk_summary": "Risk",
+            },
         )
         self.mem.record_feedback("SEC-001", "severity", "critical", "critical", "confirmed")
 
         import naturalsentinel.mcp.server as mcp_mod
+
         mcp_mod._memory = self.mem
         from naturalsentinel.mcp.server import StandaloneServer
+
         self.server = StandaloneServer()
 
     def tearDown(self):
@@ -449,23 +551,54 @@ class TestMCPStandalone(unittest.TestCase):
         self.assertGreaterEqual(len(resp["tools"]), 4)
 
     def test_memory_stats(self):
-        resp = self.server.handle_request({"method": "tools/call", "params": {"name": "get_memory_stats", "arguments": {}}})
+        resp = self.server.handle_request(
+            {"method": "tools/call", "params": {"name": "get_memory_stats", "arguments": {}}}
+        )
         self.assertIn("total_memories", resp["result"])
 
     def test_recall(self):
-        resp = self.server.handle_request({"method": "tools/call", "params": {"name": "recall_memory", "arguments": {"query": "climate SEC", "top_k": 2}}})
+        resp = self.server.handle_request(
+            {
+                "method": "tools/call",
+                "params": {
+                    "name": "recall_memory",
+                    "arguments": {"query": "climate SEC", "top_k": 2},
+                },
+            }
+        )
         self.assertGreater(len(resp["result"]), 0)
 
     def test_feedback(self):
-        resp = self.server.handle_request({"method": "tools/call", "params": {"name": "provide_feedback", "arguments": {"filing_id": "SEC-001", "field": "severity", "old_value": "high", "new_value": "critical", "reason": "test"}}})
+        resp = self.server.handle_request(
+            {
+                "method": "tools/call",
+                "params": {
+                    "name": "provide_feedback",
+                    "arguments": {
+                        "filing_id": "SEC-001",
+                        "field": "severity",
+                        "old_value": "high",
+                        "new_value": "critical",
+                        "reason": "test",
+                    },
+                },
+            }
+        )
         self.assertEqual(resp["result"]["status"], "recorded")
 
     def test_entity_relations(self):
-        resp = self.server.handle_request({"method": "tools/call", "params": {"name": "get_entity_relations", "arguments": {"entity": "Reg S-K"}}})
+        resp = self.server.handle_request(
+            {
+                "method": "tools/call",
+                "params": {"name": "get_entity_relations", "arguments": {"entity": "Reg S-K"}},
+            }
+        )
         self.assertIsInstance(resp["result"], list)
 
     def test_unknown_tool(self):
-        resp = self.server.handle_request({"method": "tools/call", "params": {"name": "bogus", "arguments": {}}})
+        resp = self.server.handle_request(
+            {"method": "tools/call", "params": {"name": "bogus", "arguments": {}}}
+        )
         self.assertIn("error", resp)
 
     def test_resources_list(self):
@@ -473,7 +606,9 @@ class TestMCPStandalone(unittest.TestCase):
         self.assertIn("naturalsentinel://memory/stats", resp["resources"])
 
     def test_read_config(self):
-        resp = self.server.handle_request({"method": "resources/read", "params": {"uri": "naturalsentinel://config/domains"}})
+        resp = self.server.handle_request(
+            {"method": "resources/read", "params": {"uri": "naturalsentinel://config/domains"}}
+        )
         self.assertIn("domains", resp["result"])
 
     def test_unknown_method(self):

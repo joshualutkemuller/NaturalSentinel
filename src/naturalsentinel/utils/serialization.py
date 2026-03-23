@@ -1,7 +1,6 @@
-"""JSON serialization helpers for enum-rich dataclasses."""
+"""JSON serialization helpers for enum-rich models."""
 
 import json
-from dataclasses import asdict
 from enum import Enum
 from typing import Any
 
@@ -16,10 +15,10 @@ def enum_serializer(obj: Any) -> Any:
 def serialize_result(result: Any) -> dict:
     """Convert a MonitorResult into a clean JSON-safe dict with enum values resolved."""
     raw = {
-        "filing": asdict(result.filing),
-        "impact": asdict(result.impact),
-        "decision": asdict(result.decision),
-        "evidence_ledger": [asdict(item) for item in result.evidence_ledger],
+        "filing": result.filing.model_dump(),
+        "impact": result.impact.model_dump(),
+        "decision": result.decision.model_dump(),
+        "evidence_ledger": [item.model_dump() for item in result.evidence_ledger],
     }
     # Round-trip through JSON to resolve all enums
     return json.loads(json.dumps(raw, default=enum_serializer))

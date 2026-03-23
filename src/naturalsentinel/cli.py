@@ -8,7 +8,6 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-from dataclasses import asdict
 
 from naturalsentinel.agent_framework import AgentRuntime
 from naturalsentinel.models import ChangeType, RegulatoryDomain, RegulatoryFiling
@@ -171,7 +170,7 @@ def analyze_local_documents(
         filings = build_local_filings(input_paths, input_dir, domain, recursive=recursive)
         results: list[dict] = []
         for filing in filings:
-            filing_data = json.loads(json.dumps(asdict(filing), default=enum_serializer))
+            filing_data = json.loads(json.dumps(filing.model_dump(), default=enum_serializer))
             context_result = runtime.execute_skill(
                 "build_context",
                 {"domain": filing.domain.value, "filing_text": filing.raw_text},

@@ -8,6 +8,7 @@ from naturalsentinel.utils.serialization import enum_serializer, serialize_resul
 from naturalsentinel.utils.text import tokenize, keyword_similarity
 from naturalsentinel.models import (
     ChangeType,
+    DecisionFrame,
     ImpactAssessment,
     MonitorResult,
     RegulatoryDomain,
@@ -117,7 +118,13 @@ class TestSerializeResult:
             action_items=["Do something"],
             risk_summary="Big risk", confidence=0.95,
         )
-        result = MonitorResult(filing=filing, impact=impact, raw_analysis="{}")
+        decision = DecisionFrame(
+            decision_id="decision::T-001",
+            question="What response is warranted?",
+            scope="SEC filing review",
+            time_horizon="near-term",
+        )
+        result = MonitorResult(filing=filing, impact=impact, decision=decision, raw_analysis="{}")
         serialized = serialize_result(result)
 
         # All enum values should be plain strings

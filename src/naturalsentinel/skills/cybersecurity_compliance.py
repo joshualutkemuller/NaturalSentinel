@@ -7,12 +7,16 @@ infrastructure security requirements.
 """
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES
 from naturalsentinel.utils.parsing import parse_llm_json
-
 
 CYBERSECURITY_COMPLIANCE_SYSTEM = """\
 You are a senior cybersecurity regulatory specialist with expertise in CISA directives \
@@ -94,13 +98,23 @@ class CybersecurityComplianceSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["cybersecurity", "cisa", "kev", "fcc", "sec-cyber", "incident-reporting", "critical-infrastructure"],
+        tags=[
+            "cybersecurity",
+            "cisa",
+            "kev",
+            "fcc",
+            "sec-cyber",
+            "incident-reporting",
+            "critical-infrastructure",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="LLM access denied — this skill requires LLM_READ permission",
             )
 

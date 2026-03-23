@@ -7,7 +7,9 @@ Monitors SEC, Fed, and FINRA filings for changes to collateral schedules,
 haircut matrices, rehypothecation limits, margin rules, and SFTR reporting —
 actionable for Secured Lending, Agency Lending, and Prime desks.
 """
+
 from __future__ import annotations
+
 from typing import Any
 
 SF_DOMAINS = ["sec", "fed", "finra"]
@@ -45,7 +47,11 @@ class SecuritiesFinancingAgent:
             "collateral_changes": _extract_field(analyses, "collateral_eligibility_changes"),
             "margin_changes": _extract_field(analyses, "margin_requirement_changes"),
             "desk_actions": _dedup_actions(analyses, "desk_action_items"),
-            "rehypothecation_impacts": [a.get("rehypothecation_impact") for a in analyses if a.get("rehypothecation_impact") not in (None, "none")],
+            "rehypothecation_impacts": [
+                a.get("rehypothecation_impact")
+                for a in analyses
+                if a.get("rehypothecation_impact") not in (None, "none")
+            ],
             "audit_summary": self.runtime.audit.summary(),
         }
 
@@ -57,11 +63,13 @@ class SecuritiesFinancingAgent:
             hc = a.get("haircut_changes", [])
             ce = a.get("collateral_eligibility_changes", [])
             if hc or ce:
-                updates.append({
-                    "filing_id": a.get("filing_id"),
-                    "haircut_changes": hc,
-                    "eligibility_changes": ce,
-                })
+                updates.append(
+                    {
+                        "filing_id": a.get("filing_id"),
+                        "haircut_changes": hc,
+                        "eligibility_changes": ce,
+                    }
+                )
         return updates
 
     def prime_brokerage_impacts(self) -> list[dict]:
@@ -69,13 +77,16 @@ class SecuritiesFinancingAgent:
         analyses = self._analyze_sf_filings()
         return [
             {"filing_id": a.get("filing_id"), "impacts": a.get("prime_brokerage_impacts", [])}
-            for a in analyses if a.get("prime_brokerage_impacts")
+            for a in analyses
+            if a.get("prime_brokerage_impacts")
         ]
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {"domains": domains, "since_days": since_days})
+        result = self.runtime.execute_skill(
+            "scan_cycle", {"domains": domains, "since_days": since_days}
+        )
         return result.data.get("stats", {}) if result.success else {}
 
     def _analyze_sf_filings(self) -> list[dict]:

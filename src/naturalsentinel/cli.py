@@ -8,7 +8,6 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
-
 from naturalsentinel.agent_framework import AgentRuntime
 from naturalsentinel.models import ChangeType, RegulatoryDomain, RegulatoryFiling
 from naturalsentinel.providers.base import ModelProvider
@@ -45,18 +44,23 @@ def build_provider(provider_name: str, model: str | None = None) -> ModelProvide
     match provider_name.lower():
         case "anthropic":
             from naturalsentinel.providers.anthropic import AnthropicProvider
+
             return AnthropicProvider(model=model or "claude-sonnet-4-20250514")
         case "openai":
             from naturalsentinel.providers.openai import OpenAIProvider
+
             return OpenAIProvider(model=model or "gpt-4o")
         case "gemini":
             from naturalsentinel.providers.gemini import GeminiProvider
+
             return GeminiProvider(model=model or "gemini-2.0-flash")
         case "ollama":
             from naturalsentinel.providers.ollama import OllamaProvider
+
             return OllamaProvider(model=model or "llama3.1")
         case "mock":
             from naturalsentinel.providers.mock import MockProvider
+
             return MockProvider()
         case _:
             raise ValueError(f"Unknown provider: {provider_name}")
@@ -99,7 +103,9 @@ def _collect_input_files(
             continue
         if path.is_dir():
             iterator = path.rglob("*") if recursive else path.glob("*")
-            files.extend(p for p in iterator if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES)
+            files.extend(
+                p for p in iterator if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES
+            )
             continue
         raise ValueError(f"Unsupported input path: {path}")
 
@@ -162,6 +168,7 @@ def analyze_local_documents(
     memory = None
     if memory_db:
         from naturalsentinel.memory.store import MemoryStore
+
         memory = MemoryStore(memory_db)
 
     runtime = create_runtime(provider, memory=memory, state_path=state_path)
@@ -206,13 +213,16 @@ def build_parser() -> argparse.ArgumentParser:
         description="Regulatory Change Monitor & Impact Mapper",
     )
     parser.add_argument(
-        "--provider", default="mock",
+        "--provider",
+        default="mock",
         choices=["anthropic", "openai", "gemini", "ollama", "mock"],
         help="LLM provider (default: mock for demo)",
     )
     parser.add_argument("--model", default=None, help="Specific model name override")
     parser.add_argument(
-        "--domains", nargs="*", default=None,
+        "--domains",
+        nargs="*",
+        default=None,
         help="Regulatory domains to monitor (sec cfpb fed fda epa ustr fhfa occ finra cftc fdic basel)",
     )
     parser.add_argument("--days", type=int, default=60, help="Look-back window in days")
@@ -266,6 +276,7 @@ def main():
         memory = None
         if args.memory_db:
             from naturalsentinel.memory.store import MemoryStore
+
             memory = MemoryStore(args.memory_db)
 
         runtime = create_runtime(

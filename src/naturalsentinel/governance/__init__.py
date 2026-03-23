@@ -14,26 +14,28 @@ policy            EscalationPolicy / FallbackPolicy — configurable rules for
                   human-review escalation and graceful degradation.
 """
 
-from naturalsentinel.governance.model_card import ModelCard
-from naturalsentinel.governance.control_matrix import Control, ControlMatrix
 from naturalsentinel.governance.audit import (
     AuditEvent,
     AuditEventType,
     AuditSeverity,
     severity_for_event,
 )
+from naturalsentinel.governance.control_matrix import Control, ControlMatrix
 from naturalsentinel.governance.failure_taxonomy import (
+    FAILURE_TAXONOMY,
     FailureCategory,
     FailureRecord,
-    FAILURE_TAXONOMY,
-    classify as classify_failure,
     auto_escalate_codes,
 )
+from naturalsentinel.governance.failure_taxonomy import (
+    classify as classify_failure,
+)
+from naturalsentinel.governance.model_card import ModelCard
 from naturalsentinel.governance.policy import (
-    EscalationTrigger,
-    EscalationPolicy,
-    FallbackPolicy,
     FALLBACK_ACTIONS,
+    EscalationPolicy,
+    EscalationTrigger,
+    FallbackPolicy,
 )
 
 __all__ = [

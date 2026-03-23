@@ -11,19 +11,22 @@ import os
 import sys
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from naturalsentinel.fetchers.base import _raw_to_filing, fetch_filings
+from naturalsentinel.fetchers.live import bis, edgar, federal_register, finra
 from naturalsentinel.fetchers.live.parsers import (
-    html_to_text, detect_change_type, normalise_whitespace, truncate,
+    detect_change_type,
+    html_to_text,
+    normalise_whitespace,
+    truncate,
 )
-from naturalsentinel.fetchers.live import federal_register, edgar, bis, finra
-from naturalsentinel.fetchers.base import fetch_filings, _raw_to_filing
-from naturalsentinel.models import RegulatoryFiling, RegulatoryDomain, ChangeType
-
+from naturalsentinel.models import ChangeType, RegulatoryDomain, RegulatoryFiling
 
 # ---------------------------------------------------------------------------
 # Mock HTTP client
 # ---------------------------------------------------------------------------
+
 
 class MockHTTPClient:
     """Intercepts HTTP calls and returns pre-canned text/JSON responses."""
@@ -198,6 +201,7 @@ concentration haircuts and enhanced margin requirements.</p>
 # parsers — html_to_text
 # ---------------------------------------------------------------------------
 
+
 class TestHtmlToText(unittest.TestCase):
     def test_strips_script_and_style(self):
         html = "<html><head><style>body{color:red}</style></head><body><p>Hello world</p></body></html>"
@@ -243,13 +247,17 @@ class TestDetectChangeType(unittest.TestCase):
         self.assertEqual(detect_change_type("Final Rule on Capital Requirements"), "final_rule")
 
     def test_proposed_rule(self):
-        self.assertEqual(detect_change_type("Notice of Proposed Rulemaking for NSFR"), "proposed_rule")
+        self.assertEqual(
+            detect_change_type("Notice of Proposed Rulemaking for NSFR"), "proposed_rule"
+        )
 
     def test_nprm(self):
         self.assertEqual(detect_change_type("NPRM on climate disclosures"), "proposed_rule")
 
     def test_enforcement(self):
-        self.assertEqual(detect_change_type("Enforcement action and civil money penalty"), "enforcement")
+        self.assertEqual(
+            detect_change_type("Enforcement action and civil money penalty"), "enforcement"
+        )
 
     def test_guidance(self):
         self.assertEqual(detect_change_type("Supervisory guidance on model risk"), "guidance")
@@ -287,6 +295,7 @@ class TestTruncate(unittest.TestCase):
 # federal_register fetcher
 # ---------------------------------------------------------------------------
 
+
 class TestFederalRegisterFetch(unittest.TestCase):
     def _make_client(self, include_full_text=False):
         responses = {
@@ -298,12 +307,16 @@ class TestFederalRegisterFetch(unittest.TestCase):
 
     def test_returns_filings(self):
         client = self._make_client()
-        results = federal_register.fetch(["fed"], since_days=30, fetch_full_text=False, client=client)
+        results = federal_register.fetch(
+            ["fed"], since_days=30, fetch_full_text=False, client=client
+        )
         self.assertEqual(len(results), 2)
 
     def test_filing_has_required_fields(self):
         client = self._make_client()
-        results = federal_register.fetch(["fed"], since_days=30, fetch_full_text=False, client=client)
+        results = federal_register.fetch(
+            ["fed"], since_days=30, fetch_full_text=False, client=client
+        )
         r = results[0]
         self.assertIn("id", r)
         self.assertIn("title", r)
@@ -315,44 +328,61 @@ class TestFederalRegisterFetch(unittest.TestCase):
 
     def test_change_type_proposed_rule(self):
         client = self._make_client()
-        results = federal_register.fetch(["fed"], since_days=30, fetch_full_text=False, client=client)
+        results = federal_register.fetch(
+            ["fed"], since_days=30, fetch_full_text=False, client=client
+        )
         proposed = next(r for r in results if "04321" in r["id"])
         self.assertEqual(proposed["change_type"], "proposed_rule")
 
     def test_change_type_final_rule(self):
         client = self._make_client()
-        results = federal_register.fetch(["fed"], since_days=30, fetch_full_text=False, client=client)
+        results = federal_register.fetch(
+            ["fed"], since_days=30, fetch_full_text=False, client=client
+        )
         final = next(r for r in results if "04322" in r["id"])
         self.assertEqual(final["change_type"], "final_rule")
 
     def test_domain_preserved(self):
         client = self._make_client()
-        results = federal_register.fetch(["sec"], since_days=30, fetch_full_text=False, client=client)
+        results = federal_register.fetch(
+            ["sec"], since_days=30, fetch_full_text=False, client=client
+        )
         for r in results:
             self.assertEqual(r["domain"], "sec")
 
     def test_full_text_fetched_when_enabled(self):
         client = self._make_client(include_full_text=True)
-        results = federal_register.fetch(["fed"], since_days=30, fetch_full_text=True, client=client)
+        results = federal_register.fetch(
+            ["fed"], since_days=30, fetch_full_text=True, client=client
+        )
         # Any result with a html_url should have richer text than just abstract
         self.assertTrue(len(results) > 0)
 
     def test_network_error_returns_empty(self):
         import urllib.error
+
         class ErrorClient:
-            def get(self, url, params=None): raise urllib.error.URLError("timeout")
-            def get_json(self, url, params=None): raise urllib.error.URLError("timeout")
+            def get(self, url, params=None):
+                raise urllib.error.URLError("timeout")
+
+            def get_json(self, url, params=None):
+                raise urllib.error.URLError("timeout")
+
         results = federal_register.fetch(["fed"], since_days=30, client=ErrorClient())
         self.assertEqual(results, [])
 
     def test_unknown_domain_skipped(self):
         client = self._make_client()
-        results = federal_register.fetch(["finra"], since_days=30, fetch_full_text=False, client=client)
+        results = federal_register.fetch(
+            ["finra"], since_days=30, fetch_full_text=False, client=client
+        )
         self.assertEqual(results, [])
 
     def test_empty_results_list(self):
         client = MockHTTPClient({"https://www.federalregister.gov/api/v1": {"results": []}})
-        results = federal_register.fetch(["fed"], since_days=30, fetch_full_text=False, client=client)
+        results = federal_register.fetch(
+            ["fed"], since_days=30, fetch_full_text=False, client=client
+        )
         self.assertEqual(results, [])
 
 
@@ -360,11 +390,14 @@ class TestFederalRegisterFetch(unittest.TestCase):
 # EDGAR fetcher
 # ---------------------------------------------------------------------------
 
+
 class TestEdgarFetch(unittest.TestCase):
     def _make_client(self):
-        return MockHTTPClient({
-            "https://efts.sec.gov": EDGAR_JSON_RESPONSE,
-        })
+        return MockHTTPClient(
+            {
+                "https://efts.sec.gov": EDGAR_JSON_RESPONSE,
+            }
+        )
 
     def test_returns_filings(self):
         results = edgar.fetch(since_days=30, fetch_full_text=False, client=self._make_client())
@@ -403,9 +436,14 @@ class TestEdgarFetch(unittest.TestCase):
 
     def test_network_error_returns_empty(self):
         import urllib.error
+
         class ErrorClient:
-            def get(self, url, params=None): raise urllib.error.URLError("timeout")
-            def get_json(self, url, params=None): raise urllib.error.URLError("timeout")
+            def get(self, url, params=None):
+                raise urllib.error.URLError("timeout")
+
+            def get_json(self, url, params=None):
+                raise urllib.error.URLError("timeout")
+
         results = edgar.fetch(since_days=30, client=ErrorClient())
         self.assertEqual(results, [])
 
@@ -414,12 +452,15 @@ class TestEdgarFetch(unittest.TestCase):
 # BIS fetcher
 # ---------------------------------------------------------------------------
 
+
 class TestBisFetch(unittest.TestCase):
     def _make_client(self):
-        return MockHTTPClient({
-            "https://www.bis.org/bcbs/publications.htm": BIS_HTML_RESPONSE,
-            "https://www.bis.org/bcbs/publ/": BIS_PUB_HTML,
-        })
+        return MockHTTPClient(
+            {
+                "https://www.bis.org/bcbs/publications.htm": BIS_HTML_RESPONSE,
+                "https://www.bis.org/bcbs/publ/": BIS_PUB_HTML,
+            }
+        )
 
     def test_returns_filings(self):
         results = bis.fetch(since_days=365, fetch_full_text=False, client=self._make_client())
@@ -441,9 +482,14 @@ class TestBisFetch(unittest.TestCase):
 
     def test_network_error_returns_empty(self):
         import urllib.error
+
         class ErrorClient:
-            def get(self, url, params=None): raise urllib.error.URLError("timeout")
-            def get_json(self, url, params=None): raise urllib.error.URLError("timeout")
+            def get(self, url, params=None):
+                raise urllib.error.URLError("timeout")
+
+            def get_json(self, url, params=None):
+                raise urllib.error.URLError("timeout")
+
         results = bis.fetch(since_days=90, client=ErrorClient())
         self.assertEqual(results, [])
 
@@ -461,12 +507,15 @@ class TestBisFetch(unittest.TestCase):
 # FINRA fetcher
 # ---------------------------------------------------------------------------
 
+
 class TestFinraFetch(unittest.TestCase):
     def _make_client(self):
-        return MockHTTPClient({
-            "https://www.finra.org/rules-guidance/notices": FINRA_HTML_RESPONSE,
-            "https://www.finra.org/rules-guidance/notices/26-": FINRA_NOTICE_HTML,
-        })
+        return MockHTTPClient(
+            {
+                "https://www.finra.org/rules-guidance/notices": FINRA_HTML_RESPONSE,
+                "https://www.finra.org/rules-guidance/notices/26-": FINRA_NOTICE_HTML,
+            }
+        )
 
     def test_returns_filings(self):
         results = finra.fetch(since_days=365, fetch_full_text=False, client=self._make_client())
@@ -488,9 +537,14 @@ class TestFinraFetch(unittest.TestCase):
 
     def test_network_error_returns_empty(self):
         import urllib.error
+
         class ErrorClient:
-            def get(self, url, params=None): raise urllib.error.URLError("timeout")
-            def get_json(self, url, params=None): raise urllib.error.URLError("timeout")
+            def get(self, url, params=None):
+                raise urllib.error.URLError("timeout")
+
+            def get_json(self, url, params=None):
+                raise urllib.error.URLError("timeout")
+
         results = finra.fetch(since_days=60, client=ErrorClient())
         self.assertEqual(results, [])
 
@@ -499,18 +553,22 @@ class TestFinraFetch(unittest.TestCase):
 # fetch_filings live routing
 # ---------------------------------------------------------------------------
 
+
 class TestFetchFilingsLive(unittest.TestCase):
     def _make_all_client(self):
         """Client that satisfies all live fetchers with canned responses."""
-        return MockHTTPClient({
-            "https://www.federalregister.gov/api/v1": FR_JSON_RESPONSE,
-            "https://efts.sec.gov": EDGAR_JSON_RESPONSE,
-            "https://www.bis.org/bcbs/publications.htm": BIS_HTML_RESPONSE,
-            "https://www.finra.org/rules-guidance/notices": FINRA_HTML_RESPONSE,
-        })
+        return MockHTTPClient(
+            {
+                "https://www.federalregister.gov/api/v1": FR_JSON_RESPONSE,
+                "https://efts.sec.gov": EDGAR_JSON_RESPONSE,
+                "https://www.bis.org/bcbs/publications.htm": BIS_HTML_RESPONSE,
+                "https://www.finra.org/rules-guidance/notices": FINRA_HTML_RESPONSE,
+            }
+        )
 
     def test_live_mode_returns_regulatory_filings(self):
         from naturalsentinel.models import RegulatoryDomain
+
         results = fetch_filings(
             domains=[RegulatoryDomain.FED],
             since_days=30,
@@ -524,6 +582,7 @@ class TestFetchFilingsLive(unittest.TestCase):
 
     def test_live_mode_filing_fields(self):
         from naturalsentinel.models import RegulatoryDomain
+
         results = fetch_filings(
             domains=[RegulatoryDomain.FED],
             since_days=30,
@@ -539,6 +598,7 @@ class TestFetchFilingsLive(unittest.TestCase):
 
     def test_live_mode_deduplicates(self):
         from naturalsentinel.models import RegulatoryDomain
+
         results = fetch_filings(
             domains=[RegulatoryDomain.FED],
             since_days=30,
@@ -552,9 +612,14 @@ class TestFetchFilingsLive(unittest.TestCase):
     def test_live_mode_all_sources_fail_falls_back_to_sample(self):
         """When every live source fails, fall back to sample data gracefully."""
         import urllib.error
+
         class AllFailClient:
-            def get(self, url, params=None): raise urllib.error.URLError("offline")
-            def get_json(self, url, params=None): raise urllib.error.URLError("offline")
+            def get(self, url, params=None):
+                raise urllib.error.URLError("offline")
+
+            def get_json(self, url, params=None):
+                raise urllib.error.URLError("offline")
+
         results = fetch_filings(
             live=True,
             fetch_full_text=False,
@@ -576,6 +641,7 @@ class TestFetchFilingsLive(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # _raw_to_filing normalisation edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestRawToFiling(unittest.TestCase):
     def test_valid_raw(self):
@@ -599,7 +665,12 @@ class TestRawToFiling(unittest.TestCase):
         self.assertEqual(f.domain, RegulatoryDomain.SEC)
 
     def test_unknown_change_type_defaults_to_notice(self):
-        raw = {"id": "X", "domain": "fed", "published_date": "2026-01-01", "change_type": "weird_type"}
+        raw = {
+            "id": "X",
+            "domain": "fed",
+            "published_date": "2026-01-01",
+            "change_type": "weird_type",
+        }
         f = _raw_to_filing(raw)
         self.assertEqual(f.change_type, ChangeType.NOTICE)
 
@@ -619,8 +690,12 @@ class TestRawToFiling(unittest.TestCase):
             ("amendment", ChangeType.AMENDMENT),
             ("executive_order", ChangeType.EXECUTIVE_ORDER),
         ]:
-            raw = {"id": "X", "domain": "sec", "published_date": "2026-01-01",
-                   "change_type": ct_str}
+            raw = {
+                "id": "X",
+                "domain": "sec",
+                "published_date": "2026-01-01",
+                "change_type": ct_str,
+            }
             f = _raw_to_filing(raw)
             self.assertEqual(f.change_type, ct_enum, f"Failed for {ct_str}")
 

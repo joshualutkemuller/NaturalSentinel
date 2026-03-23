@@ -2,70 +2,117 @@
 
 import logging
 from datetime import datetime, timedelta
-from typing import Optional
 
-from naturalsentinel.models import ChangeType, RegulatoryDomain, RegulatoryFiling
 from naturalsentinel.fetchers.sample_data import SAMPLE_FILINGS
+from naturalsentinel.models import ChangeType, RegulatoryDomain, RegulatoryFiling
 
 logger = logging.getLogger(__name__)
 
 # Maps domain -> list of portfolio / business lines typically affected
 DOMAIN_BUSINESS_LINES: dict[str, list[str]] = {
     "sec": [
-        "Public Equities", "Investment Banking", "Corporate Finance",
-        "ESG / Sustainability", "Investor Relations", "Audit & Assurance",
+        "Public Equities",
+        "Investment Banking",
+        "Corporate Finance",
+        "ESG / Sustainability",
+        "Investor Relations",
+        "Audit & Assurance",
     ],
     "cfpb": [
-        "Consumer Lending", "Credit Cards", "Mortgage Banking",
-        "Auto Finance", "Fintech Partnerships", "Collections",
+        "Consumer Lending",
+        "Credit Cards",
+        "Mortgage Banking",
+        "Auto Finance",
+        "Fintech Partnerships",
+        "Collections",
     ],
     "fed": [
-        "Commercial Banking", "Digital Assets / Crypto", "Treasury & ALM",
-        "Risk Management", "Capital Markets", "Payments",
+        "Commercial Banking",
+        "Digital Assets / Crypto",
+        "Treasury & ALM",
+        "Risk Management",
+        "Capital Markets",
+        "Payments",
     ],
     "fda": [
-        "Medical Devices", "Pharmaceuticals", "Biotech",
-        "Digital Health / SaMD", "Clinical Trials", "Regulatory Affairs",
+        "Medical Devices",
+        "Pharmaceuticals",
+        "Biotech",
+        "Digital Health / SaMD",
+        "Clinical Trials",
+        "Regulatory Affairs",
     ],
     "epa": [
-        "Manufacturing", "Energy & Utilities", "Transportation",
-        "Real Estate & Construction", "Agriculture", "Insurance (Environmental)",
+        "Manufacturing",
+        "Energy & Utilities",
+        "Transportation",
+        "Real Estate & Construction",
+        "Agriculture",
+        "Insurance (Environmental)",
     ],
     "ustr": [
-        "Supply Chain / Procurement", "Semiconductor Manufacturing",
-        "Defense Contracting", "Consumer Electronics", "Critical Minerals",
+        "Supply Chain / Procurement",
+        "Semiconductor Manufacturing",
+        "Defense Contracting",
+        "Consumer Electronics",
+        "Critical Minerals",
         "International Trade Finance",
     ],
     # Securities finance & lending domains
     "fhfa": [
-        "Agency Lending", "Mortgage Banking", "Agency MBS / TBA",
-        "GSE Collateral Management", "Conforming Loan Origination",
-        "Credit Risk Transfer (CRT)", "Prepayment Modelling",
+        "Agency Lending",
+        "Mortgage Banking",
+        "Agency MBS / TBA",
+        "GSE Collateral Management",
+        "Conforming Loan Origination",
+        "Credit Risk Transfer (CRT)",
+        "Prepayment Modelling",
     ],
     "occ": [
-        "Secured Lending", "Prime Lending", "Leveraged Finance",
-        "Commercial Real Estate Lending", "Capital Planning",
-        "Model Risk Management", "Credit Portfolio Management",
+        "Secured Lending",
+        "Prime Lending",
+        "Leveraged Finance",
+        "Commercial Real Estate Lending",
+        "Capital Planning",
+        "Model Risk Management",
+        "Credit Portfolio Management",
     ],
     "finra": [
-        "Prime Brokerage", "Securities Lending", "Margin Lending",
-        "Repo / Reverse Repo", "TBA / MBS Trading", "Broker-Dealer Operations",
+        "Prime Brokerage",
+        "Securities Lending",
+        "Margin Lending",
+        "Repo / Reverse Repo",
+        "TBA / MBS Trading",
+        "Broker-Dealer Operations",
         "Customer Margin Accounts",
     ],
     "cftc": [
-        "Derivatives / Swaps", "Initial Margin (IM/SIMM)",
-        "Counterparty Credit Risk", "Cleared vs Uncleared Swaps",
-        "Commodity Finance", "FX Prime Brokerage", "CVA / MVA Hedging",
+        "Derivatives / Swaps",
+        "Initial Margin (IM/SIMM)",
+        "Counterparty Credit Risk",
+        "Cleared vs Uncleared Swaps",
+        "Commodity Finance",
+        "FX Prime Brokerage",
+        "CVA / MVA Hedging",
     ],
     "fdic": [
-        "Commercial Banking", "Deposit Funding", "Capital Adequacy",
-        "Resolution Planning", "Secured Lending", "Brokered Deposits",
+        "Commercial Banking",
+        "Deposit Funding",
+        "Capital Adequacy",
+        "Resolution Planning",
+        "Secured Lending",
+        "Brokered Deposits",
         "Stress Testing",
     ],
     "basel": [
-        "Capital Optimization", "RWA Modelling", "SA-CCR",
-        "Leverage Ratio / SLR", "NSFR / LCR", "Output Floor",
-        "Internal Models (FRTB / IRBA)", "XVA Desk",
+        "Capital Optimization",
+        "RWA Modelling",
+        "SA-CCR",
+        "Leverage Ratio / SLR",
+        "NSFR / LCR",
+        "Output Floor",
+        "Internal Models (FRTB / IRBA)",
+        "XVA Desk",
     ],
 }
 
@@ -109,7 +156,7 @@ def fetch_filings(
 
 
 def _fetch_sample(
-    domains: Optional[list[RegulatoryDomain]],
+    domains: list[RegulatoryDomain] | None,
     since_days: int,
 ) -> list[RegulatoryFiling]:
     """Return filings from the curated sample dataset."""
@@ -136,14 +183,14 @@ def _fetch_sample(
 
 
 def _fetch_live(
-    domains: Optional[list[RegulatoryDomain]],
+    domains: list[RegulatoryDomain] | None,
     since_days: int,
     fetch_full_text: bool,
     http_client,
 ) -> list[RegulatoryFiling]:
     """Coordinate live ingestion across all public sources."""
     # Import live fetchers here to keep the lazy import pattern
-    from naturalsentinel.fetchers.live import federal_register, edgar, bis, finra
+    from naturalsentinel.fetchers.live import bis, edgar, federal_register, finra
 
     domain_strs: list[str] = (
         [d.value for d in domains] if domains else list(DOMAIN_BUSINESS_LINES.keys())
@@ -206,9 +253,7 @@ def _fetch_live(
             logger.warning("FINRA fetch failed: %s", exc)
 
     if not raw_filings:
-        logger.warning(
-            "All live sources returned zero filings — falling back to sample data"
-        )
+        logger.warning("All live sources returned zero filings — falling back to sample data")
         return _fetch_sample(domains, since_days)
 
     # De-duplicate by ID

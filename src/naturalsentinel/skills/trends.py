@@ -10,8 +10,13 @@ from __future__ import annotations
 from collections import defaultdict
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 
 _SEVERITY_RANK = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -80,7 +85,9 @@ class TrendAnalysisSkill(Skill):
     def execute(self, context: SkillContext) -> SkillResult:
         if context.memory is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="Memory access denied — requires MEMORY_READ permission",
             )
 
@@ -90,7 +97,8 @@ class TrendAnalysisSkill(Skill):
         records = context.memory.get_filing_history(limit=limit)
         if not records:
             return SkillResult(
-                skill_name=self.metadata.name, success=True,
+                skill_name=self.metadata.name,
+                success=True,
                 data={"statistics": {}, "trend_signals": [], "narrative": "No data in memory."},
                 metadata={"message": "No analyses found. Run a scan cycle first."},
             )
@@ -120,7 +128,7 @@ class TrendAnalysisSkill(Skill):
 
         # ── Split into two temporal windows for trajectory ───────────────────
         mid = max(1, len(records) // 2)
-        older_half = records[mid:]   # get_filing_history returns newest-first
+        older_half = records[mid:]  # get_filing_history returns newest-first
         newer_half = records[:mid]
 
         def _window_stats(window: list) -> dict[str, dict[str, int]]:
@@ -146,17 +154,24 @@ class TrendAnalysisSkill(Skill):
             elif delta < -0.4:
                 signal = "de-escalating"
 
-            trend_signals.append({
-                "domain": dom.upper(),
-                "signal": signal,
-                "avg_severity_older": round(a_score, 2),
-                "avg_severity_recent": round(b_score, 2),
-                "delta": round(delta, 2),
-                "filing_count": domain_dist.get(dom, 0),
-            })
+            trend_signals.append(
+                {
+                    "domain": dom.upper(),
+                    "signal": signal,
+                    "avg_severity_older": round(a_score, 2),
+                    "avg_severity_recent": round(b_score, 2),
+                    "delta": round(delta, 2),
+                    "filing_count": domain_dist.get(dom, 0),
+                }
+            )
 
         # Sort: escalating first, then by delta descending
-        trend_signals.sort(key=lambda x: (-{"escalating": 2, "stable": 1, "de-escalating": 0}.get(x["signal"], 0), -x["delta"]))
+        trend_signals.sort(
+            key=lambda x: (
+                -{"escalating": 2, "stable": 1, "de-escalating": 0}.get(x["signal"], 0),
+                -x["delta"],
+            )
+        )
 
         top_business_lines = sorted(business_line_counts.items(), key=lambda x: -x[1])[:10]
 

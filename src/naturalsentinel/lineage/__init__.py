@@ -11,16 +11,16 @@ provenance  ModelProvenance — provider / model / version record per step,
 """
 
 from naturalsentinel.lineage.citation import (
-    FieldCitation,
-    CitationBundle,
-    parse_citations,
     CITABLE_FIELDS,
-)
-from naturalsentinel.lineage.trace import (
-    TraceStep,
-    DecisionTrace,
+    CitationBundle,
+    FieldCitation,
+    parse_citations,
 )
 from naturalsentinel.lineage.provenance import ModelProvenance
+from naturalsentinel.lineage.trace import (
+    DecisionTrace,
+    TraceStep,
+)
 
 __all__ = [
     # Citation

@@ -91,8 +91,8 @@ class CybersecurityAgent:
         params = {"filing": filing, "memory_context": memory_context}
 
         cyber_compliance = self._run_cybersecurity_compliance(params)
-        data_residency   = self._run_data_residency_obligation(params)
-        infra_security   = self._run_telecom_infrastructure_security(params)
+        data_residency = self._run_data_residency_obligation(params)
+        infra_security = self._run_telecom_infrastructure_security(params)
 
         return {
             "cybersecurity_compliance": cyber_compliance,

@@ -13,19 +13,19 @@ Runs without any API keys (uses mock provider) and demonstrates:
 """
 
 import json
+import logging
 import os
 import sys
-import logging
 
 # Ensure we can import from the same directory
 sys.path.insert(0, os.path.dirname(__file__))
 
-from agent import RegulatoryMonitorAgent, RegulatoryDomain
-from memory import MemoryStore, MemoryType
-from mcp_server import StandaloneServer
-
 # Reuse the mock provider from the original demo
 from demo import MockProvider
+
+from agent import RegulatoryMonitorAgent
+from mcp_server import StandaloneServer
+from memory import MemoryStore, MemoryType
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,17 +41,17 @@ def divider(title: str):
 
 
 def main():
-    DB_PATH = "/tmp/demo_regmon_memory.db"
+    db_path = "/tmp/demo_regmon_memory.db"
     # Clean slate
-    if os.path.exists(DB_PATH):
-        os.remove(DB_PATH)
+    if os.path.exists(db_path):
+        os.remove(db_path)
 
     # ──────────────────────────────────────────────────────────────────
     # STEP 1: Initialize with memory
     # ──────────────────────────────────────────────────────────────────
     divider("STEP 1: Initialize Agent with Persistent Memory")
 
-    memory = MemoryStore(DB_PATH)
+    memory = MemoryStore(db_path)
     provider = MockProvider()
     agent = RegulatoryMonitorAgent(
         provider=provider,
@@ -61,7 +61,7 @@ def main():
     agent.reset_state()
 
     print(f"  Provider: {provider.name()}")
-    print(f"  Memory DB: {DB_PATH}")
+    print(f"  Memory DB: {db_path}")
     print(f"  Initial memory stats: {json.dumps(memory.stats(), indent=4)}")
 
     # ──────────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ def main():
 
     results = agent.run(since_days=90)
     print(f"  Analyzed {len(results)} filings")
-    print(f"\n  Memory after scan:")
+    print("\n  Memory after scan:")
     stats = memory.stats()
     print(f"    Episodic memories:  {stats['by_type'].get('episodic', 0)}")
     print(f"    Entity relations:   {stats['total_relations']}")
@@ -111,7 +111,7 @@ def main():
         print(f"  ✓ Feedback: {fb['filing_id']}.{fb['field']} → {fb['new_value'][:50]}…")
 
     stats = memory.stats()
-    print(f"\n  Memory after feedback:")
+    print("\n  Memory after feedback:")
     print(f"    Precedent memories: {stats['by_type'].get('precedent', 0)}")
     print(f"    Feedback log:       {stats['total_feedback']}")
 
@@ -130,7 +130,7 @@ def main():
 
     for query, mt in queries:
         label = f" [{mt.value}]" if mt else ""
-        print(f"  Query: \"{query}\"{label}")
+        print(f'  Query: "{query}"{label}')
         results = memory.recall(query, top_k=2, memory_type=mt)
         for r in results:
             print(f"    → [{r.memory_type.value}] {r.key}  (relevance: {r.relevance_score:.3f})")
@@ -149,7 +149,7 @@ def main():
 
     for entity in entities_to_explore:
         relations = memory.get_related_entities(entity)
-        print(f"  Entity: \"{entity}\"  ({len(relations)} relations)")
+        print(f'  Entity: "{entity}"  ({len(relations)} relations)')
         for rel in relations[:5]:
             src = rel["source"]
             tgt = rel["target"]
@@ -164,8 +164,7 @@ def main():
     divider("STEP 6: Memory Context Block (injected into LLM prompts)")
 
     context = memory.build_context_block(
-        "sec",
-        "New SEC proposed rule on cybersecurity incident reporting for public companies"
+        "sec", "New SEC proposed rule on cybersecurity incident reporting for public companies"
     )
     print(context if context else "  (no context available)")
 
@@ -176,26 +175,33 @@ def main():
 
     # Temporarily redirect the global memory
     import mcp_server
+
     mcp_server._memory = memory
 
     standalone = StandaloneServer()
 
     mcp_requests = [
         {"method": "tools/list", "params": {}},
-        {"method": "tools/call", "params": {
-            "name": "get_memory_stats", "arguments": {}
-        }},
-        {"method": "tools/call", "params": {
-            "name": "recall_memory", "arguments": {
-                "query": "climate disclosure",
-                "top_k": 2,
-            }
-        }},
-        {"method": "tools/call", "params": {
-            "name": "get_entity_relations", "arguments": {
-                "entity": "Consumer Lending",
-            }
-        }},
+        {"method": "tools/call", "params": {"name": "get_memory_stats", "arguments": {}}},
+        {
+            "method": "tools/call",
+            "params": {
+                "name": "recall_memory",
+                "arguments": {
+                    "query": "climate disclosure",
+                    "top_k": 2,
+                },
+            },
+        },
+        {
+            "method": "tools/call",
+            "params": {
+                "name": "get_entity_relations",
+                "arguments": {
+                    "entity": "Consumer Lending",
+                },
+            },
+        },
         {"method": "resources/list", "params": {}},
     ]
 
@@ -217,9 +223,11 @@ def main():
 
     export = memory.export_json()
     export_data = json.loads(export)
-    print(f"  Exported {len(export_data['memories'])} memories, "
-          f"{len(export_data['relations'])} relations, "
-          f"{len(export_data['feedback'])} feedback entries")
+    print(
+        f"  Exported {len(export_data['memories'])} memories, "
+        f"{len(export_data['relations'])} relations, "
+        f"{len(export_data['feedback'])} feedback entries"
+    )
     print(f"  Export size: {len(export):,} bytes")
 
     # ──────────────────────────────────────────────────────────────────

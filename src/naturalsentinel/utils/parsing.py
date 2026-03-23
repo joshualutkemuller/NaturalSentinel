@@ -1,8 +1,8 @@
 """Helpers for parsing structured data from LLM responses."""
 
 import json
-import re
 import logging
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)

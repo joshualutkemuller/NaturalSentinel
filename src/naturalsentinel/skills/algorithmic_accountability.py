@@ -7,12 +7,16 @@ inference categories, and opt-out rights.
 """
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES
 from naturalsentinel.utils.parsing import parse_llm_json
-
 
 ALGORITHMIC_ACCOUNTABILITY_SYSTEM = """\
 You are a senior algorithmic accountability and automated decision-making regulatory \
@@ -94,13 +98,23 @@ class AlgorithmicAccountabilitySkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["algorithmic", "bias-audit", "explainability", "aia", "automated-decision", "fairness", "impact-assessment"],
+        tags=[
+            "algorithmic",
+            "bias-audit",
+            "explainability",
+            "aia",
+            "automated-decision",
+            "fairness",
+            "impact-assessment",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None,
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
                 error="LLM access denied — this skill requires LLM_READ permission",
             )
 

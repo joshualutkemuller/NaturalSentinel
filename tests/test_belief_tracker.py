@@ -7,26 +7,25 @@ Covers:
 - BeliefState dataclass fields on MonitorResult.
 """
 
-import math
-import sys
 import os
+import sys
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from naturalsentinel.memory.store import MemoryStore
 from naturalsentinel.models import BeliefState, MonitorResult
 from naturalsentinel.skills.belief_tracker import (
     BeliefTrackerSkill,
     _compute_delta_drivers,
-    _compute_stability_score,
     _compute_reversal_risk,
+    _compute_stability_score,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_mem():
     store = MemoryStore(":memory:")
@@ -50,6 +49,7 @@ def approx_eq(a, b, tol=1e-4):
 # ---------------------------------------------------------------------------
 # MemoryStore belief CRUD
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryStoreBeliefCRUD(unittest.TestCase):
     def setUp(self):
@@ -82,16 +82,25 @@ class TestMemoryStoreBeliefCRUD(unittest.TestCase):
 
     def test_upsert_updates_posterior(self):
         b1 = {
-            "prior_confidence": 0.5, "posterior_confidence": 0.60,
-            "delta_confidence": 0.10, "delta_drivers": ["First update"],
-            "stability_score": 1.0, "reversal_risk": 0.1,
-            "observation_count": 1, "last_filing_id": "F-001",
+            "prior_confidence": 0.5,
+            "posterior_confidence": 0.60,
+            "delta_confidence": 0.10,
+            "delta_drivers": ["First update"],
+            "stability_score": 1.0,
+            "reversal_risk": 0.1,
+            "observation_count": 1,
+            "last_filing_id": "F-001",
         }
         self.mem.store_belief_state("topic_a", "fed", b1)
 
-        b2 = {**b1, "posterior_confidence": 0.75, "delta_confidence": 0.15,
-              "delta_drivers": ["Second update"], "observation_count": 2,
-              "last_filing_id": "F-002"}
+        b2 = {
+            **b1,
+            "posterior_confidence": 0.75,
+            "delta_confidence": 0.15,
+            "delta_drivers": ["Second update"],
+            "observation_count": 2,
+            "last_filing_id": "F-002",
+        }
         self.mem.store_belief_state("topic_a", "fed", b2)
 
         retrieved = self.mem.get_belief_state("topic_a", "fed")
@@ -100,30 +109,50 @@ class TestMemoryStoreBeliefCRUD(unittest.TestCase):
 
     def test_history_accumulates(self):
         for i in range(3):
-            self.mem.store_belief_state("topic_b", "cfpb", {
-                "prior_confidence": 0.5,
-                "posterior_confidence": 0.5 + i * 0.1,
-                "delta_confidence": 0.1,
-                "delta_drivers": [f"Update {i}"],
-                "stability_score": 0.9, "reversal_risk": 0.1,
-                "observation_count": i + 1, "last_filing_id": f"F-{i}",
-            })
+            self.mem.store_belief_state(
+                "topic_b",
+                "cfpb",
+                {
+                    "prior_confidence": 0.5,
+                    "posterior_confidence": 0.5 + i * 0.1,
+                    "delta_confidence": 0.1,
+                    "delta_drivers": [f"Update {i}"],
+                    "stability_score": 0.9,
+                    "reversal_risk": 0.1,
+                    "observation_count": i + 1,
+                    "last_filing_id": f"F-{i}",
+                },
+            )
         history = self.mem.get_belief_history("topic_b", "cfpb")
         self.assertEqual(len(history), 3)
 
     def test_list_belief_states_all(self):
-        base = {"prior_confidence": 0.5, "posterior_confidence": 0.6,
-                "delta_confidence": 0.1, "delta_drivers": [], "stability_score": 1.0,
-                "reversal_risk": 0.1, "observation_count": 1, "last_filing_id": ""}
+        base = {
+            "prior_confidence": 0.5,
+            "posterior_confidence": 0.6,
+            "delta_confidence": 0.1,
+            "delta_drivers": [],
+            "stability_score": 1.0,
+            "reversal_risk": 0.1,
+            "observation_count": 1,
+            "last_filing_id": "",
+        }
         self.mem.store_belief_state("t1", "sec", base)
         self.mem.store_belief_state("t2", "fed", base)
         all_states = self.mem.list_belief_states()
         self.assertEqual(len(all_states), 2)
 
     def test_list_belief_states_filtered(self):
-        base = {"prior_confidence": 0.5, "posterior_confidence": 0.6,
-                "delta_confidence": 0.1, "delta_drivers": [], "stability_score": 1.0,
-                "reversal_risk": 0.1, "observation_count": 1, "last_filing_id": ""}
+        base = {
+            "prior_confidence": 0.5,
+            "posterior_confidence": 0.6,
+            "delta_confidence": 0.1,
+            "delta_drivers": [],
+            "stability_score": 1.0,
+            "reversal_risk": 0.1,
+            "observation_count": 1,
+            "last_filing_id": "",
+        }
         self.mem.store_belief_state("t1", "sec", base)
         self.mem.store_belief_state("t2", "fed", base)
         sec_states = self.mem.list_belief_states(domain="sec")
@@ -134,6 +163,7 @@ class TestMemoryStoreBeliefCRUD(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Helper function unit tests
 # ---------------------------------------------------------------------------
+
 
 class TestComputeDeltaDrivers(unittest.TestCase):
     def test_minimal_shift(self):
@@ -222,6 +252,7 @@ class TestComputeReversalRisk(unittest.TestCase):
 # BeliefTrackerSkill integration tests
 # ---------------------------------------------------------------------------
 
+
 class TestBeliefTrackerSkill(unittest.TestCase):
     def setUp(self):
         self.mem = make_mem()
@@ -234,15 +265,17 @@ class TestBeliefTrackerSkill(unittest.TestCase):
         return _make_context(self.mem, params)
 
     def test_first_observation_seeds_from_neutral_prior(self):
-        result = self.skill.execute(self._ctx(
-            topic="prudential_capital_tightening",
-            domain="fed",
-            new_confidence=0.70,
-            filing_id="FED-2026-001",
-            evidence_summary="Basel IV output floor finalised",
-            change_type="final_rule",
-            learning_rate=0.40,
-        ))
+        result = self.skill.execute(
+            self._ctx(
+                topic="prudential_capital_tightening",
+                domain="fed",
+                new_confidence=0.70,
+                filing_id="FED-2026-001",
+                evidence_summary="Basel IV output floor finalised",
+                change_type="final_rule",
+                learning_rate=0.40,
+            )
+        )
         self.assertTrue(result.success)
         data = result.data
         self.assertTrue(approx_eq(data["prior_confidence"], 0.50))
@@ -253,70 +286,111 @@ class TestBeliefTrackerSkill(unittest.TestCase):
         self.assertEqual(data["last_filing_id"], "FED-2026-001")
 
     def test_second_observation_uses_stored_prior(self):
-        result1 = self.skill.execute(self._ctx(
-            topic="climate_esg_integration", domain="sec",
-            new_confidence=0.60, filing_id="SEC-001", learning_rate=0.40,
-        ))
+        result1 = self.skill.execute(
+            self._ctx(
+                topic="climate_esg_integration",
+                domain="sec",
+                new_confidence=0.60,
+                filing_id="SEC-001",
+                learning_rate=0.40,
+            )
+        )
         posterior_1 = result1.data["posterior_confidence"]
 
-        result2 = self.skill.execute(self._ctx(
-            topic="climate_esg_integration", domain="sec",
-            new_confidence=0.80, filing_id="SEC-002", learning_rate=0.40,
-        ))
+        result2 = self.skill.execute(
+            self._ctx(
+                topic="climate_esg_integration",
+                domain="sec",
+                new_confidence=0.80,
+                filing_id="SEC-002",
+                learning_rate=0.40,
+            )
+        )
         self.assertTrue(approx_eq(result2.data["prior_confidence"], posterior_1))
         self.assertEqual(result2.data["observation_count"], 2)
 
     def test_negative_delta_on_drop(self):
-        self.skill.execute(self._ctx(
-            topic="digital_asset_capture", domain="sec",
-            new_confidence=0.80, learning_rate=0.95,
-        ))
-        result = self.skill.execute(self._ctx(
-            topic="digital_asset_capture", domain="sec",
-            new_confidence=0.10, learning_rate=0.60,
-        ))
+        self.skill.execute(
+            self._ctx(
+                topic="digital_asset_capture",
+                domain="sec",
+                new_confidence=0.80,
+                learning_rate=0.95,
+            )
+        )
+        result = self.skill.execute(
+            self._ctx(
+                topic="digital_asset_capture",
+                domain="sec",
+                new_confidence=0.10,
+                learning_rate=0.60,
+            )
+        )
         self.assertLess(result.data["delta_confidence"], 0)
 
     def test_stability_high_for_stable_observations(self):
         for val in [0.60, 0.61, 0.62, 0.60, 0.61]:
-            self.skill.execute(self._ctx(
-                topic="liquidity_stress", domain="fed", new_confidence=val,
-            ))
-        final = self.skill.execute(self._ctx(
-            topic="liquidity_stress", domain="fed", new_confidence=0.61,
-        ))
+            self.skill.execute(
+                self._ctx(
+                    topic="liquidity_stress",
+                    domain="fed",
+                    new_confidence=val,
+                )
+            )
+        final = self.skill.execute(
+            self._ctx(
+                topic="liquidity_stress",
+                domain="fed",
+                new_confidence=0.61,
+            )
+        )
         self.assertGreater(final.data["stability_score"], 0.7)
 
     def test_reversal_risk_bounded(self):
-        result = self.skill.execute(self._ctx(
-            topic="frtb_market_risk", domain="basel", new_confidence=0.95,
-        ))
+        result = self.skill.execute(
+            self._ctx(
+                topic="frtb_market_risk",
+                domain="basel",
+                new_confidence=0.95,
+            )
+        )
         rr = result.data["reversal_risk"]
         self.assertGreaterEqual(rr, 0.0)
         self.assertLessEqual(rr, 1.0)
 
     def test_delta_drivers_populated(self):
-        result = self.skill.execute(self._ctx(
-            topic="consumer_protection", domain="cfpb",
-            new_confidence=0.75,
-            evidence_summary="UDAAP guidance expanded",
-            change_type="guidance",
-        ))
+        result = self.skill.execute(
+            self._ctx(
+                topic="consumer_protection",
+                domain="cfpb",
+                new_confidence=0.75,
+                evidence_summary="UDAAP guidance expanded",
+                change_type="guidance",
+            )
+        )
         drivers = result.data["delta_drivers"]
         self.assertIsInstance(drivers, list)
         self.assertGreater(len(drivers), 0)
         self.assertTrue(any("UDAAP" in d for d in drivers))
 
     def test_confidence_clamped_at_one(self):
-        result = self.skill.execute(self._ctx(
-            topic="test_clamp", domain="sec", new_confidence=1.5,
-        ))
+        result = self.skill.execute(
+            self._ctx(
+                topic="test_clamp",
+                domain="sec",
+                new_confidence=1.5,
+            )
+        )
         self.assertLessEqual(result.data["posterior_confidence"], 1.0)
 
     def test_confidence_clamped_at_zero(self):
-        result = self.skill.execute(self._ctx(
-            topic="test_clamp_low", domain="sec", new_confidence=-0.5,
-        ))
+        result = self.skill.execute(
+            self._ctx(
+                topic="test_clamp_low",
+                domain="sec",
+                new_confidence=-0.5,
+            )
+        )
         self.assertGreaterEqual(result.data["posterior_confidence"], 0.0)
 
     def test_memory_denied_returns_failure(self):
@@ -326,26 +400,38 @@ class TestBeliefTrackerSkill(unittest.TestCase):
         self.assertIn("denied", result.error.lower())
 
     def test_persists_to_memory(self):
-        self.skill.execute(self._ctx(
-            topic="resolution_tlac", domain="fdic",
-            new_confidence=0.55, filing_id="FDIC-2026-009",
-        ))
+        self.skill.execute(
+            self._ctx(
+                topic="resolution_tlac",
+                domain="fdic",
+                new_confidence=0.55,
+                filing_id="FDIC-2026-009",
+            )
+        )
         stored = self.mem.get_belief_state("resolution_tlac", "fdic")
         self.assertIsNotNone(stored)
         self.assertEqual(stored["last_filing_id"], "FDIC-2026-009")
 
     def test_history_recorded_in_memory(self):
         for _ in range(3):
-            self.skill.execute(self._ctx(
-                topic="derivatives_margin", domain="cftc", new_confidence=0.65,
-            ))
+            self.skill.execute(
+                self._ctx(
+                    topic="derivatives_margin",
+                    domain="cftc",
+                    new_confidence=0.65,
+                )
+            )
         history = self.mem.get_belief_history("derivatives_margin", "cftc")
         self.assertEqual(len(history), 3)
 
     def test_metadata_in_result(self):
-        result = self.skill.execute(self._ctx(
-            topic="model_risk", domain="occ", new_confidence=0.72,
-        ))
+        result = self.skill.execute(
+            self._ctx(
+                topic="model_risk",
+                domain="occ",
+                new_confidence=0.72,
+            )
+        )
         self.assertEqual(result.metadata["topic"], "model_risk")
         self.assertEqual(result.metadata["domain"], "occ")
         self.assertIn("delta_confidence", result.metadata)
@@ -357,9 +443,11 @@ class TestBeliefTrackerSkill(unittest.TestCase):
 # BeliefState dataclass and MonitorResult integration
 # ---------------------------------------------------------------------------
 
+
 class TestBeliefStateModel(unittest.TestCase):
     def test_belief_state_fields(self):
         from datetime import datetime
+
         bs = BeliefState(
             topic="prudential_capital_tightening",
             domain="fed",
@@ -379,31 +467,44 @@ class TestBeliefStateModel(unittest.TestCase):
 
     def test_monitor_result_includes_belief_states(self):
         from naturalsentinel.models import (
-            RegulatoryFiling, ImpactAssessment, DecisionFrame,
-            RegulatoryDomain, Severity,
+            DecisionFrame,
+            ImpactAssessment,
+            RegulatoryDomain,
+            RegulatoryFiling,
+            Severity,
         )
+
         filing = RegulatoryFiling(
-            id="SEC-001", title="Test", domain=RegulatoryDomain.SEC,
-            source_url="http://example.com", published_date="2026-01-01",
+            id="SEC-001",
+            title="Test",
+            domain=RegulatoryDomain.SEC,
+            source_url="http://example.com",
+            published_date="2026-01-01",
             raw_text="text",
         )
         impact = ImpactAssessment(
-            filing_id="SEC-001", severity=Severity.MEDIUM,
-            affected_business_lines=[], affected_regulations=[],
-            compliance_deadline=None, action_items=[],
-            risk_summary="ok", confidence=0.7,
+            filing_id="SEC-001",
+            severity=Severity.MEDIUM,
+            affected_business_lines=[],
+            affected_regulations=[],
+            compliance_deadline=None,
+            action_items=[],
+            risk_summary="ok",
+            confidence=0.7,
         )
-        decision = DecisionFrame(
-            decision_id="D-001", question="q", scope="s", time_horizon="1y"
-        )
+        decision = DecisionFrame(decision_id="D-001", question="q", scope="s", time_horizon="1y")
         bs = BeliefState(
-            topic="climate_esg", domain="sec",
-            prior_confidence=0.4, posterior_confidence=0.55,
-            delta_confidence=0.15, delta_drivers=[], stability_score=0.9,
-            reversal_risk=0.15, observation_count=1,
+            topic="climate_esg",
+            domain="sec",
+            prior_confidence=0.4,
+            posterior_confidence=0.55,
+            delta_confidence=0.15,
+            delta_drivers=[],
+            stability_score=0.9,
+            reversal_risk=0.15,
+            observation_count=1,
         )
-        result = MonitorResult(filing=filing, impact=impact, decision=decision,
-                               belief_states=[bs])
+        result = MonitorResult(filing=filing, impact=impact, decision=decision, belief_states=[bs])
         self.assertEqual(len(result.belief_states), 1)
         self.assertEqual(result.belief_states[0].topic, "climate_esg")
 

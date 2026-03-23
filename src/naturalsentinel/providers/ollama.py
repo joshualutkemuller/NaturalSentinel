@@ -2,6 +2,7 @@
 
 import json
 import urllib.request
+
 from naturalsentinel.providers.base import ModelProvider
 
 
@@ -13,15 +14,17 @@ class OllamaProvider(ModelProvider):
         self.base_url = base_url
 
     def complete(self, system: str, user: str, temperature: float = 0.2) -> str:
-        payload = json.dumps({
-            "model": self.model,
-            "stream": False,
-            "options": {"temperature": temperature},
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-        }).encode()
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "stream": False,
+                "options": {"temperature": temperature},
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            }
+        ).encode()
         req = urllib.request.Request(
             f"{self.base_url}/api/chat",
             data=payload,

@@ -86,7 +86,11 @@ def handle_command(state: ChatState, raw: str) -> str:
         state.approved_dirs.append(path)
         return f"Approved directory: {path}"
     if raw == "/dirs":
-        return "\n".join(state.approved_dirs) if state.approved_dirs else "No approved directories yet."
+        return (
+            "\n".join(state.approved_dirs)
+            if state.approved_dirs
+            else "No approved directories yet."
+        )
     if raw == "/tools":
         return "\n".join(f"- {tool}" for tool in TOOL_NAMES)
     if raw == "/clear":

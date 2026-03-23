@@ -1,8 +1,8 @@
 """Tests for naturalsentinel.fetchers — filing retrieval and sample data."""
 
-from naturalsentinel.fetchers import fetch_filings, DOMAIN_BUSINESS_LINES
+from naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES, fetch_filings
 from naturalsentinel.fetchers.sample_data import SAMPLE_FILINGS
-from naturalsentinel.models import RegulatoryDomain, ChangeType
+from naturalsentinel.models import ChangeType, RegulatoryDomain
 
 
 class TestSampleData:
@@ -10,7 +10,15 @@ class TestSampleData:
         assert len(SAMPLE_FILINGS) >= 6
 
     def test_all_filings_have_required_fields(self):
-        required = {"id", "title", "domain", "source_url", "published_date", "change_type", "raw_text"}
+        required = {
+            "id",
+            "title",
+            "domain",
+            "source_url",
+            "published_date",
+            "change_type",
+            "raw_text",
+        }
         for filing in SAMPLE_FILINGS:
             assert required <= set(filing.keys()), f"Missing fields in {filing['id']}"
 

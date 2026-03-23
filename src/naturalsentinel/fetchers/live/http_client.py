@@ -13,7 +13,6 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +20,8 @@ USER_AGENT = (
     "NaturalSentinel/1.0 regulatory monitoring research tool — "
     "respectful automated access; contact: opensource@example.com"
 )
-DEFAULT_RATE_LIMIT = 1.5   # seconds between requests
-DEFAULT_TIMEOUT = 30        # seconds
+DEFAULT_RATE_LIMIT = 1.5  # seconds between requests
+DEFAULT_TIMEOUT = 30  # seconds
 
 
 class HTTPClient:
@@ -50,7 +49,7 @@ class HTTPClient:
         if elapsed < self.rate_limit_seconds:
             time.sleep(self.rate_limit_seconds - elapsed)
 
-    def get(self, url: str, params: Optional[dict] = None) -> str:
+    def get(self, url: str, params: dict | None = None) -> str:
         """Fetch *url* and return the response body as a decoded string.
 
         Raises :class:`urllib.error.URLError` on network failure.
@@ -72,7 +71,7 @@ class HTTPClient:
             self._last_request_time = time.monotonic()
             raise
 
-    def get_json(self, url: str, params: Optional[dict] = None) -> dict | list:
+    def get_json(self, url: str, params: dict | None = None) -> dict | list:
         """Fetch *url* and parse the response as JSON."""
         text = self.get(url, params=params)
         return json.loads(text)

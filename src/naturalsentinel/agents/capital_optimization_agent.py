@@ -7,7 +7,9 @@ Monitors Fed, OCC, FDIC, and Basel filings for capital rule changes and
 translates them into quantitative impacts on RWA, SLR, leverage ratio,
 and output floor constraints — directly feeding capital allocation models.
 """
+
 from __future__ import annotations
+
 from typing import Any
 
 CAPITAL_DOMAINS = ["fed", "occ", "fdic", "basel"]
@@ -67,7 +69,9 @@ class CapitalOptimizationAgent:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {"domains": domains, "since_days": since_days})
+        result = self.runtime.execute_skill(
+            "scan_cycle", {"domains": domains, "since_days": since_days}
+        )
         return result.data.get("stats", {}) if result.success else {"error": result.error}
 
     def _analyze_capital_filings(self, domains: list[str]) -> list[dict]:
@@ -83,7 +87,9 @@ class CapitalOptimizationAgent:
         return analyses
 
     def _get_alerts(self, threshold: str, domains: list[str]) -> list[dict]:
-        result = self.runtime.execute_skill("alert_threshold", {"threshold": threshold, "limit": 100})
+        result = self.runtime.execute_skill(
+            "alert_threshold", {"threshold": threshold, "limit": 100}
+        )
         if not result.success:
             return []
         return [a for a in result.data.get("alerts", []) if a.get("domain", "").lower() in domains]
@@ -93,11 +99,13 @@ def _extract_optimization_impacts(analyses: list[dict]) -> list[dict]:
     impacts = []
     for a in analyses:
         for c in a.get("optimization_constraint_changes", []):
-            impacts.append({
-                "filing_id": a.get("filing_id"),
-                "domain": a.get("domain"),
-                "constraint": c,
-                "rwa_direction": a.get("rwa_impact_direction"),
-                "capital_cost_bps": a.get("capital_cost_per_trade_bps", 0),
-            })
+            impacts.append(
+                {
+                    "filing_id": a.get("filing_id"),
+                    "domain": a.get("domain"),
+                    "constraint": c,
+                    "rwa_direction": a.get("rwa_impact_direction"),
+                    "capital_cost_bps": a.get("capital_cost_per_trade_bps", 0),
+                }
+            )
     return impacts

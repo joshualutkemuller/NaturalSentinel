@@ -30,7 +30,6 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -38,10 +37,10 @@ class BenchmarkCase:
     """A single labeled evaluation example."""
 
     case_id: str
-    filing: dict                        # Serialised RegulatoryFiling
-    predicted: dict                     # What the model originally produced
-    expected: dict                      # Ground-truth labels (may be partial)
-    source: str = "feedback"            # "feedback" | "fixture" | "synthetic"
+    filing: dict  # Serialised RegulatoryFiling
+    predicted: dict  # What the model originally produced
+    expected: dict  # Ground-truth labels (may be partial)
+    source: str = "feedback"  # "feedback" | "fixture" | "synthetic"
     labeled_fields: list[str] = field(default_factory=list)  # Fields with GT
     created_at: str = ""
     tags: list[str] = field(default_factory=list)
@@ -58,7 +57,7 @@ class BenchmarkSuite:
     def __len__(self) -> int:
         return len(self.cases)
 
-    def filter_by_domain(self, domain: str) -> "BenchmarkSuite":
+    def filter_by_domain(self, domain: str) -> BenchmarkSuite:
         filtered = [c for c in self.cases if c.filing.get("domain") == domain]
         return BenchmarkSuite(
             name=f"{self.name}:{domain}",
@@ -66,7 +65,7 @@ class BenchmarkSuite:
             description=f"{self.description} (domain={domain})",
         )
 
-    def filter_by_field(self, field_name: str) -> "BenchmarkSuite":
+    def filter_by_field(self, field_name: str) -> BenchmarkSuite:
         filtered = [c for c in self.cases if field_name in c.labeled_fields]
         return BenchmarkSuite(
             name=f"{self.name}:{field_name}",
@@ -77,7 +76,7 @@ class BenchmarkSuite:
 
 def load_suite_from_feedback(
     memory_store,
-    domains: Optional[list[str]] = None,
+    domains: list[str] | None = None,
     limit: int = 500,
 ) -> BenchmarkSuite:
     """Build a BenchmarkSuite from ``feedback_log`` corrections in memory.
@@ -153,8 +152,7 @@ def load_suite_from_feedback(
         cases=cases,
         description=(
             f"Benchmark derived from {len(cases)} human-corrected filings "
-            f"in feedback_log"
-            + (f" (domains={domains})" if domains else "")
+            f"in feedback_log" + (f" (domains={domains})" if domains else "")
         ),
     )
 

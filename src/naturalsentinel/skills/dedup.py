@@ -4,8 +4,13 @@ import json
 from pathlib import Path
 
 from naturalsentinel.agent_framework import (
-    Skill, SkillMetadata, SkillParameter, SkillContext, SkillResult,
-    Permission, LatencyClass,
+    LatencyClass,
+    Permission,
+    Skill,
+    SkillContext,
+    SkillMetadata,
+    SkillParameter,
+    SkillResult,
 )
 
 
@@ -22,7 +27,13 @@ class DetectDuplicatesSkill(Skill):
         latency=LatencyClass.INSTANT,
         parameters=[
             SkillParameter("filings", "list[dict]", "List of serialized filings to check."),
-            SkillParameter("mark_seen", "bool", "Whether to update state with the new IDs.", required=False, default=True),
+            SkillParameter(
+                "mark_seen",
+                "bool",
+                "Whether to update state with the new IDs.",
+                required=False,
+                default=True,
+            ),
         ],
         returns="dict — {new_filings: list[dict], duplicates_skipped: int}",
         dependencies=[],
@@ -53,7 +64,8 @@ class DetectDuplicatesSkill(Skill):
             state_path.write_text(json.dumps({"seen_ids": sorted(seen)}))
 
         return SkillResult(
-            skill_name=self.metadata.name, success=True,
+            skill_name=self.metadata.name,
+            success=True,
             data={"new_filings": new, "duplicates_skipped": skipped},
             metadata={"total_input": len(filings), "new_count": len(new)},
         )

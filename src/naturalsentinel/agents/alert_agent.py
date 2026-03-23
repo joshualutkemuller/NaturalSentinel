@@ -110,28 +110,38 @@ class AlertAgent:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _run_alert_threshold(self, threshold: str, limit: int) -> dict:
-        result = self.runtime.execute_skill("alert_threshold", {
-            "threshold": threshold,
-            "limit": limit,
-        })
+        result = self.runtime.execute_skill(
+            "alert_threshold",
+            {
+                "threshold": threshold,
+                "limit": limit,
+            },
+        )
         return result.data if result.success else {"alerts": [], "summary": {"error": result.error}}
 
     def _run_scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {
-            "domains": domains,
-            "since_days": since_days,
-        })
+        result = self.runtime.execute_skill(
+            "scan_cycle",
+            {
+                "domains": domains,
+                "since_days": since_days,
+            },
+        )
         return result.data.get("stats", {}) if result.success else {"error": result.error}
 
     def _run_trends(self, limit: int = 50) -> dict | None:
-        result = self.runtime.execute_skill("trend_analysis", {
-            "limit": limit,
-            "include_narrative": True,
-        })
+        result = self.runtime.execute_skill(
+            "trend_analysis",
+            {
+                "limit": limit,
+                "include_narrative": True,
+            },
+        )
         return result.data if result.success else None
 
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
+
 
 def _extract_immediate_actions(alerts: list[dict]) -> list[str]:
     """Deduplicate action items across all alerts, preserving insertion order."""

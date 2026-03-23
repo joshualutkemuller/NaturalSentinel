@@ -7,7 +7,9 @@ Monitors Fed and OCC filings for model risk management guidance updates
 and maps them to specific model types in the data science inventory —
 optimization models, ML credit models, pricing models, stress testing models.
 """
+
 from __future__ import annotations
+
 from typing import Any
 
 MODEL_RISK_DOMAINS = ["fed", "occ"]
@@ -72,7 +74,9 @@ class ModelRiskAgent:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {"domains": domains, "since_days": since_days})
+        result = self.runtime.execute_skill(
+            "scan_cycle", {"domains": domains, "since_days": since_days}
+        )
         return result.data.get("stats", {}) if result.success else {}
 
     def _analyze_model_risk_filings(self, model_inventory: list[str]) -> list[dict]:
@@ -82,10 +86,13 @@ class ModelRiskAgent:
             filing = rec.content.get("filing", {})
             if filing.get("domain", "") not in MODEL_RISK_DOMAINS:
                 continue
-            result = self.runtime.execute_skill("model_risk_assessment", {
-                "filing": filing,
-                "model_inventory": model_inventory,
-            })
+            result = self.runtime.execute_skill(
+                "model_risk_assessment",
+                {
+                    "filing": filing,
+                    "model_inventory": model_inventory,
+                },
+            )
             if result.success:
                 analyses.append(result.data)
         return analyses

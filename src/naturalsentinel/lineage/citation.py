@@ -19,32 +19,32 @@ Usage::
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Optional
-
 
 # Fields for which we request citations
-CITABLE_FIELDS: frozenset[str] = frozenset({
-    "severity",
-    "change_type",
-    "compliance_deadline",
-    "affected_business_lines",
-    "affected_regulations",
-    "risk_summary",
-})
+CITABLE_FIELDS: frozenset[str] = frozenset(
+    {
+        "severity",
+        "change_type",
+        "compliance_deadline",
+        "affected_business_lines",
+        "affected_regulations",
+        "risk_summary",
+    }
+)
 
 
 @dataclass
 class FieldCitation:
     """A source passage supporting a single extracted field value."""
 
-    field: str              # Field name, e.g. "severity"
-    value: object           # The extracted value
-    source_passage: str     # Verbatim (or near-verbatim) quote from the document
-    source_url: str         # URL of the originating document
+    field: str  # Field name, e.g. "severity"
+    value: object  # The extracted value
+    source_passage: str  # Verbatim (or near-verbatim) quote from the document
+    source_url: str  # URL of the originating document
     section_hint: str = ""  # Optional section/page reference, e.g. "Section II.A"
-    confidence: float = 0.0 # Per-field confidence (0–1); 0.0 if not provided
+    confidence: float = 0.0  # Per-field confidence (0–1); 0.0 if not provided
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -59,7 +59,7 @@ class CitationBundle:
     citations: list[FieldCitation] = field(default_factory=list)
     extracted_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
-    def get(self, field_name: str) -> Optional[FieldCitation]:
+    def get(self, field_name: str) -> FieldCitation | None:
         """Return the citation for *field_name*, or None if absent."""
         for c in self.citations:
             if c.field == field_name:
@@ -105,9 +105,7 @@ def parse_citations(
         :class:`CitationBundle` — may be empty if the LLM did not cite.
     """
     raw_citations: dict[str, str] = parsed_llm_response.get("citations", {})
-    field_confidences: dict[str, float] = parsed_llm_response.get(
-        "field_confidences", {}
-    )
+    field_confidences: dict[str, float] = parsed_llm_response.get("field_confidences", {})
 
     citations: list[FieldCitation] = []
     for field_name, passage in raw_citations.items():

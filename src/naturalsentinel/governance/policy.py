@@ -20,24 +20,23 @@ Usage::
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from typing import Optional
-
+from dataclasses import asdict, dataclass, field
 
 # ---------------------------------------------------------------------------
 # Escalation policy
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class EscalationTrigger:
     """A single condition that can trigger escalation."""
 
-    condition_id: str       # Stable ID, e.g. "critical_severity"
-    description: str        # Human-readable explanation
-    field: str              # Key in the analysis dict to inspect, or special key
-    operator: str           # "eq" | "gte" | "lte" | "in" | "true"
-    threshold: object       # Comparison value
-    reason_template: str    # Message included in the escalation reason
+    condition_id: str  # Stable ID, e.g. "critical_severity"
+    description: str  # Human-readable explanation
+    field: str  # Key in the analysis dict to inspect, or special key
+    operator: str  # "eq" | "gte" | "lte" | "in" | "true"
+    threshold: object  # Comparison value
+    reason_template: str  # Message included in the escalation reason
 
 
 @dataclass
@@ -46,13 +45,13 @@ class EscalationPolicy:
 
     name: str
     triggers: list[EscalationTrigger] = field(default_factory=list)
-    block_alert_on_escalation: bool = True   # If True, hold automated alerts
+    block_alert_on_escalation: bool = True  # If True, hold automated alerts
 
     def evaluate(
         self,
         impact: dict,
-        calibration_ece: Optional[float] = None,
-        drift_detected: Optional[bool] = None,
+        calibration_ece: float | None = None,
+        drift_detected: bool | None = None,
     ) -> list[str]:
         """Evaluate all triggers against *impact* and return triggered reason strings.
 
@@ -95,9 +94,7 @@ class EscalationPolicy:
                 triggered = bool(value)
 
             if triggered:
-                reasons.append(
-                    t.reason_template.format(value=value, threshold=t.threshold)
-                )
+                reasons.append(t.reason_template.format(value=value, threshold=t.threshold))
 
         return reasons
 
@@ -105,7 +102,7 @@ class EscalationPolicy:
         return asdict(self)
 
     @classmethod
-    def default(cls) -> "EscalationPolicy":
+    def default(cls) -> EscalationPolicy:
         """Return the default NaturalSentinel escalation policy."""
         return cls(
             name="default",
@@ -147,7 +144,7 @@ class EscalationPolicy:
         )
 
     @classmethod
-    def from_dict(cls, data: dict) -> "EscalationPolicy":
+    def from_dict(cls, data: dict) -> EscalationPolicy:
         triggers = [EscalationTrigger(**t) for t in data.get("triggers", [])]
         return cls(
             name=data.get("name", "custom"),
@@ -161,11 +158,11 @@ class EscalationPolicy:
 # ---------------------------------------------------------------------------
 
 FALLBACK_ACTIONS: dict[str, str] = {
-    "use_cached":        "Use the cached analysis from the last successful run",
-    "use_partial":       "Use the abstract/title only — full-text analysis skipped",
-    "require_human":     "Flag for mandatory human review; do not emit automated alert",
-    "use_stub":          "Return a minimal stub assessment with confidence=0.0",
-    "retry_later":       "Queue the filing for retry at next scan cycle",
+    "use_cached": "Use the cached analysis from the last successful run",
+    "use_partial": "Use the abstract/title only — full-text analysis skipped",
+    "require_human": "Flag for mandatory human review; do not emit automated alert",
+    "use_stub": "Return a minimal stub assessment with confidence=0.0",
+    "retry_later": "Queue the filing for retry at next scan cycle",
 }
 
 
@@ -174,11 +171,11 @@ class FallbackPolicy:
     """Policy that selects a degraded-mode action for a given failure reason."""
 
     name: str
-    cache_max_age_hours: int = 24       # Use cached analysis if this fresh
+    cache_max_age_hours: int = 24  # Use cached analysis if this fresh
     min_confidence_for_alert: float = 0.40  # Don't auto-alert below this
     rules: dict[str, str] = field(default_factory=dict)  # failure_code → action_key
 
-    def select(self, failure_code: str, context: Optional[dict] = None) -> dict:
+    def select(self, failure_code: str, context: dict | None = None) -> dict:
         """Select the fallback action for *failure_code*.
 
         Returns a dict with keys:
@@ -207,28 +204,28 @@ class FallbackPolicy:
         return asdict(self)
 
     @classmethod
-    def default(cls) -> "FallbackPolicy":
+    def default(cls) -> FallbackPolicy:
         """Return the default NaturalSentinel fallback policy."""
         return cls(
             name="default",
             cache_max_age_hours=24,
             min_confidence_for_alert=0.40,
             rules={
-                "LLM_UNAVAILABLE":      "use_cached",
-                "LLM_REFUSED":          "require_human",
+                "LLM_UNAVAILABLE": "use_cached",
+                "LLM_REFUSED": "require_human",
                 "LLM_MALFORMED_OUTPUT": "use_partial",
-                "INGESTION_FAILURE":    "retry_later",
-                "PARSING_ERROR":        "use_partial",
-                "CALIBRATION_DRIFT":    "require_human",
-                "EXTRACTION_DRIFT":     "require_human",
-                "SCHEMA_VIOLATION":     "use_stub",
-                "ESCALATION_REQUIRED":  "require_human",
-                "MEMORY_ERROR":         "use_stub",
+                "INGESTION_FAILURE": "retry_later",
+                "PARSING_ERROR": "use_partial",
+                "CALIBRATION_DRIFT": "require_human",
+                "EXTRACTION_DRIFT": "require_human",
+                "SCHEMA_VIOLATION": "use_stub",
+                "ESCALATION_REQUIRED": "require_human",
+                "MEMORY_ERROR": "use_stub",
             },
         )
 
     @classmethod
-    def from_dict(cls, data: dict) -> "FallbackPolicy":
+    def from_dict(cls, data: dict) -> FallbackPolicy:
         return cls(
             name=data.get("name", "custom"),
             cache_max_age_hours=data.get("cache_max_age_hours", 24),

@@ -7,7 +7,9 @@ Dedicated to the Agency Lending desk — monitors FHFA directives,
 Fannie/Freddie selling guide updates, conforming limit changes, g-fee
 adjustments, and CRT program rules.
 """
+
 from __future__ import annotations
+
 from typing import Any
 
 AGENCY_DOMAINS = ["fhfa"]
@@ -43,7 +45,11 @@ class AgencyMortgageAgent:
 
         return {
             "agency_analyses": analyses,
-            "conforming_limit_changes": [a.get("conforming_limit_changes", {}) for a in analyses if a.get("conforming_limit_changes")],
+            "conforming_limit_changes": [
+                a.get("conforming_limit_changes", {})
+                for a in analyses
+                if a.get("conforming_limit_changes")
+            ],
             "haircut_updates": _extract_field(analyses, "collateral_haircut_updates"),
             "gfee_adjustments": _extract_field(analyses, "gfee_adjustments"),
             "tba_eligibility_changes": _extract_field(analyses, "tba_eligibility_changes"),
@@ -69,7 +75,9 @@ class AgencyMortgageAgent:
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _scan(self, domains: list[str], since_days: int) -> dict:
-        result = self.runtime.execute_skill("scan_cycle", {"domains": domains, "since_days": since_days})
+        result = self.runtime.execute_skill(
+            "scan_cycle", {"domains": domains, "since_days": since_days}
+        )
         return result.data.get("stats", {}) if result.success else {}
 
     def _analyze_agency_filings(self) -> list[dict]:

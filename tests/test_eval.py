@@ -16,28 +16,34 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from naturalsentinel.memory.store import MemoryStore
-from naturalsentinel.eval.scorer import (
-    score_field, score_case, score_suite,
-    FieldScore, CaseScore, SuiteScore,
-)
 from naturalsentinel.eval.benchmark import (
-    BenchmarkCase, BenchmarkSuite,
-    load_suite_from_feedback, load_suite_from_fixture,
+    BenchmarkCase,
+    BenchmarkSuite,
+    load_suite_from_feedback,
+    load_suite_from_fixture,
 )
 from naturalsentinel.eval.calibration import build_calibration_report
 from naturalsentinel.eval.drift import (
-    build_drift_report, _tv_distance, _categorical_distribution,
-    _numeric_stats, _effect_size,
+    _categorical_distribution,
+    _effect_size,
+    _tv_distance,
+    build_drift_report,
 )
+from naturalsentinel.eval.scorer import (
+    CaseScore,
+    score_case,
+    score_field,
+    score_suite,
+)
+from naturalsentinel.memory.store import MemoryStore
 from naturalsentinel.skills.run_evaluation import RunEvaluationSkill
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def make_mem():
     store = MemoryStore(":memory:")
@@ -91,6 +97,7 @@ def approx_eq(a, b, tol=1e-4):
 # scorer — FieldScore
 # ---------------------------------------------------------------------------
 
+
 class TestScoreField(unittest.TestCase):
     # --- Categorical ---
     def test_exact_match_categorical(self):
@@ -119,7 +126,7 @@ class TestScoreField(unittest.TestCase):
     def test_jaccard_partial(self):
         fs = score_field("affected_business_lines", ["A", "B", "C"], ["A", "B"])
         # intersection=2, union=3 → 2/3
-        self.assertTrue(approx_eq(fs.score, 2/3))
+        self.assertTrue(approx_eq(fs.score, 2 / 3))
 
     def test_jaccard_no_overlap(self):
         fs = score_field("affected_regulations", ["X"], ["Y"])
@@ -159,7 +166,7 @@ class TestScoreField(unittest.TestCase):
 
     def test_count_ratio_partial(self):
         fs = score_field("action_items", ["a"], ["x", "y", "z"])
-        self.assertTrue(approx_eq(fs.score, 1/3))
+        self.assertTrue(approx_eq(fs.score, 1 / 3))
 
     def test_count_both_zero(self):
         fs = score_field("action_items", [], [])
@@ -176,6 +183,7 @@ class TestScoreField(unittest.TestCase):
 # scorer — CaseScore and SuiteScore
 # ---------------------------------------------------------------------------
 
+
 class TestScoreCase(unittest.TestCase):
     def test_perfect_case(self):
         case = make_case()
@@ -186,8 +194,8 @@ class TestScoreCase(unittest.TestCase):
     def test_mixed_case(self):
         case = make_case(
             predicted={
-                "severity": "low",    # Wrong
-                "change_type": "final_rule",   # Correct
+                "severity": "low",  # Wrong
+                "change_type": "final_rule",  # Correct
                 "confidence": 0.6,
             },
             expected={"severity": "high", "change_type": "final_rule"},
@@ -222,20 +230,31 @@ class TestScoreSuite(unittest.TestCase):
 
     def test_aggregation(self):
         # Case 1: severity correct (1.0); Case 2: severity wrong (0.0)
-        c1 = make_case("c1", predicted={"severity": "high", "confidence": 0.8},
-                        expected={"severity": "high"}, labeled_fields=["severity"])
-        c2 = make_case("c2", predicted={"severity": "low", "confidence": 0.9},
-                        expected={"severity": "critical"}, labeled_fields=["severity"])
+        c1 = make_case(
+            "c1",
+            predicted={"severity": "high", "confidence": 0.8},
+            expected={"severity": "high"},
+            labeled_fields=["severity"],
+        )
+        c2 = make_case(
+            "c2",
+            predicted={"severity": "low", "confidence": 0.9},
+            expected={"severity": "critical"},
+            labeled_fields=["severity"],
+        )
         suite = BenchmarkSuite("t", cases=[c1, c2])
         ss = score_suite(suite)
         self.assertTrue(approx_eq(ss.per_field_accuracy["severity"], 0.5))
         self.assertTrue(approx_eq(ss.overall_accuracy, 0.5))
 
     def test_per_field_count(self):
-        suite = BenchmarkSuite("t", cases=[
-            make_case("c1", labeled_fields=["severity"]),
-            make_case("c2", labeled_fields=["severity", "change_type"]),
-        ])
+        suite = BenchmarkSuite(
+            "t",
+            cases=[
+                make_case("c1", labeled_fields=["severity"]),
+                make_case("c2", labeled_fields=["severity", "change_type"]),
+            ],
+        )
         ss = score_suite(suite)
         self.assertEqual(ss.n_fields_evaluated["severity"], 2)
         self.assertEqual(ss.n_fields_evaluated["change_type"], 1)
@@ -257,6 +276,7 @@ class TestScoreSuite(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # calibration
 # ---------------------------------------------------------------------------
+
 
 class TestCalibration(unittest.TestCase):
     def _make_case_score(self, confidence, overall_score):
@@ -316,6 +336,7 @@ class TestCalibration(unittest.TestCase):
 # drift
 # ---------------------------------------------------------------------------
 
+
 class TestDriftHelpers(unittest.TestCase):
     def test_tv_distance_identical(self):
         d = {"a": 0.5, "b": 0.5}
@@ -353,8 +374,7 @@ class TestDriftHelpers(unittest.TestCase):
 
 
 class TestBuildDriftReport(unittest.TestCase):
-    def _make_impact(self, severity="medium", confidence=0.7,
-                     change_type="guidance", lines=None):
+    def _make_impact(self, severity="medium", confidence=0.7, change_type="guidance", lines=None):
         return {
             "severity": severity,
             "confidence": confidence,
@@ -402,6 +422,7 @@ class TestBuildDriftReport(unittest.TestCase):
 # benchmark — load_suite_from_feedback
 # ---------------------------------------------------------------------------
 
+
 class TestLoadSuiteFromFeedback(unittest.TestCase):
     def setUp(self):
         self.mem = make_mem()
@@ -409,8 +430,13 @@ class TestLoadSuiteFromFeedback(unittest.TestCase):
         self.mem.store_episodic(
             "F-001",
             {"id": "F-001", "title": "Test Filing", "domain": "sec", "summary": ""},
-            {"severity": "medium", "confidence": 0.7, "affected_business_lines": [],
-             "affected_regulations": [], "risk_summary": "test"},
+            {
+                "severity": "medium",
+                "confidence": 0.7,
+                "affected_business_lines": [],
+                "affected_regulations": [],
+                "risk_summary": "test",
+            },
         )
         self.mem.record_feedback("F-001", "severity", "medium", "high", "under-estimated")
 
@@ -464,6 +490,7 @@ class TestLoadSuiteFromFixture(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # MemoryStore eval_run CRUD
 # ---------------------------------------------------------------------------
+
 
 class TestMemoryStoreEvalCRUD(unittest.TestCase):
     def setUp(self):
@@ -530,6 +557,7 @@ class TestMemoryStoreEvalCRUD(unittest.TestCase):
 # RunEvaluationSkill
 # ---------------------------------------------------------------------------
 
+
 class TestRunEvaluationSkill(unittest.TestCase):
     def setUp(self):
         self.mem = make_mem()
@@ -555,8 +583,12 @@ class TestRunEvaluationSkill(unittest.TestCase):
         self.mem.close()
 
     def _ctx(self, **params):
-        defaults = {"mode": "historical", "provider_tag": "test-model",
-                    "limit": 50, "drift_window_days": 0}
+        defaults = {
+            "mode": "historical",
+            "provider_tag": "test-model",
+            "limit": 50,
+            "drift_window_days": 0,
+        }
         defaults.update(params)
         return FakeContext(self.mem, defaults)
 
@@ -583,22 +615,39 @@ class TestRunEvaluationSkill(unittest.TestCase):
         run_id = result.data["run_id"]
         retrieved = self.mem.get_eval_run(run_id)
         self.assertIsNotNone(retrieved)
-        self.assertAlmostEqual(retrieved["overall_accuracy"],
-                               result.data["overall_accuracy"], places=4)
+        self.assertAlmostEqual(
+            retrieved["overall_accuracy"], result.data["overall_accuracy"], places=4
+        )
 
     def test_empty_feedback_returns_no_cases_result(self):
         empty_mem = make_mem()
-        result = self.skill.execute(FakeContext(empty_mem, {
-            "mode": "historical", "provider_tag": "test", "limit": 50, "drift_window_days": 0,
-        }))
+        result = self.skill.execute(
+            FakeContext(
+                empty_mem,
+                {
+                    "mode": "historical",
+                    "provider_tag": "test",
+                    "limit": 50,
+                    "drift_window_days": 0,
+                },
+            )
+        )
         self.assertTrue(result.success)
         self.assertEqual(result.data["n_cases"], 0)
         empty_mem.close()
 
     def test_memory_denied_returns_failure(self):
-        result = self.skill.execute(FakeContext(None, {
-            "mode": "historical", "provider_tag": "test", "limit": 10, "drift_window_days": 0,
-        }))
+        result = self.skill.execute(
+            FakeContext(
+                None,
+                {
+                    "mode": "historical",
+                    "provider_tag": "test",
+                    "limit": 10,
+                    "drift_window_days": 0,
+                },
+            )
+        )
         self.assertFalse(result.success)
         self.assertIn("denied", result.error.lower())
 
@@ -608,9 +657,9 @@ class TestRunEvaluationSkill(unittest.TestCase):
         self.assertIn("fixture_path", result.error)
 
     def test_fixture_mode_invalid_path_fails(self):
-        result = self.skill.execute(self._ctx(
-            mode="fixture", fixture_path="/nonexistent/path/fixture.json"
-        ))
+        result = self.skill.execute(
+            self._ctx(mode="fixture", fixture_path="/nonexistent/path/fixture.json")
+        )
         self.assertFalse(result.success)
 
     def test_fixture_mode_valid_file(self):
@@ -627,9 +676,7 @@ class TestRunEvaluationSkill(unittest.TestCase):
             json.dump(fixture, fh)
             fh_name = fh.name
         try:
-            result = self.skill.execute(self._ctx(
-                mode="fixture", fixture_path=fh_name
-            ))
+            result = self.skill.execute(self._ctx(mode="fixture", fixture_path=fh_name))
             self.assertTrue(result.success)
             self.assertEqual(result.data["n_cases"], 1)
             self.assertAlmostEqual(result.data["per_field_accuracy"]["severity"], 1.0, places=4)

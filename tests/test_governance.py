@@ -17,21 +17,30 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from naturalsentinel.memory.store import MemoryStore
-from naturalsentinel.governance.model_card import ModelCard
-from naturalsentinel.governance.control_matrix import Control, ControlMatrix
 from naturalsentinel.governance.audit import (
-    AuditEvent, AuditEventType, AuditSeverity, severity_for_event,
+    AuditEvent,
+    AuditEventType,
+    AuditSeverity,
+    severity_for_event,
+)
+from naturalsentinel.governance.control_matrix import Control, ControlMatrix
+from naturalsentinel.governance.failure_taxonomy import (
+    FAILURE_TAXONOMY,
+    FailureRecord,
+    auto_escalate_codes,
 )
 from naturalsentinel.governance.failure_taxonomy import (
-    FailureCategory, FailureRecord, FAILURE_TAXONOMY,
-    classify as classify_failure, auto_escalate_codes,
+    classify as classify_failure,
 )
+from naturalsentinel.governance.model_card import ModelCard
 from naturalsentinel.governance.policy import (
-    EscalationPolicy, EscalationTrigger, FallbackPolicy, FALLBACK_ACTIONS,
+    FALLBACK_ACTIONS,
+    EscalationPolicy,
+    FallbackPolicy,
 )
+from naturalsentinel.memory.store import MemoryStore
 
 
 def make_mem():
@@ -42,6 +51,7 @@ def make_mem():
 # ModelCard
 # ---------------------------------------------------------------------------
 
+
 class TestModelCard(unittest.TestCase):
     def test_default_returns_card(self):
         card = ModelCard.default()
@@ -50,10 +60,21 @@ class TestModelCard(unittest.TestCase):
 
     def test_to_dict_contains_all_fields(self):
         d = ModelCard.default().to_dict()
-        required = ["name", "version", "provider", "model_id", "intended_use",
-                    "intended_users", "out_of_scope_uses", "known_limitations",
-                    "ethical_considerations", "evaluated_domains",
-                    "evaluation_metrics", "contact", "license"]
+        required = [
+            "name",
+            "version",
+            "provider",
+            "model_id",
+            "intended_use",
+            "intended_users",
+            "out_of_scope_uses",
+            "known_limitations",
+            "ethical_considerations",
+            "evaluated_domains",
+            "evaluation_metrics",
+            "contact",
+            "license",
+        ]
         for field in required:
             self.assertIn(field, d, f"Missing key: {field}")
 
@@ -80,8 +101,11 @@ class TestModelCard(unittest.TestCase):
         self.assertTrue(any("evaluation_metrics" in w for w in warnings))
 
     def test_from_json_loads_and_merges(self):
-        data = {"name": "Custom Card", "version": "2.0.0",
-                "evaluation_metrics": {"overall_accuracy": 0.85}}
+        data = {
+            "name": "Custom Card",
+            "version": "2.0.0",
+            "evaluation_metrics": {"overall_accuracy": 0.85},
+        }
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as fh:
             json.dump(data, fh)
             fh_name = fh.name
@@ -95,9 +119,7 @@ class TestModelCard(unittest.TestCase):
             os.unlink(fh_name)
 
     def test_model_card_json_asset_is_valid(self):
-        asset_path = os.path.join(
-            os.path.dirname(__file__), '..', 'assets', 'model_card.json'
-        )
+        asset_path = os.path.join(os.path.dirname(__file__), "..", "assets", "model_card.json")
         card = ModelCard.from_json(asset_path)
         self.assertEqual(card.name, "NaturalSentinel Regulatory Extraction Pipeline")
         self.assertGreater(len(card.known_limitations), 0)
@@ -106,6 +128,7 @@ class TestModelCard(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # ControlMatrix
 # ---------------------------------------------------------------------------
+
 
 class TestControlMatrix(unittest.TestCase):
     def test_default_has_controls(self):
@@ -132,17 +155,21 @@ class TestControlMatrix(unittest.TestCase):
             self.assertIn(key, summary)
 
     def test_coverage_pct_100_when_all_implemented(self):
-        matrix = ControlMatrix(controls=[
-            Control("CTL-T1", "R1", "cat", "desc", "impl", "ev", "implemented"),
-            Control("CTL-T2", "R2", "cat", "desc", "impl", "ev", "implemented"),
-        ])
+        matrix = ControlMatrix(
+            controls=[
+                Control("CTL-T1", "R1", "cat", "desc", "impl", "ev", "implemented"),
+                Control("CTL-T2", "R2", "cat", "desc", "impl", "ev", "implemented"),
+            ]
+        )
         self.assertEqual(matrix.coverage_summary()["coverage_pct"], 100.0)
 
     def test_coverage_pct_50_with_partial(self):
-        matrix = ControlMatrix(controls=[
-            Control("CTL-T1", "R1", "cat", "desc", "impl", "ev", "implemented"),
-            Control("CTL-T2", "R2", "cat", "desc", "impl", "ev", "planned"),
-        ])
+        matrix = ControlMatrix(
+            controls=[
+                Control("CTL-T1", "R1", "cat", "desc", "impl", "ev", "implemented"),
+                Control("CTL-T2", "R2", "cat", "desc", "impl", "ev", "planned"),
+            ]
+        )
         self.assertEqual(matrix.coverage_summary()["coverage_pct"], 50.0)
 
     def test_to_dict_contains_coverage_summary(self):
@@ -154,6 +181,7 @@ class TestControlMatrix(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # AuditEvent
 # ---------------------------------------------------------------------------
+
 
 class TestAuditEvent(unittest.TestCase):
     def test_create_generates_event_id(self):
@@ -184,27 +212,33 @@ class TestAuditEvent(unittest.TestCase):
         self.assertIn("timestamp", d)
 
     def test_severity_for_event_critical(self):
-        self.assertEqual(severity_for_event(AuditEventType.ESCALATION_TRIGGERED),
-                         AuditSeverity.HIGH)
+        self.assertEqual(
+            severity_for_event(AuditEventType.ESCALATION_TRIGGERED), AuditSeverity.HIGH
+        )
 
     def test_severity_for_event_warning(self):
-        self.assertEqual(severity_for_event(AuditEventType.ANALYSIS_FAILED),
-                         AuditSeverity.WARNING)
+        self.assertEqual(severity_for_event(AuditEventType.ANALYSIS_FAILED), AuditSeverity.WARNING)
 
     def test_severity_for_event_info(self):
-        self.assertEqual(severity_for_event(AuditEventType.ANALYSIS_COMPLETED),
-                         AuditSeverity.INFO)
+        self.assertEqual(severity_for_event(AuditEventType.ANALYSIS_COMPLETED), AuditSeverity.INFO)
 
 
 # ---------------------------------------------------------------------------
 # Failure taxonomy
 # ---------------------------------------------------------------------------
 
+
 class TestFailureTaxonomy(unittest.TestCase):
     EXPECTED_CODES = [
-        "LLM_UNAVAILABLE", "LLM_REFUSED", "LLM_MALFORMED_OUTPUT",
-        "INGESTION_FAILURE", "PARSING_ERROR", "CALIBRATION_DRIFT",
-        "EXTRACTION_DRIFT", "SCHEMA_VIOLATION", "ESCALATION_REQUIRED",
+        "LLM_UNAVAILABLE",
+        "LLM_REFUSED",
+        "LLM_MALFORMED_OUTPUT",
+        "INGESTION_FAILURE",
+        "PARSING_ERROR",
+        "CALIBRATION_DRIFT",
+        "EXTRACTION_DRIFT",
+        "SCHEMA_VIOLATION",
+        "ESCALATION_REQUIRED",
         "MEMORY_ERROR",
     ]
 
@@ -218,8 +252,11 @@ class TestFailureTaxonomy(unittest.TestCase):
             self.assertTrue(cat.name, f"{code}: name is empty")
             self.assertTrue(cat.description, f"{code}: description is empty")
             self.assertTrue(cat.remediation, f"{code}: remediation is empty")
-            self.assertIn(cat.severity, ("LOW", "MEDIUM", "HIGH", "CRITICAL"),
-                          f"{code}: invalid severity {cat.severity}")
+            self.assertIn(
+                cat.severity,
+                ("LOW", "MEDIUM", "HIGH", "CRITICAL"),
+                f"{code}: invalid severity {cat.severity}",
+            )
 
     def test_classify_known_code(self):
         cat = classify_failure("LLM_UNAVAILABLE")
@@ -268,6 +305,7 @@ class TestFailureRecord(unittest.TestCase):
 # EscalationPolicy
 # ---------------------------------------------------------------------------
 
+
 class TestEscalationPolicy(unittest.TestCase):
     def _policy(self):
         return EscalationPolicy.default()
@@ -289,7 +327,9 @@ class TestEscalationPolicy(unittest.TestCase):
             {"severity": "low", "confidence": 0.80},
             calibration_ece=0.20,
         )
-        self.assertTrue(any("ECE" in r or "Calibration" in r or "calibration" in r.lower() for r in reasons))
+        self.assertTrue(
+            any("ECE" in r or "Calibration" in r or "calibration" in r.lower() for r in reasons)
+        )
 
     def test_drift_triggers(self):
         reasons = self._policy().evaluate(
@@ -335,6 +375,7 @@ class TestEscalationPolicy(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # FallbackPolicy
 # ---------------------------------------------------------------------------
+
 
 class TestFallbackPolicy(unittest.TestCase):
     def _policy(self):
@@ -386,6 +427,7 @@ class TestFallbackPolicy(unittest.TestCase):
 # MemoryStore audit_log CRUD
 # ---------------------------------------------------------------------------
 
+
 class TestMemoryStoreAuditLog(unittest.TestCase):
     def setUp(self):
         self.mem = make_mem()
@@ -393,10 +435,15 @@ class TestMemoryStoreAuditLog(unittest.TestCase):
     def tearDown(self):
         self.mem.close()
 
-    def _make_event(self, event_type=AuditEventType.ANALYSIS_COMPLETED,
-                    filing_id=None, severity=AuditSeverity.INFO):
-        return AuditEvent.create(event_type, filing_id=filing_id,
-                                 payload={"test": True}, severity=severity)
+    def _make_event(
+        self,
+        event_type=AuditEventType.ANALYSIS_COMPLETED,
+        filing_id=None,
+        severity=AuditSeverity.INFO,
+    ):
+        return AuditEvent.create(
+            event_type, filing_id=filing_id, payload={"test": True}, severity=severity
+        )
 
     def test_emit_and_retrieve(self):
         ev = self._make_event(filing_id="SEC-001")
@@ -425,8 +472,9 @@ class TestMemoryStoreAuditLog(unittest.TestCase):
         self.assertEqual(len(highs), 1)
 
     def test_payload_is_deserialised(self):
-        ev = AuditEvent.create(AuditEventType.ANALYSIS_COMPLETED,
-                               payload={"key": "value", "num": 42})
+        ev = AuditEvent.create(
+            AuditEventType.ANALYSIS_COMPLETED, payload={"key": "value", "num": 42}
+        )
         self.mem.emit_audit_event(ev)
         events = self.mem.get_audit_events()
         self.assertEqual(events[0]["payload"]["key"], "value")

@@ -22,21 +22,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-
 # ---------------------------------------------------------------------------
 # Field taxonomy
 # ---------------------------------------------------------------------------
 
 CATEGORICAL_FIELDS: frozenset[str] = frozenset({"severity", "change_type"})
-SET_FIELDS: frozenset[str] = frozenset(
-    {"affected_business_lines", "affected_regulations"}
-)
+SET_FIELDS: frozenset[str] = frozenset({"affected_business_lines", "affected_regulations"})
 DATE_FIELDS: frozenset[str] = frozenset({"compliance_deadline"})
 COUNT_FIELDS: frozenset[str] = frozenset({"action_items"})
 
-ALL_SCORED_FIELDS: frozenset[str] = (
-    CATEGORICAL_FIELDS | SET_FIELDS | DATE_FIELDS | COUNT_FIELDS
-)
+ALL_SCORED_FIELDS: frozenset[str] = CATEGORICAL_FIELDS | SET_FIELDS | DATE_FIELDS | COUNT_FIELDS
 
 
 # ---------------------------------------------------------------------------
@@ -47,10 +42,10 @@ ALL_SCORED_FIELDS: frozenset[str] = (
 @dataclass
 class FieldScore:
     field: str
-    score: float            # 0.0–1.0
+    score: float  # 0.0–1.0
     predicted: object = None
     expected: object = None
-    metric: str = ""        # "exact_match" | "jaccard" | "date_match" | "count_ratio"
+    metric: str = ""  # "exact_match" | "jaccard" | "date_match" | "count_ratio"
 
 
 @dataclass
@@ -59,7 +54,7 @@ class CaseScore:
     field_scores: list[FieldScore] = field(default_factory=list)
     overall_score: float = 0.0
     domain: str = ""
-    confidence: float = 0.0     # Model's stated confidence (for calibration)
+    confidence: float = 0.0  # Model's stated confidence (for calibration)
 
 
 @dataclass
@@ -177,11 +172,7 @@ def score_case(case) -> CaseScore:
         predicted_val = case.predicted.get(f)
         field_scores.append(score_field(f, predicted_val, expected_val))
 
-    overall = (
-        sum(fs.score for fs in field_scores) / len(field_scores)
-        if field_scores
-        else 0.0
-    )
+    overall = sum(fs.score for fs in field_scores) / len(field_scores) if field_scores else 0.0
     confidence = float(case.predicted.get("confidence", 0.0))
 
     return CaseScore(
@@ -205,18 +196,13 @@ def score_suite(suite) -> SuiteScore:
             per_field.setdefault(fs.field, []).append(fs.score)
             per_field_count[fs.field] = per_field_count.get(fs.field, 0) + 1
 
-    per_field_accuracy = {
-        f: round(sum(scores) / len(scores), 4)
-        for f, scores in per_field.items()
-    }
+    per_field_accuracy = {f: round(sum(scores) / len(scores), 4) for f, scores in per_field.items()}
 
     # Domain breakdown
     domain_scores: dict[str, list[float]] = {}
     for cs in case_scores:
         domain_scores.setdefault(cs.domain, []).append(cs.overall_score)
-    domain_breakdown = {
-        d: round(sum(s) / len(s), 4) for d, s in domain_scores.items()
-    }
+    domain_breakdown = {d: round(sum(s) / len(s), 4) for d, s in domain_scores.items()}
 
     overall_accuracy = (
         round(sum(cs.overall_score for cs in case_scores) / len(case_scores), 4)

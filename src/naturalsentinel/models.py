@@ -1,11 +1,16 @@
 """Domain types shared across the entire naturalsentinel package."""
 
-from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from naturalsentinel.evidence import EvidenceLedgerEntry
+
+# ---------------------------------------------------------------------------
+# Enums
+# ---------------------------------------------------------------------------
 
 
 class RegulatoryDomain(Enum):
@@ -21,7 +26,7 @@ class RegulatoryDomain(Enum):
     FINRA = "finra"  # Financial Industry Regulatory Authority
     CFTC  = "cftc"   # Commodity Futures Trading Commission
     FDIC  = "fdic"   # Federal Deposit Insurance Corporation
-    BASEL = "basel"  # Basel Committee on Banking Supervision
+    BASEL = "basel"   # Basel Committee on Banking Supervision
 
 
 class Severity(Enum):
@@ -41,8 +46,23 @@ class ChangeType(Enum):
     EXECUTIVE_ORDER = "executive_order"
 
 
-@dataclass
-class RegulatoryFiling:
+# ---------------------------------------------------------------------------
+# Reusable annotated types
+# ---------------------------------------------------------------------------
+
+UnitFloat = Annotated[float, Field(ge=0.0, le=1.0)]
+"""A float constrained to [0.0, 1.0]."""
+
+# ---------------------------------------------------------------------------
+# Core domain models
+# ---------------------------------------------------------------------------
+
+
+class RegulatoryFiling(BaseModel):
+    """A single regulatory document ingested from a government source."""
+
+    model_config = ConfigDict(use_enum_values=False)
+
     id: str
     title: str
     domain: RegulatoryDomain
@@ -51,45 +71,48 @@ class RegulatoryFiling:
     raw_text: str
     change_type: ChangeType = ChangeType.NOTICE
     summary: str = ""
-    fetched_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    fetched_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
-@dataclass
-class ImpactAssessment:
+class ImpactAssessment(BaseModel):
+    """LLM-extracted structured analysis of a regulatory filing's impact."""
+
+    model_config = ConfigDict(use_enum_values=False)
+
     filing_id: str
     severity: Severity
     affected_business_lines: list[str]
     affected_regulations: list[str]
-    compliance_deadline: Optional[str]
+    compliance_deadline: str | None
     action_items: list[str]
     risk_summary: str
-    confidence: float                       # 0.0–1.0
+    confidence: UnitFloat
     # Lineage / explainability fields (optional — populated by AnalyzeFilingSkill)
-    citations: dict = field(default_factory=dict)   # field_name → source_passage
-    trace_id: Optional[str] = None                  # Links to decision_traces record
-    provenance: dict = field(default_factory=dict)  # ModelProvenance.to_dict()
+    citations: dict = Field(default_factory=dict)
+    trace_id: str | None = None
+    provenance: dict = Field(default_factory=dict)
 
 
-@dataclass
-class DecisionFrame:
+class DecisionFrame(BaseModel):
+    """Structured decision context for a regulatory question."""
+
     decision_id: str
     question: str
     scope: str
     time_horizon: str
-    affected_entities: list[str] = field(default_factory=list)
-    candidate_actions: list[str] = field(default_factory=list)
-    constraints: list[str] = field(default_factory=list)
-    evidence_items: list[str] = field(default_factory=list)
-    assumptions: list[str] = field(default_factory=list)
-    counterarguments: list[str] = field(default_factory=list)
-    confidence: float = 0.0
-    expected_revisit_date: Optional[str] = None
+    affected_entities: list[str] = Field(default_factory=list)
+    candidate_actions: list[str] = Field(default_factory=list)
+    constraints: list[str] = Field(default_factory=list)
+    evidence_items: list[str] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    counterarguments: list[str] = Field(default_factory=list)
+    confidence: UnitFloat = 0.0
+    expected_revisit_date: str | None = None
     owner: str = "Unassigned"
-    audit_refs: list[str] = field(default_factory=list)
+    audit_refs: list[str] = Field(default_factory=list)
 
 
-@dataclass
-class BeliefState:
+class BeliefState(BaseModel):
     """Prior/posterior belief tracking for a specific topic over time.
 
     Captures how the system's confidence in a particular regulatory topic,
@@ -98,24 +121,35 @@ class BeliefState:
     Framework Iterations.
     """
 
-    topic: str                          # Regime ID, domain:risk_category, or obligation key
-    domain: str                         # Regulatory domain namespace (e.g. "sec", "fed")
-    prior_confidence: float             # Confidence before the current filing was observed
-    posterior_confidence: float         # Confidence after updating on the current filing
-    delta_confidence: float             # posterior_confidence − prior_confidence
-    delta_drivers: list[str]            # Explanation of what drove the change
-    stability_score: float              # 1.0 = very stable; 0.0 = highly volatile
-    reversal_risk: float                # 0.0–1.0 probability belief will flip next cycle
-    observation_count: int = 0          # Total number of observations recorded for this topic
-    last_filing_id: str = ""            # ID of the most recent filing that triggered an update
-    updated_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    topic: str
+    domain: str
+    prior_confidence: UnitFloat
+    posterior_confidence: UnitFloat
+    delta_confidence: float = Field(ge=-1.0, le=1.0)
+    delta_drivers: list[str]
+    stability_score: UnitFloat
+    reversal_risk: UnitFloat
+    observation_count: int = Field(default=0, ge=0)
+    last_filing_id: str = ""
+    updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+
+    @model_validator(mode="after")
+    def _check_delta_matches(self) -> "BeliefState":
+        expected = round(self.posterior_confidence - self.prior_confidence, 10)
+        if abs(self.delta_confidence - expected) > 1e-6:
+            raise ValueError(
+                f"delta_confidence ({self.delta_confidence}) must equal "
+                f"posterior - prior ({expected})"
+            )
+        return self
 
 
-@dataclass
-class MonitorResult:
+class MonitorResult(BaseModel):
+    """Aggregated output from a complete filing analysis cycle."""
+
     filing: RegulatoryFiling
     impact: ImpactAssessment
     decision: DecisionFrame
-    evidence_ledger: list[EvidenceLedgerEntry] = field(default_factory=list)
-    belief_states: list[BeliefState] = field(default_factory=list)
+    evidence_ledger: list[EvidenceLedgerEntry] = Field(default_factory=list)
+    belief_states: list[BeliefState] = Field(default_factory=list)
     raw_analysis: str = ""

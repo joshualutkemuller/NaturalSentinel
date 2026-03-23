@@ -275,7 +275,6 @@ def create_mcp_server() -> "Server":
             results = agent.run(since_days=days)
 
             # Store results in memory
-            from dataclasses import asdict
             from enum import Enum
             def _ser(obj):
                 if isinstance(obj, Enum):
@@ -284,8 +283,8 @@ def create_mcp_server() -> "Server":
 
             output = []
             for r in results:
-                f_dict = asdict(r.filing)
-                i_dict = asdict(r.impact)
+                f_dict = r.filing.model_dump()
+                i_dict = r.impact.model_dump()
                 # Clean enum values
                 f_dict = json.loads(json.dumps(f_dict, default=_ser))
                 i_dict = json.loads(json.dumps(i_dict, default=_ser))
@@ -315,13 +314,12 @@ def create_mcp_server() -> "Server":
             mem_context = mem.build_context_block(args["domain"], args["text"])
             result = agent._analyze_filing(filing)
 
-            from dataclasses import asdict
             from enum import Enum
             def _ser(obj):
                 if isinstance(obj, Enum): return obj.value
                 return str(obj)
-            f_dict = json.loads(json.dumps(asdict(result.filing), default=_ser))
-            i_dict = json.loads(json.dumps(asdict(result.impact), default=_ser))
+            f_dict = json.loads(json.dumps(result.filing.model_dump(), default=_ser))
+            i_dict = json.loads(json.dumps(result.impact.model_dump(), default=_ser))
             mem.store_episodic(fid, f_dict, i_dict)
             return json.dumps({"filing": f_dict, "impact": i_dict}, indent=2)
 

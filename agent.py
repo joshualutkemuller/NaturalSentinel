@@ -14,7 +14,7 @@ import re
 import hashlib
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
@@ -570,8 +570,8 @@ class RegulatoryMonitorAgent:
                     if isinstance(obj, Enum):
                         return obj.value
                     return str(obj)
-                f_dict = json.loads(json.dumps(asdict(result.filing), default=_ser))
-                i_dict = json.loads(json.dumps(asdict(result.impact), default=_ser))
+                f_dict = json.loads(json.dumps(result.filing.model_dump(), default=_ser))
+                i_dict = json.loads(json.dumps(result.impact.model_dump(), default=_ser))
                 self.memory.store_episodic(filing.id, f_dict, i_dict)
 
         self._save_state()
@@ -589,8 +589,8 @@ class RegulatoryMonitorAgent:
 
         return json.dumps([
             {
-                "filing": asdict(r.filing),
-                "impact": asdict(r.impact),
+                "filing": r.filing.model_dump(),
+                "impact": r.impact.model_dump(),
             }
             for r in results
         ], indent=2, default=_serialize)

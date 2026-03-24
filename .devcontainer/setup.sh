@@ -17,6 +17,38 @@ uv run mypy  --version
 uv run pytest --version
 
 # ------------------------------------------------------------------
+# PostgreSQL — wait for the db service and run migrations
+# ------------------------------------------------------------------
+echo "==> Waiting for PostgreSQL..."
+for i in $(seq 1 30); do
+    if pg_isready -h db -U sentinel -d naturalsentinel -q 2>/dev/null; then
+        echo "    PostgreSQL is ready."
+        break
+    fi
+    if [ "$i" -eq 30 ]; then
+        echo "    WARNING: PostgreSQL not reachable after 30s — skipping DB setup."
+        echo "    You can run 'uv run alembic upgrade head' manually later."
+    fi
+    sleep 1
+done
+
+if pg_isready -h db -U sentinel -d naturalsentinel -q 2>/dev/null; then
+    echo "==> Ensuring pgvector extension..."
+    PGPASSWORD=sentinel psql -h db -U sentinel -d naturalsentinel \
+        -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || true
+
+    echo "==> Running database migrations..."
+    if ! uv run alembic upgrade head; then
+        echo "    WARNING: Alembic migrations failed."
+        echo "    Possible causes:"
+        echo "      - DATABASE_URL not set (check containerEnv in devcontainer.json)"
+        echo "      - PostgreSQL not accepting connections yet"
+        echo "      - Migration file syntax error"
+        echo "    Run manually: uv run alembic upgrade head"
+    fi
+fi
+
+# ------------------------------------------------------------------
 # Pre-commit hooks
 # ------------------------------------------------------------------
 echo "==> Installing pre-commit hooks..."

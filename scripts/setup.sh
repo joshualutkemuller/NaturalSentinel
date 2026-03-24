@@ -117,6 +117,158 @@ check_python() {
     fi
 }
 
+# ── PostgreSQL (via Docker) ──────────────────────────────────────
+setup_postgres() {
+    step "Setting up PostgreSQL with pgvector (Docker)"
+
+    if ! need_cmd docker; then
+        warn "Docker not found. PostgreSQL setup requires Docker."
+        warn "Install Docker Desktop: https://www.docker.com/products/docker-desktop/"
+        warn "Skipping database setup — re-run this script after installing Docker."
+        return
+    fi
+
+    # Verify Docker daemon is actually running
+    if ! docker info &>/dev/null; then
+        warn "Docker is installed but the daemon is not running."
+        warn "Start Docker Desktop, then re-run this script."
+        return
+    fi
+
+    local CONTAINER_NAME="naturalsentinel-postgres"
+    local PG_IMAGE="pgvector/pgvector:0.8.2-pg17"
+    local PG_PORT="${PGPORT:-5432}"
+    local PG_USER="sentinel"
+    local PG_PASS="sentinel"
+    local PG_DB="naturalsentinel"
+
+    # Check if container already exists
+    if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+        if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+            info "PostgreSQL container '${CONTAINER_NAME}' already running"
+        else
+            info "Starting existing PostgreSQL container..."
+            if ! docker start "$CONTAINER_NAME" 2>/tmp/ns-docker-err.log; then
+                local start_err
+                start_err="$(cat /tmp/ns-docker-err.log 2>/dev/null)"
+                rm -f /tmp/ns-docker-err.log
+                if echo "$start_err" | grep -qi "port is already allocated\|address already in use\|bind"; then
+                    warn "Port ${PG_PORT} is already in use by another process."
+                    warn "Fix: stop the conflicting service, or recreate with a different port:"
+                    warn "  docker rm ${CONTAINER_NAME}"
+                    warn "  PGPORT=5433 ./scripts/setup.sh"
+                else
+                    warn "Failed to start container: $start_err"
+                    warn "Try removing and recreating: docker rm ${CONTAINER_NAME} && re-run this script"
+                fi
+                warn "Skipping database setup."
+                return
+            fi
+            rm -f /tmp/ns-docker-err.log
+        fi
+    else
+        info "Creating PostgreSQL + pgvector container..."
+        if ! docker run -d \
+            --name "$CONTAINER_NAME" \
+            -e POSTGRES_USER="$PG_USER" \
+            -e POSTGRES_PASSWORD="$PG_PASS" \
+            -e POSTGRES_DB="$PG_DB" \
+            -p "${PG_PORT}:5432" \
+            --restart unless-stopped \
+            "$PG_IMAGE" 2>/tmp/ns-docker-err.log; then
+            local err
+            err="$(cat /tmp/ns-docker-err.log 2>/dev/null)"
+            rm -f /tmp/ns-docker-err.log
+            # Clean up the orphaned container so re-runs don't hit "name already in use"
+            docker rm "$CONTAINER_NAME" &>/dev/null || true
+            if echo "$err" | grep -qi "port is already allocated\|address already in use\|bind"; then
+                warn "Port ${PG_PORT} is already in use."
+                warn "Another PostgreSQL or service may be running on that port."
+                warn "Fix: stop the conflicting service, or set PGPORT to a different port:"
+                warn "  PGPORT=5433 ./scripts/setup.sh"
+            else
+                warn "Failed to create Docker container."
+                warn "Error: $err"
+            fi
+            warn "Skipping database setup — resolve the issue above and re-run."
+            return
+        fi
+        rm -f /tmp/ns-docker-err.log
+    fi
+
+    # Wait for postgres to be ready
+    info "Waiting for PostgreSQL to accept connections..."
+    for i in $(seq 1 30); do
+        if docker exec "$CONTAINER_NAME" pg_isready -U "$PG_USER" -d "$PG_DB" -q 2>/dev/null; then
+            break
+        fi
+        if [ "$i" -eq 30 ]; then
+            warn "PostgreSQL not ready after 30s — continuing without DB setup"
+            return
+        fi
+        sleep 1
+    done
+
+    # Enable pgvector extension
+    docker exec "$CONTAINER_NAME" psql -U "$PG_USER" -d "$PG_DB" \
+        -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null \
+        && info "pgvector extension enabled" \
+        || warn "Could not enable pgvector extension"
+
+    info "PostgreSQL ready at localhost:${PG_PORT}"
+    info "Connection: postgresql://${PG_USER}:${PG_PASS}@localhost:${PG_PORT}/${PG_DB}"
+
+    # Write DATABASE_URL to .env (always update to match current port/credentials)
+    local DB_URL="postgresql://${PG_USER}:${PG_PASS}@localhost:${PG_PORT}/${PG_DB}"
+    export DATABASE_URL="$DB_URL"
+
+    if [ ! -f "$PROJECT_DIR/.env" ]; then
+        cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env" 2>/dev/null || true
+    fi
+    if [ -f "$PROJECT_DIR/.env" ]; then
+        if [ "$(uname -s)" = "Darwin" ]; then
+            sed -i '' "s|^DATABASE_URL=.*|DATABASE_URL=${DB_URL}|" "$PROJECT_DIR/.env" 2>/dev/null || true
+        else
+            sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${DB_URL}|" "$PROJECT_DIR/.env" 2>/dev/null || true
+        fi
+        info "DATABASE_URL set in .env"
+    fi
+}
+
+# ── Run Alembic migrations ───────────────────────────────────────
+run_migrations() {
+    local CONTAINER_NAME="naturalsentinel-postgres"
+
+    # Ensure DATABASE_URL is in the environment (may have been set by setup_postgres,
+    # or we read it from .env for idempotent re-runs)
+    if [ -z "${DATABASE_URL:-}" ] && [ -f "$PROJECT_DIR/.env" ]; then
+        DATABASE_URL="$(grep '^DATABASE_URL=' "$PROJECT_DIR/.env" | head -1 | cut -d= -f2-)"
+        export DATABASE_URL
+    fi
+
+    if [ -z "${DATABASE_URL:-}" ]; then
+        warn "DATABASE_URL not set — skipping migrations."
+        warn "Run setup_postgres first, or set DATABASE_URL in .env"
+        return
+    fi
+
+    # Only run if postgres is actually reachable
+    if need_cmd docker && docker exec "$CONTAINER_NAME" pg_isready -q 2>/dev/null; then
+        step "Running database migrations"
+        if DATABASE_URL="$DATABASE_URL" uv run alembic upgrade head; then
+            info "Migrations applied successfully"
+        else
+            warn "Alembic migrations failed."
+            warn "DATABASE_URL=$DATABASE_URL"
+            warn "Ensure PostgreSQL is running and the URL is correct."
+            warn "Then run manually: DATABASE_URL=\$DATABASE_URL uv run alembic upgrade head"
+        fi
+    else
+        warn "PostgreSQL not reachable — skipping migrations."
+        warn "After starting the database, run: DATABASE_URL=$DATABASE_URL uv run alembic upgrade head"
+    fi
+}
+
 # ── Create venv & sync deps ──────────────────────────────────────
 setup_venv() {
     step "Creating virtualenv and syncing dependencies"
@@ -275,6 +427,11 @@ print_summary() {
     echo "  Pre-commit hook active — runs on every commit:"
     echo "    ruff format --check, ruff check, pytest"
     echo ""
+    echo "  Database:"
+    echo "    PostgreSQL + pgvector via Docker (naturalsentinel-postgres)"
+    echo "    Connection:   \$DATABASE_URL (see .env)"
+    echo "    Migrations:   uv run alembic upgrade head"
+    echo ""
     echo "  Quick start:"
     echo "    test          — run tests"
     echo "    check         — lint + format + typecheck"
@@ -298,7 +455,9 @@ main() {
     check_python
     install_gh
 
+    setup_postgres
     setup_venv
+    run_migrations
     verify_tools
     setup_precommit
     setup_git_auth

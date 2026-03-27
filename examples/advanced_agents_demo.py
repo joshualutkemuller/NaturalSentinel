@@ -10,16 +10,19 @@ Demonstrates:
 
 No API keys needed — uses MockProvider throughout.
 
-    PYTHONPATH=src python examples/advanced_agents_demo.py
+    uv run --directory backend python ../examples/advanced_agents_demo.py
 """
 
 import sys
+from pathlib import Path
 
-from naturalsentinel.agent_framework import AgentRuntime
-from naturalsentinel.agents import AlertAgent, ComplianceTrackerAgent
-from naturalsentinel.memory import MemoryStore
-from naturalsentinel.providers import MockProvider
-from naturalsentinel.skills import ALL_SKILLS
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+
+from app.naturalsentinel.agent_framework import AgentRuntime  # noqa: E402
+from app.naturalsentinel.agents import AlertAgent, ComplianceTrackerAgent  # noqa: E402
+from app.naturalsentinel.memory import MemoryStore  # noqa: E402
+from app.naturalsentinel.providers import MockProvider  # noqa: E402
+from app.naturalsentinel.skills import ALL_SKILLS  # noqa: E402
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
 

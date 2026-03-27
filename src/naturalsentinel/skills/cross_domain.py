@@ -112,7 +112,9 @@ class CrossDomainCorrelationSkill(Skill):
             )
 
         # ── Build: business_line → {domain → [filing info]} ─────────────────
-        bl_to_domains: dict[str, dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
+        bl_to_domains: dict[str, dict[str, list[dict]]] = defaultdict(
+            lambda: defaultdict(list)
+        )
 
         severity_rank = {"low": 0, "medium": 1, "high": 2, "critical": 3}
 
@@ -180,7 +182,11 @@ class CrossDomainCorrelationSkill(Skill):
                     "combined_regulations": deduped_regs,
                     "domain_breakdown": {
                         dom: [
-                            {"id": f["filing_id"], "title": f["title"], "severity": f["severity"]}
+                            {
+                                "id": f["filing_id"],
+                                "title": f["title"],
+                                "severity": f["severity"],
+                            }
                             for f in filings
                         ]
                         for dom, filings in domain_map.items()
@@ -203,7 +209,9 @@ class CrossDomainCorrelationSkill(Skill):
                 for ix in intersections[:15]  # Cap to avoid token overflow
             )
             user_prompt = _CROSS_DOMAIN_USER.format(intersections=intersection_text)
-            assessment = context.llm.complete(_CROSS_DOMAIN_SYSTEM, user_prompt, temperature=0.2)
+            assessment = context.llm.complete(
+                _CROSS_DOMAIN_SYSTEM, user_prompt, temperature=0.2
+            )
             token_usage = len(user_prompt) // 4 + len(assessment) // 4
 
         return SkillResult(

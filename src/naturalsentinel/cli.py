@@ -104,7 +104,9 @@ def _collect_input_files(
         if path.is_dir():
             iterator = path.rglob("*") if recursive else path.glob("*")
             files.extend(
-                p for p in iterator if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES
+                p
+                for p in iterator
+                if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES
             )
             continue
         raise ValueError(f"Unsupported input path: {path}")
@@ -114,7 +116,11 @@ def _collect_input_files(
         if not directory.exists() or not directory.is_dir():
             raise FileNotFoundError(f"Input directory does not exist: {directory}")
         iterator = directory.rglob("*") if recursive else directory.glob("*")
-        files.extend(p for p in iterator if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES)
+        files.extend(
+            p
+            for p in iterator
+            if p.is_file() and p.suffix.lower() in SUPPORTED_SUFFIXES
+        )
 
     unique_files = sorted({p.resolve() for p in files})
     if not unique_files:
@@ -140,11 +146,14 @@ def build_local_filings(
     timestamp = datetime.utcnow().strftime("%Y-%m-%d")
     filings: list[RegulatoryFiling] = []
 
-    for index, path in enumerate(_collect_input_files(input_paths, input_dir, recursive), start=1):
+    for index, path in enumerate(
+        _collect_input_files(input_paths, input_dir, recursive), start=1
+    ):
         filings.append(
             RegulatoryFiling(
                 id=f"LOCAL-{domain.value.upper()}-{index:04d}-{_slugify(path.stem)[:32]}",
-                title=path.stem.replace("_", " ").replace("-", " ").strip() or path.name,
+                title=path.stem.replace("_", " ").replace("-", " ").strip()
+                or path.name,
                 domain=domain,
                 source_url=path.as_uri(),
                 published_date=timestamp,
@@ -174,10 +183,14 @@ def analyze_local_documents(
     runtime = create_runtime(provider, memory=memory, state_path=state_path)
 
     try:
-        filings = build_local_filings(input_paths, input_dir, domain, recursive=recursive)
+        filings = build_local_filings(
+            input_paths, input_dir, domain, recursive=recursive
+        )
         results: list[dict] = []
         for filing in filings:
-            filing_data = json.loads(json.dumps(filing.model_dump(), default=enum_serializer))
+            filing_data = json.loads(
+                json.dumps(filing.model_dump(), default=enum_serializer)
+            )
             context_result = runtime.execute_skill(
                 "build_context",
                 {"domain": filing.domain.value, "filing_text": filing.raw_text},
@@ -186,11 +199,15 @@ def analyze_local_documents(
                 "analyze_filing",
                 {
                     "filing": filing_data,
-                    "memory_context": context_result.data if context_result.success else "",
+                    "memory_context": context_result.data
+                    if context_result.success
+                    else "",
                 },
             )
             if not analysis_result.success:
-                raise RuntimeError(f"Failed to analyze {filing.id}: {analysis_result.error}")
+                raise RuntimeError(
+                    f"Failed to analyze {filing.id}: {analysis_result.error}"
+                )
 
             impact = analysis_result.data
             if memory is not None:
@@ -227,7 +244,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--days", type=int, default=60, help="Look-back window in days")
     parser.add_argument("--reset", action="store_true", help="Reset seen-filings state")
-    parser.add_argument("--memory-db", default=None, help="Path to SQLite memory database")
+    parser.add_argument(
+        "--memory-db", default=None, help="Path to SQLite memory database"
+    )
     parser.add_argument("--output", default=None, help="Write JSON output to file")
     parser.add_argument(
         "--input-path",
@@ -236,7 +255,9 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to a local document file or directory to analyze",
     )
-    parser.add_argument("--input-dir", default=None, help="Directory of local documents to analyze")
+    parser.add_argument(
+        "--input-dir", default=None, help="Directory of local documents to analyze"
+    )
     parser.add_argument(
         "--input-domain",
         default="sec",

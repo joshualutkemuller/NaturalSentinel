@@ -166,5 +166,7 @@ def _build_edgar_url(src: dict) -> str:
 
     # Fallback to EDGAR search
     if acc:
-        return f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&filenum={acc}"
+        return (
+            f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&filenum={acc}"
+        )
     return "https://www.sec.gov/cgi-bin/browse-edgar"

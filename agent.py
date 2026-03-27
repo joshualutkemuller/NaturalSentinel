@@ -104,7 +104,9 @@ class ModelProvider(ABC):
 class AnthropicProvider(ModelProvider):
     """Claude via the Anthropic SDK."""
 
-    def __init__(self, model: str = "claude-sonnet-4-20250514", api_key: str | None = None):
+    def __init__(
+        self, model: str = "claude-sonnet-4-20250514", api_key: str | None = None
+    ):
         try:
             from anthropic import Anthropic
         except ImportError:
@@ -169,7 +171,9 @@ class GeminiProvider(ModelProvider):
         resp = self.client.models.generate_content(
             model=self.model,
             contents=f"{system}\n\n{user}",
-            config=types.GenerateContentConfig(temperature=temperature, max_output_tokens=4096),
+            config=types.GenerateContentConfig(
+                temperature=temperature, max_output_tokens=4096
+            ),
         )
         return resp.text
 
@@ -180,7 +184,9 @@ class GeminiProvider(ModelProvider):
 class OllamaProvider(ModelProvider):
     """Local models via Ollama REST API."""
 
-    def __init__(self, model: str = "llama3.1", base_url: str = "http://localhost:11434"):
+    def __init__(
+        self, model: str = "llama3.1", base_url: str = "http://localhost:11434"
+    ):
         self.model = model
         self.base_url = base_url
 
@@ -521,7 +527,9 @@ class RegulatoryMonitorAgent:
         # Build memory context if available
         memory_context = ""
         if self.memory:
-            memory_context = self.memory.build_context_block(filing.domain.value, filing.raw_text)
+            memory_context = self.memory.build_context_block(
+                filing.domain.value, filing.raw_text
+            )
 
         user_prompt = USER_PROMPT_TEMPLATE.format(
             filing_id=filing.id,
@@ -543,14 +551,18 @@ class RegulatoryMonitorAgent:
         try:
             parsed = json.loads(cleaned)
         except json.JSONDecodeError:
-            self.logger.warning("Model returned non-JSON for %s, wrapping raw output", filing.id)
+            self.logger.warning(
+                "Model returned non-JSON for %s, wrapping raw output", filing.id
+            )
             parsed = {
                 "summary": raw[:500],
                 "severity": "medium",
                 "affected_business_lines": domain_lines,
                 "affected_regulations": [],
                 "compliance_deadline": None,
-                "action_items": ["Manual review required — model output was unstructured"],
+                "action_items": [
+                    "Manual review required — model output was unstructured"
+                ],
                 "risk_summary": "Unable to parse structured assessment.",
                 "confidence": 0.3,
             }
@@ -587,7 +599,9 @@ class RegulatoryMonitorAgent:
           5. Return results
         """
         self.logger.info(
-            "Fetching filings from %s (last %d days)…", [d.value for d in self.domains], since_days
+            "Fetching filings from %s (last %d days)…",
+            [d.value for d in self.domains],
+            since_days,
         )
 
         filings = fetch_filings(domains=self.domains, since_days=since_days)
@@ -609,8 +623,13 @@ class RegulatoryMonitorAgent:
                     if isinstance(obj, Enum):
                         return obj.value
                     return str(obj)
-                f_dict = json.loads(json.dumps(result.filing.model_dump(), default=_ser))
-                i_dict = json.loads(json.dumps(result.impact.model_dump(), default=_ser))
+
+                f_dict = json.loads(
+                    json.dumps(result.filing.model_dump(), default=_ser)
+                )
+                i_dict = json.loads(
+                    json.dumps(result.impact.model_dump(), default=_ser)
+                )
                 self.memory.store_episodic(filing.id, f_dict, i_dict)
 
         self._save_state()
@@ -669,7 +688,9 @@ def main():
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
 
-    parser = argparse.ArgumentParser(description="Regulatory Change Monitor & Impact Mapper")
+    parser = argparse.ArgumentParser(
+        description="Regulatory Change Monitor & Impact Mapper"
+    )
     parser.add_argument(
         "--provider",
         default="anthropic",

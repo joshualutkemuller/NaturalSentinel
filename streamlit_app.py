@@ -7,11 +7,17 @@ import tempfile
 from collections import Counter
 from pathlib import Path
 
-from naturalsentinel.cli import SUPPORTED_SUFFIXES, analyze_local_documents, build_provider
+from naturalsentinel.cli import (
+    SUPPORTED_SUFFIXES,
+    analyze_local_documents,
+    build_provider,
+)
 from naturalsentinel.models import RegulatoryDomain
 
 
-def _save_uploaded_files(uploaded_files) -> tuple[tempfile.TemporaryDirectory, list[str]]:
+def _save_uploaded_files(
+    uploaded_files,
+) -> tuple[tempfile.TemporaryDirectory, list[str]]:
     tmpdir = tempfile.TemporaryDirectory()
     paths: list[str] = []
     for uploaded in uploaded_files:
@@ -32,7 +38,9 @@ def _render_summary(st, results: list[dict]) -> None:
     deadlines = sum(1 for item in results if item["impact"].get("compliance_deadline"))
     st.metric("Documents analyzed", len(results))
     st.metric("Deadlines found", deadlines)
-    st.metric("Critical / High", severities.get("critical", 0) + severities.get("high", 0))
+    st.metric(
+        "Critical / High", severities.get("critical", 0) + severities.get("high", 0)
+    )
 
 
 def main() -> None:
@@ -56,7 +64,9 @@ def main() -> None:
             "Provider", ["mock", "anthropic", "openai", "gemini", "ollama"], index=0
         )
         model_override = st.text_input("Model override (optional)")
-        domain = st.selectbox("Document domain", [d.value for d in RegulatoryDomain], index=0)
+        domain = st.selectbox(
+            "Document domain", [d.value for d in RegulatoryDomain], index=0
+        )
         memory_db = st.text_input("Memory DB path (optional)", value="")
         st.markdown("**Supported file types**")
         st.code(", ".join(sorted(SUPPORTED_SUFFIXES)))
@@ -68,7 +78,9 @@ def main() -> None:
         help="Upload text, markdown, JSON, or HTML-like source documents for analysis.",
     )
 
-    analyze_clicked = st.button("Analyze documents", type="primary", disabled=not uploaded_files)
+    analyze_clicked = st.button(
+        "Analyze documents", type="primary", disabled=not uploaded_files
+    )
 
     if analyze_clicked and uploaded_files:
         try:
@@ -126,7 +138,9 @@ def main() -> None:
                         st.json(item["impact"])
                     with right:
                         st.subheader("Filing metadata")
-                        st.json({k: v for k, v in item["filing"].items() if k != "raw_text"})
+                        st.json(
+                            {k: v for k, v in item["filing"].items() if k != "raw_text"}
+                        )
                         with st.expander("Raw text preview"):
                             st.text(item["filing"].get("raw_text", "")[:5000])
 

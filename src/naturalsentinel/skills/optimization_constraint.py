@@ -131,7 +131,9 @@ class OptimizationConstraintSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(OPTIMIZATION_CONSTRAINT_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            OPTIMIZATION_CONSTRAINT_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "constraint_type": "unknown",

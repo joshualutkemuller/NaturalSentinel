@@ -27,7 +27,9 @@ class Control:
     description: str  # What this control does
     implementation: str  # Where/how it is implemented in code
     evidence: str  # How an auditor can verify the control is active
-    status: str = "implemented"  # "implemented" | "partial" | "planned" | "not_applicable"
+    status: str = (
+        "implemented"  # "implemented" | "partial" | "planned" | "not_applicable"
+    )
     owner: str = "Engineering"  # Team or role accountable for this control
 
     def to_dict(self) -> dict:

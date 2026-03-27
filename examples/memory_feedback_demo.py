@@ -4,7 +4,12 @@ Memory + feedback demo — shows the learning loop.
     python examples/memory_feedback_demo.py
 """
 
-from naturalsentinel import MemoryStore, MemoryType, MockProvider, RegulatoryMonitorAgent
+from naturalsentinel import (
+    MemoryStore,
+    MemoryType,
+    MockProvider,
+    RegulatoryMonitorAgent,
+)
 
 
 def section(title):
@@ -24,7 +29,9 @@ def main():
     section("STEP 1: First Scan")
     results = agent.run(since_days=90)
     print(f"  Analyzed {len(results)} filings")
-    print(f"  Memory: {memory.count()} records, {memory.stats()['total_relations']} relations")
+    print(
+        f"  Memory: {memory.count()} records, {memory.stats()['total_relations']} relations"
+    )
 
     # Step 2: Human feedback
     section("STEP 2: Human Feedback")
@@ -61,12 +68,16 @@ def main():
         results = memory.recall(q, top_k=2)
         print(f'  "{q}"')
         for r in results:
-            print(f"    → [{r.memory_type.value}] {r.key}  (score: {r.relevance_score:.3f})")
+            print(
+                f"    → [{r.memory_type.value}] {r.key}  (score: {r.relevance_score:.3f})"
+            )
         print()
 
     # Step 4: Context block
     section("STEP 4: Memory Context (what the LLM sees)")
-    ctx = memory.build_context_block("sec", "new SEC proposed rule on cybersecurity reporting")
+    ctx = memory.build_context_block(
+        "sec", "new SEC proposed rule on cybersecurity reporting"
+    )
     print(ctx or "  (empty)")
 
     # Step 5: Entity graph

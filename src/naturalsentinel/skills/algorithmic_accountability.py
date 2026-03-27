@@ -136,7 +136,9 @@ class AlgorithmicAccountabilitySkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(ALGORITHMIC_ACCOUNTABILITY_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            ALGORITHMIC_ACCOUNTABILITY_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "audit_requirement_triggers": [],
@@ -164,6 +166,8 @@ class AlgorithmicAccountabilitySkill(Skill):
             token_usage=len(user_prompt) // 4 + len(raw) // 4,
             metadata={
                 "filing_id": filing.get("id"),
-                "third_party_auditor_required": parsed.get("third_party_auditor_required"),
+                "third_party_auditor_required": parsed.get(
+                    "third_party_auditor_required"
+                ),
             },
         )

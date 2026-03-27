@@ -26,7 +26,9 @@ class DetectDuplicatesSkill(Skill):
         permissions=Permission.STATE_READ | Permission.STATE_WRITE,
         latency=LatencyClass.INSTANT,
         parameters=[
-            SkillParameter("filings", "list[dict]", "List of serialized filings to check."),
+            SkillParameter(
+                "filings", "list[dict]", "List of serialized filings to check."
+            ),
             SkillParameter(
                 "mark_seen",
                 "bool",
@@ -48,7 +50,11 @@ class DetectDuplicatesSkill(Skill):
         # Load seen IDs
         seen: set[str] = set()
         state_path = Path(context.state_path) if context.state_path else None
-        if state_path and state_path.exists() and context.has_permission(Permission.STATE_READ):
+        if (
+            state_path
+            and state_path.exists()
+            and context.has_permission(Permission.STATE_READ)
+        ):
             try:
                 data = json.loads(state_path.read_text())
                 seen = set(data.get("seen_ids", []))

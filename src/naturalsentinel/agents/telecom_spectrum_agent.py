@@ -133,7 +133,12 @@ class TelecomSpectrumAgent:
             "alert_threshold",
             {
                 "threshold": threshold,
-                "domain_filter": ["spectrum", "telecom", "fcc", "infrastructure_security"],
+                "domain_filter": [
+                    "spectrum",
+                    "telecom",
+                    "fcc",
+                    "infrastructure_security",
+                ],
             },
         )
         return result.data if result.success else {"error": result.error}
@@ -151,7 +156,12 @@ class TelecomSpectrumAgent:
         result = self.runtime.execute_skill(
             "regime_detection",
             {
-                "domain_filter": ["spectrum", "telecom", "fcc", "infrastructure_security"],
+                "domain_filter": [
+                    "spectrum",
+                    "telecom",
+                    "fcc",
+                    "infrastructure_security",
+                ],
                 "window_days": window_days,
             },
         )

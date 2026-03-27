@@ -117,7 +117,11 @@ class AlertAgent:
                 "limit": limit,
             },
         )
-        return result.data if result.success else {"alerts": [], "summary": {"error": result.error}}
+        return (
+            result.data
+            if result.success
+            else {"alerts": [], "summary": {"error": result.error}}
+        )
 
     def _run_scan(self, domains: list[str], since_days: int) -> dict:
         result = self.runtime.execute_skill(
@@ -127,7 +131,9 @@ class AlertAgent:
                 "since_days": since_days,
             },
         )
-        return result.data.get("stats", {}) if result.success else {"error": result.error}
+        return (
+            result.data.get("stats", {}) if result.success else {"error": result.error}
+        )
 
     def _run_trends(self, limit: int = 50) -> dict | None:
         result = self.runtime.execute_skill(

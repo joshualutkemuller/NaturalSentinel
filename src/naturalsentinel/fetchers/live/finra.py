@@ -70,7 +70,9 @@ def fetch(
                 if len(full_text) > len(entry.get("raw_text", "")):
                     entry["raw_text"] = truncate(full_text)
             except Exception as exc:
-                logger.debug("Could not fetch FINRA notice text for %s: %s", entry["id"], exc)
+                logger.debug(
+                    "Could not fetch FINRA notice text for %s: %s", entry["id"], exc
+                )
         results.append(entry)
 
     return results

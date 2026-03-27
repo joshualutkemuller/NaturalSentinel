@@ -31,7 +31,10 @@ class StoreMemorySkill(Skill):
     def execute(self, context: SkillContext) -> SkillResult:
         if context.memory is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None, error="Memory write denied"
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
+                error="Memory write denied",
             )
 
         context.memory.store_episodic(
@@ -42,5 +45,8 @@ class StoreMemorySkill(Skill):
         return SkillResult(
             skill_name=self.metadata.name,
             success=True,
-            data={"stored": context.params["filing_id"], "total_memories": context.memory.count()},
+            data={
+                "stored": context.params["filing_id"],
+                "total_memories": context.memory.count(),
+            },
         )

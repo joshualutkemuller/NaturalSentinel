@@ -70,7 +70,9 @@ class MemoryStore:
             "total_memories": self.count(),
             "by_type": by_type,
             "by_namespace": by_ns,
-            "total_feedback": self.conn.execute("SELECT COUNT(*) FROM feedback_log").fetchone()[0],
+            "total_feedback": self.conn.execute(
+                "SELECT COUNT(*) FROM feedback_log"
+            ).fetchone()[0],
             "total_relations": self.conn.execute(
                 "SELECT COUNT(*) FROM entity_relations"
             ).fetchone()[0],
@@ -140,7 +142,9 @@ class MemoryStore:
             for biz_line in impact.get("affected_business_lines", []):
                 self._add_relation(reg, "impacts", biz_line, filing_id)
 
-    def store_entity(self, entity_name: str, attributes: dict, namespace: str = "global"):
+    def store_entity(
+        self, entity_name: str, attributes: dict, namespace: str = "global"
+    ):
         """Store or update knowledge about a specific entity."""
         now = datetime.utcnow().isoformat()
         eid = f"entity:{hashlib.sha256(entity_name.encode()).hexdigest()[:16]}"
@@ -182,7 +186,9 @@ class MemoryStore:
         context_text = ""
         if episodic:
             f = episodic.content.get("filing", {})
-            context_text = f"{f.get('title', '')} {f.get('domain', '')} {f.get('summary', '')}"
+            context_text = (
+                f"{f.get('title', '')} {f.get('domain', '')} {f.get('summary', '')}"
+            )
 
         embed_text = (
             f"correction {field} from {old_value} to {new_value} "
@@ -208,17 +214,26 @@ class MemoryStore:
             )
         )
         self.conn.commit()
-        logger.info("Recorded feedback for %s.%s: %s → %s", filing_id, field, old_value, new_value)
+        logger.info(
+            "Recorded feedback for %s.%s: %s → %s",
+            filing_id,
+            field,
+            old_value,
+            new_value,
+        )
 
     # -- Retrieval ----------------------------------------------------------
 
     def get(self, memory_id: str) -> MemoryRecord | None:
         """Retrieve a specific memory by ID."""
-        row = self.conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
+        row = self.conn.execute(
+            "SELECT * FROM memories WHERE id = ?", (memory_id,)
+        ).fetchone()
         if not row:
             return None
         self.conn.execute(
-            "UPDATE memories SET access_count = access_count + 1 WHERE id = ?", (memory_id,)
+            "UPDATE memories SET access_count = access_count + 1 WHERE id = ?",
+            (memory_id,),
         )
         self.conn.commit()
         return self._row_to_record(row)
@@ -236,7 +251,9 @@ class MemoryStore:
         for doc_id, score in candidates:
             if score <= 0:
                 continue
-            row = self.conn.execute("SELECT * FROM memories WHERE id = ?", (doc_id,)).fetchone()
+            row = self.conn.execute(
+                "SELECT * FROM memories WHERE id = ?", (doc_id,)
+            ).fetchone()
             if not row:
                 continue
             if memory_type and row["memory_type"] != memory_type.value:
@@ -263,7 +280,9 @@ class MemoryStore:
         memory_candidates = self.recall(query, top_k=top_k * 3)
         if namespace:
             memory_candidates = [
-                rec for rec in memory_candidates if rec.namespace in {namespace, "global"}
+                rec
+                for rec in memory_candidates
+                if rec.namespace in {namespace, "global"}
             ]
         ledger = [
             self._to_evidence_entry(
@@ -286,7 +305,9 @@ class MemoryStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_precedents_for_domain(self, domain: str, top_k: int = 5) -> list[MemoryRecord]:
+    def get_precedents_for_domain(
+        self, domain: str, top_k: int = 5
+    ) -> list[MemoryRecord]:
         """Get correction precedents relevant to a specific regulatory domain."""
         return self.recall(
             query=f"{domain} regulatory correction precedent",
@@ -294,7 +315,9 @@ class MemoryStore:
             memory_type=MemoryType.PRECEDENT,
         )
 
-    def get_filing_history(self, domain: str | None = None, limit: int = 20) -> list[MemoryRecord]:
+    def get_filing_history(
+        self, domain: str | None = None, limit: int = 20
+    ) -> list[MemoryRecord]:
         """Retrieve recent episodic memories, optionally filtered by domain."""
         if domain:
             rows = self.conn.execute(
@@ -336,7 +359,10 @@ class MemoryStore:
             sections.append("WEIGHTED EVIDENCE LEDGER:\n" + "\n".join(lines))
 
         past = self.recall(
-            filing_text[:500], top_k=3, memory_type=MemoryType.EPISODIC, namespace=filing_domain
+            filing_text[:500],
+            top_k=3,
+            memory_type=MemoryType.EPISODIC,
+            namespace=filing_domain,
         )
         if past:
             lines = []
@@ -360,11 +386,17 @@ class MemoryStore:
                     f"{c.get('old_value', '?')} → {c.get('new_value', '?')} "
                     f"(reason: {c.get('reason', 'n/a')})"
                 )
-            sections.append("CORRECTION PRECEDENTS (learn from these):\n" + "\n".join(lines))
+            sections.append(
+                "CORRECTION PRECEDENTS (learn from these):\n" + "\n".join(lines)
+            )
 
-        entities = self.recall(filing_text[:300], top_k=3, memory_type=MemoryType.ENTITY)
+        entities = self.recall(
+            filing_text[:300], top_k=3, memory_type=MemoryType.ENTITY
+        )
         if entities:
-            lines = [f"- {rec.key}: {json.dumps(rec.content)[:200]}" for rec in entities]
+            lines = [
+                f"- {rec.key}: {json.dumps(rec.content)[:200]}" for rec in entities
+            ]
             sections.append("KNOWN ENTITIES:\n" + "\n".join(lines))
 
         if not sections:
@@ -424,12 +456,16 @@ class MemoryStore:
 
     def get_eval_run(self, run_id: str) -> dict | None:
         """Retrieve a single evaluation run by ID."""
-        row = self.conn.execute("SELECT * FROM eval_runs WHERE run_id = ?", (run_id,)).fetchone()
+        row = self.conn.execute(
+            "SELECT * FROM eval_runs WHERE run_id = ?", (run_id,)
+        ).fetchone()
         if not row:
             return None
         return self._deserialise_eval_row(dict(row))
 
-    def list_eval_runs(self, provider_tag: str | None = None, limit: int = 20) -> list[dict]:
+    def list_eval_runs(
+        self, provider_tag: str | None = None, limit: int = 20
+    ) -> list[dict]:
         """List evaluation runs, newest first, optionally filtered by provider_tag."""
         if provider_tag:
             rows = self.conn.execute(
@@ -457,7 +493,9 @@ class MemoryStore:
             return round(float(b.get(key, 0)) - float(a.get(key, 0)), 4)
 
         per_field_delta: dict[str, float] = {}
-        all_fields = set(a.get("per_field_accuracy", {})) | set(b.get("per_field_accuracy", {}))
+        all_fields = set(a.get("per_field_accuracy", {})) | set(
+            b.get("per_field_accuracy", {})
+        )
         for f in all_fields:
             va = a.get("per_field_accuracy", {}).get(f, 0.0)
             vb = b.get("per_field_accuracy", {}).get(f, 0.0)
@@ -593,7 +631,9 @@ class MemoryStore:
             ),
         )
         self.conn.commit()
-        logger.debug("Stored decision trace %s for filing %s", trace.trace_id, trace.filing_id)
+        logger.debug(
+            "Stored decision trace %s for filing %s", trace.trace_id, trace.filing_id
+        )
 
     def get_decision_trace(self, trace_id: str) -> dict | None:
         """Retrieve a decision trace by ID."""
@@ -635,7 +675,9 @@ class MemoryStore:
             (bundle.filing_id, bundle.source_url, citations_json, bundle.extracted_at),
         )
         self.conn.commit()
-        logger.debug("Stored %d citations for filing %s", len(bundle.citations), bundle.filing_id)
+        logger.debug(
+            "Stored %d citations for filing %s", len(bundle.citations), bundle.filing_id
+        )
 
     def get_citations(self, filing_id: str) -> dict | None:
         """Return the citation bundle dict for *filing_id*, or None."""
@@ -725,7 +767,9 @@ class MemoryStore:
             belief.get("delta_confidence", 0.0),
         )
 
-    def get_belief_history(self, topic: str, domain: str, limit: int = 20) -> list[dict]:
+    def get_belief_history(
+        self, topic: str, domain: str, limit: int = 20
+    ) -> list[dict]:
         """Return chronological history of confidence observations for a topic."""
         rows = self.conn.execute(
             """
@@ -806,7 +850,9 @@ class MemoryStore:
         recency_score = self._recency_score(rec)
         policy_finality_score = self._policy_finality_score(rec)
         jurisdiction_relevance = self._jurisdiction_relevance(rec, query, namespace)
-        business_line_proximity = self._business_line_proximity(rec, query, business_lines)
+        business_line_proximity = self._business_line_proximity(
+            rec, query, business_lines
+        )
         historical_predictive_usefulness = self._historical_predictive_usefulness(rec)
         contradiction_risk = self._contradiction_risk(rec, query)
         novelty_score = self._novelty_score(rec, query)
@@ -860,7 +906,9 @@ class MemoryStore:
 
     def _recency_score(self, rec: MemoryRecord) -> float:
         try:
-            age_days = max((datetime.utcnow() - datetime.fromisoformat(rec.updated_at)).days, 0)
+            age_days = max(
+                (datetime.utcnow() - datetime.fromisoformat(rec.updated_at)).days, 0
+            )
         except ValueError:
             return 0.5
         return max(0.1, 1.0 - min(age_days, 365) / 365)
@@ -869,7 +917,9 @@ class MemoryStore:
         if rec.memory_type != MemoryType.EPISODIC:
             return 0.55
         filing = rec.content.get("filing", {})
-        change_type = filing.get("change_type") or rec.content.get("impact", {}).get("change_type")
+        change_type = filing.get("change_type") or rec.content.get("impact", {}).get(
+            "change_type"
+        )
         scores = {
             "final_rule": 1.0,
             "enforcement": 0.95,
@@ -898,7 +948,9 @@ class MemoryStore:
     ) -> float:
         q = query.lower()
         impact = rec.content.get("impact", {})
-        filing_lines = {line.lower() for line in impact.get("affected_business_lines", [])}
+        filing_lines = {
+            line.lower() for line in impact.get("affected_business_lines", [])
+        }
         requested = {line.lower() for line in business_lines}
         query_hits = {line for line in filing_lines if line in q}
         overlap = filing_lines & requested
@@ -919,7 +971,14 @@ class MemoryStore:
         risk = 0.1
         if rec.memory_type == MemoryType.PRECEDENT:
             risk += 0.35
-        contradiction_markers = ["unless", "except", "however", "but", "challenge", "contradict"]
+        contradiction_markers = [
+            "unless",
+            "except",
+            "however",
+            "but",
+            "challenge",
+            "contradict",
+        ]
         risk += 0.1 * sum(
             1
             for marker in contradiction_markers
@@ -939,12 +998,22 @@ class MemoryStore:
         if rec.memory_type == MemoryType.PRECEDENT:
             field = rec.content.get("field", "review")
             return [f"Tightens analyst treatment of {field}"]
-        actions = candidate_actions or rec.content.get("impact", {}).get("action_items", [])
-        return actions[:2] if actions else ["Supports further review of the current filing"]
+        actions = candidate_actions or rec.content.get("impact", {}).get(
+            "action_items", []
+        )
+        return (
+            actions[:2]
+            if actions
+            else ["Supports further review of the current filing"]
+        )
 
-    def _contradicts(self, rec: MemoryRecord, candidate_actions: list[str]) -> list[str]:
+    def _contradicts(
+        self, rec: MemoryRecord, candidate_actions: list[str]
+    ) -> list[str]:
         if rec.memory_type == MemoryType.PRECEDENT:
-            return [f"Challenges prior view on {rec.content.get('field', 'assessment')}"]
+            return [
+                f"Challenges prior view on {rec.content.get('field', 'assessment')}"
+            ]
         if candidate_actions:
             return (
                 [f"May challenge action: {candidate_actions[0]}"]
@@ -981,10 +1050,17 @@ class MemoryStore:
         return json.dumps(
             {
                 "memories": [
-                    dict(r) for r in self.conn.execute("SELECT * FROM memories ORDER BY created_at")
+                    dict(r)
+                    for r in self.conn.execute(
+                        "SELECT * FROM memories ORDER BY created_at"
+                    )
                 ],
-                "relations": [dict(r) for r in self.conn.execute("SELECT * FROM entity_relations")],
-                "feedback": [dict(r) for r in self.conn.execute("SELECT * FROM feedback_log")],
+                "relations": [
+                    dict(r) for r in self.conn.execute("SELECT * FROM entity_relations")
+                ],
+                "feedback": [
+                    dict(r) for r in self.conn.execute("SELECT * FROM feedback_log")
+                ],
                 "exported_at": datetime.utcnow().isoformat(),
             },
             indent=2,

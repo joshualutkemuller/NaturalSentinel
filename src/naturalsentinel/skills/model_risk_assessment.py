@@ -99,7 +99,14 @@ class ModelRiskAssessmentSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["model-risk", "sr11-7", "validation", "ml", "optimization", "data-science"],
+        tags=[
+            "model-risk",
+            "sr11-7",
+            "validation",
+            "ml",
+            "optimization",
+            "data-science",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
@@ -118,7 +125,9 @@ class ModelRiskAssessmentSkill(Skill):
         domain_lines = DOMAIN_BUSINESS_LINES.get(domain, [])
 
         memory_block = ("\n" + memory_context) if memory_context else ""
-        inventory_str = ", ".join(model_inventory) if model_inventory else "Not specified"
+        inventory_str = (
+            ", ".join(model_inventory) if model_inventory else "Not specified"
+        )
 
         user_prompt = _USER_TEMPLATE.format(
             filing_id=filing.get("id", "UNKNOWN"),

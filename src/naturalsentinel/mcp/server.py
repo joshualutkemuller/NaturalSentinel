@@ -95,7 +95,9 @@ def _get_runtime():
         try:
             provider = _build_provider(provider_name, model)
         except ImportError:
-            logger.warning("Provider %s unavailable; falling back to mock provider", provider_name)
+            logger.warning(
+                "Provider %s unavailable; falling back to mock provider", provider_name
+            )
             provider = _build_provider("mock")
         _runtime = create_runtime(
             provider,
@@ -172,7 +174,10 @@ def create_mcp_server() -> "Server":
                             "type": "string",
                             "description": "Title of the filing or document",
                         },
-                        "text": {"type": "string", "description": "The regulatory text to analyze"},
+                        "text": {
+                            "type": "string",
+                            "description": "The regulatory text to analyze",
+                        },
                         "domain": {
                             "type": "string",
                             "enum": ["sec", "cfpb", "fed", "fda", "epa", "ustr"],
@@ -218,13 +223,22 @@ def create_mcp_server() -> "Server":
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "filing_id": {"type": "string", "description": "The filing ID to correct"},
+                        "filing_id": {
+                            "type": "string",
+                            "description": "The filing ID to correct",
+                        },
                         "field": {
                             "type": "string",
                             "description": "Which field to correct (severity, affected_business_lines, compliance_deadline, etc.)",
                         },
-                        "old_value": {"type": "string", "description": "The current/wrong value"},
-                        "new_value": {"type": "string", "description": "The correct value"},
+                        "old_value": {
+                            "type": "string",
+                            "description": "The current/wrong value",
+                        },
+                        "new_value": {
+                            "type": "string",
+                            "description": "The correct value",
+                        },
                         "reason": {
                             "type": "string",
                             "description": "Why this correction is needed",
@@ -279,7 +293,9 @@ def create_mcp_server() -> "Server":
             result = runtime.execute_skill("scan_cycle", scan_params)
             if not result.success:
                 raise RuntimeError(result.error)
-            output = json.loads(json.dumps(result.data["results"], default=enum_serializer))
+            output = json.loads(
+                json.dumps(result.data["results"], default=enum_serializer)
+            )
             return json.dumps(
                 {
                     "status": "success",
@@ -293,7 +309,9 @@ def create_mcp_server() -> "Server":
             import hashlib as _hashlib
 
             runtime = _get_runtime()
-            fid = f"CUSTOM-{_hashlib.sha256(args['text'][:100].encode()).hexdigest()[:8]}"
+            fid = (
+                f"CUSTOM-{_hashlib.sha256(args['text'][:100].encode()).hexdigest()[:8]}"
+            )
             filing = RegulatoryFiling(
                 id=fid,
                 title=args["title"],
@@ -302,7 +320,9 @@ def create_mcp_server() -> "Server":
                 published_date=datetime.utcnow().strftime("%Y-%m-%d"),
                 raw_text=args["text"],
             )
-            filing_data = json.loads(json.dumps(filing.__dict__, default=enum_serializer))
+            filing_data = json.loads(
+                json.dumps(filing.__dict__, default=enum_serializer)
+            )
             context_result = runtime.execute_skill(
                 "build_context",
                 {"domain": filing.domain.value, "filing_text": filing.raw_text},
@@ -311,16 +331,21 @@ def create_mcp_server() -> "Server":
                 "analyze_filing",
                 {
                     "filing": filing_data,
-                    "memory_context": context_result.data if context_result.success else "",
+                    "memory_context": context_result.data
+                    if context_result.success
+                    else "",
                 },
             )
             if not result.success:
                 raise RuntimeError(result.error)
             payload = {"filing": filing_data, "impact": result.data}
             runtime.execute_skill(
-                "store_memory", {"filing_id": fid, "filing": filing_data, "impact": result.data}
+                "store_memory",
+                {"filing_id": fid, "filing": filing_data, "impact": result.data},
             )
-            return json.dumps(json.loads(json.dumps(payload, default=enum_serializer)), indent=2)
+            return json.dumps(
+                json.loads(json.dumps(payload, default=enum_serializer)), indent=2
+            )
 
         elif name == "recall_memory":
             runtime = _get_runtime()
@@ -428,7 +453,9 @@ def create_mcp_server() -> "Server":
                 {
                     "entity": entity,
                     "relations": relations,
-                    "memories": [{"key": m.key, "content": m.content} for m in memories],
+                    "memories": [
+                        {"key": m.key, "content": m.content} for m in memories
+                    ],
                 },
                 indent=2,
                 default=str,
@@ -482,7 +509,9 @@ def create_mcp_server() -> "Server":
         ]
 
     @server.get_prompt()
-    async def get_prompt(name: str, arguments: dict | None = None) -> list[PromptMessage]:
+    async def get_prompt(
+        name: str, arguments: dict | None = None
+    ) -> list[PromptMessage]:
         args = arguments or {}
         mem = _get_memory()
 
@@ -523,7 +552,9 @@ def create_mcp_server() -> "Server":
             filing_id = args.get("filing_id", "")
             record = mem.get(f"episodic:{filing_id}")
             context = (
-                json.dumps(record.content, indent=2) if record else "Filing not found in memory."
+                json.dumps(record.content, indent=2)
+                if record
+                else "Filing not found in memory."
             )
 
             return [
@@ -655,8 +686,14 @@ class StandaloneServer:
         result = self.runtime.execute_skill("scan_cycle", scan_params)
         if not result.success:
             raise RuntimeError(result.error)
-        results = json.loads(json.dumps(result.data["results"], default=enum_serializer))
-        return {"status": "success", "filings_analyzed": len(results), "results": results}
+        results = json.loads(
+            json.dumps(result.data["results"], default=enum_serializer)
+        )
+        return {
+            "status": "success",
+            "filings_analyzed": len(results),
+            "results": results,
+        }
 
     def _recall(self, args: dict) -> list:
         result = self.runtime.execute_skill("recall_memory", args)
@@ -689,7 +726,8 @@ class StandaloneServer:
     def run_stdio(self):
         """Read JSON lines from stdin, write responses to stdout."""
         print(
-            json.dumps({"status": "ready", "server": "regulatory-monitor-standalone"}), flush=True
+            json.dumps({"status": "ready", "server": "regulatory-monitor-standalone"}),
+            flush=True,
         )
         for line in sys.stdin:
             line = line.strip()

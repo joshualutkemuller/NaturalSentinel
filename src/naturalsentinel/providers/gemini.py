@@ -12,7 +12,9 @@ class GeminiProvider(ModelProvider):
         try:
             from google import genai
         except ImportError:
-            raise ImportError("Google GenAI SDK not installed. Run: pip install google-genai")
+            raise ImportError(
+                "Google GenAI SDK not installed. Run: pip install google-genai"
+            )
         self.client = genai.Client(api_key=api_key or os.getenv("GOOGLE_API_KEY"))
         self.model = model
 
@@ -22,7 +24,9 @@ class GeminiProvider(ModelProvider):
         resp = self.client.models.generate_content(
             model=self.model,
             contents=f"{system}\n\n{user}",
-            config=types.GenerateContentConfig(temperature=temperature, max_output_tokens=4096),
+            config=types.GenerateContentConfig(
+                temperature=temperature, max_output_tokens=4096
+            ),
         )
         return resp.text
 

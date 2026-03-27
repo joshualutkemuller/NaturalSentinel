@@ -9,7 +9,9 @@ from naturalsentinel.providers.base import ModelProvider
 class OllamaProvider(ModelProvider):
     """Local models via the Ollama REST API."""
 
-    def __init__(self, model: str = "llama3.1", base_url: str = "http://localhost:11434"):
+    def __init__(
+        self, model: str = "llama3.1", base_url: str = "http://localhost:11434"
+    ):
         self.model = model
         self.base_url = base_url
 

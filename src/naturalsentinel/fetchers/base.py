@@ -253,7 +253,9 @@ def _fetch_live(
             logger.warning("FINRA fetch failed: %s", exc)
 
     if not raw_filings:
-        logger.warning("All live sources returned zero filings — falling back to sample data")
+        logger.warning(
+            "All live sources returned zero filings — falling back to sample data"
+        )
         return _fetch_sample(domains, since_days)
 
     # De-duplicate by ID

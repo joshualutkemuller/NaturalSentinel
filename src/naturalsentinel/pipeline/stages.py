@@ -35,13 +35,13 @@ from naturalsentinel.utils.parsing import parse_llm_json
 class ClassificationResult:
     """Output of Stage 1."""
 
-    doc_type: (
-        str  # proposed_rule | final_rule | guidance | notice | enforcement | amendment | speech
-    )
+    doc_type: str  # proposed_rule | final_rule | guidance | notice | enforcement | amendment | speech
     primary_topic: str  # capital | liquidity | reporting | derivatives | model_risk | consumer_protection | market_structure | resolution | other
     complexity: int  # 1-5  (1=simple notice, 5=multi-provision final rule)
     requires_decomposition: bool
-    regulatory_body: str  # FED | OCC | FDIC | SEC | CFTC | CFPB | FHFA | BASEL | FSB | OTHER
+    regulatory_body: (
+        str  # FED | OCC | FDIC | SEC | CFTC | CFPB | FHFA | BASEL | FSB | OTHER
+    )
     confidence: float
     raw: dict = dataclasses.field(default_factory=dict)
 
@@ -89,7 +89,9 @@ class PipelineResult:
     @property
     def data(self) -> dict:
         """Canonical output: the validated (or corrected) extraction."""
-        return self.validation.corrected if self.validation.corrected else self.extracted
+        return (
+            self.validation.corrected if self.validation.corrected else self.extracted
+        )
 
 
 # ── Per-topic extraction schemas ─────────────────────────────────────────────
@@ -420,7 +422,9 @@ def _validate_field(key: str, value: Any) -> list[str]:
             try:
                 float(value)
             except (TypeError, ValueError):
-                issues.append(f"{key}: expected numeric, got {type(value).__name__} {value!r}")
+                issues.append(
+                    f"{key}: expected numeric, got {type(value).__name__} {value!r}"
+                )
     return issues
 
 

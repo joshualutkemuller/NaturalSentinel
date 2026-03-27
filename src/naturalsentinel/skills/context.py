@@ -23,10 +23,18 @@ class BuildContextSkill(Skill):
         permissions=Permission.MEMORY_READ,
         latency=LatencyClass.FAST,
         parameters=[
-            SkillParameter("domain", "str", "Regulatory domain code (sec, cfpb, etc.)."),
-            SkillParameter("filing_text", "str", "The filing text to find context for."),
             SkillParameter(
-                "max_tokens", "int", "Soft cap on context length.", required=False, default=1500
+                "domain", "str", "Regulatory domain code (sec, cfpb, etc.)."
+            ),
+            SkillParameter(
+                "filing_text", "str", "The filing text to find context for."
+            ),
+            SkillParameter(
+                "max_tokens",
+                "int",
+                "Soft cap on context length.",
+                required=False,
+                default=1500,
             ),
         ],
         returns="str — formatted memory context block (empty if no relevant memories)",

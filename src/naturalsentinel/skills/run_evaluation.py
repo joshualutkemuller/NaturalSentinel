@@ -250,9 +250,13 @@ class RunEvaluationSkill(Skill):
         drift_dict: dict = {}
         if drift_window_days > 0:
             try:
-                drift_dict = self._compute_drift(context.memory, domains, drift_window_days)
+                drift_dict = self._compute_drift(
+                    context.memory, domains, drift_window_days
+                )
             except Exception:
-                drift_dict = {"error": "Drift analysis failed — insufficient episodic data"}
+                drift_dict = {
+                    "error": "Drift analysis failed — insufficient episodic data"
+                }
 
         # ------------------------------------------------------------------
         # 5. Build report and persist
@@ -275,7 +279,11 @@ class RunEvaluationSkill(Skill):
             f"Evaluated {n} cases — overall accuracy {acc:.2%}, ECE {ece:.3f} "
             f"({calibration.assessment.split(' (')[0]}). "
             + (f"Per-field: [{field_highlights}]. " if field_highlights else "")
-            + (drift_dict.get("summary", "") if drift_dict and "summary" in drift_dict else "")
+            + (
+                drift_dict.get("summary", "")
+                if drift_dict and "summary" in drift_dict
+                else ""
+            )
         )
 
         report = {

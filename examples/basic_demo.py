@@ -32,12 +32,16 @@ def main():
             f"     {r.filing.domain.value.upper()} | {r.filing.change_type.value} | {r.filing.published_date}"
         )
         print(f"     {r.impact.risk_summary[:100]}…")
-        print(f"     Actions: {len(r.impact.action_items)} | Confidence: {r.impact.confidence:.0%}")
+        print(
+            f"     Actions: {len(r.impact.action_items)} | Confidence: {r.impact.confidence:.0%}"
+        )
         if r.impact.compliance_deadline:
             print(f"     ⏰ Deadline: {r.impact.compliance_deadline}")
         print()
 
-    print(f"  Memory: {memory.count()} episodic, {memory.stats()['total_relations']} relations\n")
+    print(
+        f"  Memory: {memory.count()} episodic, {memory.stats()['total_relations']} relations\n"
+    )
     memory.close()
 
 

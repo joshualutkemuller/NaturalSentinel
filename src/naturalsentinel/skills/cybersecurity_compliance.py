@@ -136,7 +136,9 @@ class CybersecurityComplianceSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(CYBERSECURITY_COMPLIANCE_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            CYBERSECURITY_COMPLIANCE_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "kev_catalog_implications": [],

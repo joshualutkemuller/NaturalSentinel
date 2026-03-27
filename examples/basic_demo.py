@@ -2,10 +2,15 @@
 Basic demo — runs the full pipeline with mock provider.
 No API keys needed.
 
-    python examples/basic_demo.py
+    uv run --directory backend python ../examples/basic_demo.py
 """
 
-from naturalsentinel import MemoryStore, MockProvider, RegulatoryMonitorAgent
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+
+from app.naturalsentinel import MemoryStore, MockProvider, RegulatoryMonitorAgent  # noqa: E402
 
 
 def main():

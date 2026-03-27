@@ -1,10 +1,15 @@
 """
 Memory + feedback demo — shows the learning loop.
 
-    python examples/memory_feedback_demo.py
+    uv run --directory backend python ../examples/memory_feedback_demo.py
 """
 
-from naturalsentinel import (
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+
+from app.naturalsentinel import (  # noqa: E402
     MemoryStore,
     MemoryType,
     MockProvider,

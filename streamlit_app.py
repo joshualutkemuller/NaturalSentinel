@@ -3,16 +3,19 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 from collections import Counter
 from pathlib import Path
 
-from naturalsentinel.cli import (
+sys.path.insert(0, str(Path(__file__).resolve().parent / "backend"))
+
+from app.naturalsentinel.cli import (  # noqa: E402
     SUPPORTED_SUFFIXES,
     analyze_local_documents,
     build_provider,
 )
-from naturalsentinel.models import RegulatoryDomain
+from app.naturalsentinel.models import RegulatoryDomain  # noqa: E402
 
 
 def _save_uploaded_files(

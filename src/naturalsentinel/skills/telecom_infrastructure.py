@@ -137,7 +137,9 @@ class TelecomInfrastructureSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(TELECOM_INFRASTRUCTURE_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            TELECOM_INFRASTRUCTURE_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "supply_chain_prohibition_changes": [],
@@ -165,6 +167,8 @@ class TelecomInfrastructureSkill(Skill):
             token_usage=len(user_prompt) // 4 + len(raw) // 4,
             metadata={
                 "filing_id": filing.get("id"),
-                "supply_chain_prohibition_changes": parsed.get("supply_chain_prohibition_changes"),
+                "supply_chain_prohibition_changes": parsed.get(
+                    "supply_chain_prohibition_changes"
+                ),
             },
         )

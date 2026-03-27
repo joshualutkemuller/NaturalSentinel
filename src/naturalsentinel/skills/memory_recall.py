@@ -27,7 +27,9 @@ class RecallMemorySkill(Skill):
                 required=False,
                 default=None,
             ),
-            SkillParameter("top_k", "int", "Max results to return.", required=False, default=5),
+            SkillParameter(
+                "top_k", "int", "Max results to return.", required=False, default=5
+            ),
         ],
         returns="list[dict] — matching memory records with relevance scores",
         dependencies=[],
@@ -47,7 +49,9 @@ class RecallMemorySkill(Skill):
         from naturalsentinel.memory.types import MemoryType
 
         mt = (
-            MemoryType(context.params["memory_type"]) if context.params.get("memory_type") else None
+            MemoryType(context.params["memory_type"])
+            if context.params.get("memory_type")
+            else None
         )
         records = context.memory.recall(
             context.params["query"],

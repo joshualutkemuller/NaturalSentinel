@@ -132,7 +132,9 @@ class ContentModerationSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(CONTENT_MODERATION_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            CONTENT_MODERATION_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "section_230_implications": [],
@@ -160,6 +162,8 @@ class ContentModerationSkill(Skill):
             token_usage=len(user_prompt) // 4 + len(raw) // 4,
             metadata={
                 "filing_id": filing.get("id"),
-                "liability_exposure_direction": parsed.get("liability_exposure_direction"),
+                "liability_exposure_direction": parsed.get(
+                    "liability_exposure_direction"
+                ),
             },
         )

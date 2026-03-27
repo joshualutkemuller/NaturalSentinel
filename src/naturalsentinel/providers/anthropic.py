@@ -8,7 +8,9 @@ from naturalsentinel.providers.base import ModelProvider
 class AnthropicProvider(ModelProvider):
     """Claude via the Anthropic SDK."""
 
-    def __init__(self, model: str = "claude-sonnet-4-20250514", api_key: str | None = None):
+    def __init__(
+        self, model: str = "claude-sonnet-4-20250514", api_key: str | None = None
+    ):
         try:
             from anthropic import Anthropic
         except ImportError:

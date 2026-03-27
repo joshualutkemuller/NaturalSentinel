@@ -11,7 +11,9 @@ from typing import Any
 from naturalsentinel.cli import analyze_local_documents, build_provider
 from naturalsentinel.models import RegulatoryDomain
 
-WELCOME_TEXT = "AI agent for reviewing regulatory filings, controls, and local documents"
+WELCOME_TEXT = (
+    "AI agent for reviewing regulatory filings, controls, and local documents"
+)
 COMMANDS = {
     "/attach <path>": "attach a supported local file for the next message",
     "/dir <path>": "approve a directory for quick attachment access",
@@ -121,7 +123,9 @@ def summarize_attachments(
     )
 
 
-def build_prompt(question: str, analyses: list[dict[str, Any]], state: ChatState) -> str:
+def build_prompt(
+    question: str, analyses: list[dict[str, Any]], state: ChatState
+) -> str:
     """Build the user payload sent to the LangChain model."""
     prompt = [
         "You are NaturalSentinel, a regulatory analysis CLI agent.",
@@ -172,7 +176,9 @@ def chat_once(
 
     from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
-    messages = [SystemMessage(content="You are NaturalSentinel, a styled CLI regulatory agent.")]
+    messages = [
+        SystemMessage(content="You are NaturalSentinel, a styled CLI regulatory agent.")
+    ]
     for item in state.history[:-1]:
         msg_cls = HumanMessage if item["role"] == "user" else AIMessage
         messages.append(msg_cls(content=item["content"]))

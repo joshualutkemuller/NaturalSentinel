@@ -17,7 +17,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: uv run pytest -x -q --tb=short
+        entry: uv run --directory backend pytest -x -q --tb=short
         language: system
         pass_filenames: false
         always_run: true

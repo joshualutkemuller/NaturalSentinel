@@ -24,12 +24,18 @@ class RecordFeedbackSkill(Skill):
         parameters=[
             SkillParameter("filing_id", "str", "The filing ID to correct."),
             SkillParameter(
-                "field", "str", "Which field to correct (severity, affected_business_lines, etc.)."
+                "field",
+                "str",
+                "Which field to correct (severity, affected_business_lines, etc.).",
             ),
             SkillParameter("old_value", "str", "The current/wrong value."),
             SkillParameter("new_value", "str", "The correct value."),
             SkillParameter(
-                "reason", "str", "Why this correction is needed.", required=False, default=""
+                "reason",
+                "str",
+                "Why this correction is needed.",
+                required=False,
+                default="",
             ),
         ],
         returns="dict — confirmation",
@@ -48,10 +54,17 @@ class RecordFeedbackSkill(Skill):
 
         p = context.params
         context.memory.record_feedback(
-            p["filing_id"], p["field"], p["old_value"], p["new_value"], p.get("reason", "")
+            p["filing_id"],
+            p["field"],
+            p["old_value"],
+            p["new_value"],
+            p.get("reason", ""),
         )
         return SkillResult(
             skill_name=self.metadata.name,
             success=True,
-            data={"recorded": f"{p['filing_id']}.{p['field']}", "new_value": p["new_value"]},
+            data={
+                "recorded": f"{p['filing_id']}.{p['field']}",
+                "new_value": p["new_value"],
+            },
         )

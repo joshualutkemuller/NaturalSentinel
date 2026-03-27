@@ -92,7 +92,16 @@ class SpectrumLicensingSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["spectrum", "fcc", "licensing", "auction", "5g", "wireless", "cbrs", "c-band"],
+        tags=[
+            "spectrum",
+            "fcc",
+            "licensing",
+            "auction",
+            "5g",
+            "wireless",
+            "cbrs",
+            "c-band",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
@@ -122,7 +131,9 @@ class SpectrumLicensingSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(SPECTRUM_LICENSING_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            SPECTRUM_LICENSING_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "band_affected": "null if unknown",

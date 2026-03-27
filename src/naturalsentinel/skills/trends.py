@@ -99,7 +99,11 @@ class TrendAnalysisSkill(Skill):
             return SkillResult(
                 skill_name=self.metadata.name,
                 success=True,
-                data={"statistics": {}, "trend_signals": [], "narrative": "No data in memory."},
+                data={
+                    "statistics": {},
+                    "trend_signals": [],
+                    "narrative": "No data in memory.",
+                },
                 metadata={"message": "No analyses found. Run a scan cycle first."},
             )
 
@@ -135,7 +139,9 @@ class TrendAnalysisSkill(Skill):
             by_domain: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
             for rec in window:
                 dom = (rec.content.get("filing", {}).get("domain") or "unknown").lower()
-                sev = (rec.content.get("impact", {}).get("severity") or "unknown").lower()
+                sev = (
+                    rec.content.get("impact", {}).get("severity") or "unknown"
+                ).lower()
                 by_domain[dom][sev] += 1
             return {k: dict(v) for k, v in by_domain.items()}
 
@@ -173,14 +179,18 @@ class TrendAnalysisSkill(Skill):
             )
         )
 
-        top_business_lines = sorted(business_line_counts.items(), key=lambda x: -x[1])[:10]
+        top_business_lines = sorted(business_line_counts.items(), key=lambda x: -x[1])[
+            :10
+        ]
 
         stats = {
             "total_filings_analyzed": len(records),
             "severity_distribution": dict(severity_dist),
             "domain_activity": dict(domain_dist),
             "change_type_distribution": dict(change_type_dist),
-            "top_affected_business_lines": [{"name": k, "count": v} for k, v in top_business_lines],
+            "top_affected_business_lines": [
+                {"name": k, "count": v} for k, v in top_business_lines
+            ],
         }
 
         # ── Optional LLM narrative ────────────────────────────────────────────
@@ -195,7 +205,9 @@ class TrendAnalysisSkill(Skill):
                 change_type_dist=dict(change_type_dist),
                 top_business_lines=[k for k, _ in top_business_lines],
             )
-            narrative = context.llm.complete(_TREND_SYSTEM, user_prompt, temperature=0.3)
+            narrative = context.llm.complete(
+                _TREND_SYSTEM, user_prompt, temperature=0.3
+            )
             token_usage = len(user_prompt) // 4 + len(narrative) // 4
 
         return SkillResult(

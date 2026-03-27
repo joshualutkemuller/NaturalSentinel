@@ -92,7 +92,15 @@ class CounterpartyRiskSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["counterparty-risk", "sa-ccr", "simm", "cva", "ead", "xva", "prime-lending"],
+        tags=[
+            "counterparty-risk",
+            "sa-ccr",
+            "simm",
+            "cva",
+            "ead",
+            "xva",
+            "prime-lending",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
@@ -122,7 +130,9 @@ class CounterpartyRiskSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(COUNTERPARTY_RISK_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            COUNTERPARTY_RISK_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "sa_ccr_ead_impact": "neutral",

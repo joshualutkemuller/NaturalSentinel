@@ -126,7 +126,9 @@ class AnalyzeFilingSkill(Skill):
 
         # ── 3. LLM inference ─────────────────────────────────────────────
         raw: str = ""
-        with trace.step("llm_inference", input_summary=f"prompt={len(user_prompt)} chars") as step:
+        with trace.step(
+            "llm_inference", input_summary=f"prompt={len(user_prompt)} chars"
+        ) as step:
             try:
                 raw = context.llm.complete(SYSTEM_PROMPT, user_prompt, temperature=0.1)
             except Exception as exc:
@@ -160,14 +162,18 @@ class AnalyzeFilingSkill(Skill):
             step.output_summary = f"response={len(raw)} chars"
 
         # ── 4. Parse response ─────────────────────────────────────────────
-        with trace.step("parse_response", input_summary=f"raw={len(raw)} chars") as step:
+        with trace.step(
+            "parse_response", input_summary=f"raw={len(raw)} chars"
+        ) as step:
             fallback = {
                 "summary": raw[:500],
                 "severity": "medium",
                 "affected_business_lines": domain_lines,
                 "affected_regulations": [],
                 "compliance_deadline": None,
-                "action_items": ["Manual review required — model output was unstructured"],
+                "action_items": [
+                    "Manual review required — model output was unstructured"
+                ],
                 "risk_summary": "Unable to parse structured assessment.",
                 "confidence": 0.3,
                 "citations": {},
@@ -185,7 +191,10 @@ class AnalyzeFilingSkill(Skill):
         with trace.step("extract_citations") as step:
             overall_conf = float(parsed.get("confidence", 0.0))
             bundle = parse_citations(
-                parsed, filing_id=filing_id, source_url=source_url, overall_confidence=overall_conf
+                parsed,
+                filing_id=filing_id,
+                source_url=source_url,
+                overall_confidence=overall_conf,
             )
             parsed["citations"] = bundle.as_flat_dict()
             step.output_summary = f"{len(bundle.citations)} field citations"
@@ -224,7 +233,10 @@ class AnalyzeFilingSkill(Skill):
                 AuditEventType.ESCALATION_TRIGGERED,
                 filing_id,
                 trace.trace_id,
-                payload={"reasons": escalation_reasons, "severity": parsed.get("severity")},
+                payload={
+                    "reasons": escalation_reasons,
+                    "severity": parsed.get("severity"),
+                },
                 severity=AuditSeverity.HIGH,
             )
         self._emit_audit(

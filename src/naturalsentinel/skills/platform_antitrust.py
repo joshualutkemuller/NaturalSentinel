@@ -92,7 +92,15 @@ class PlatformAntitrustSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["platform", "antitrust", "dma", "dsa", "ftc", "competition", "gatekeeper"],
+        tags=[
+            "platform",
+            "antitrust",
+            "dma",
+            "dsa",
+            "ftc",
+            "competition",
+            "gatekeeper",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
@@ -122,7 +130,9 @@ class PlatformAntitrustSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(PLATFORM_ANTITRUST_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            PLATFORM_ANTITRUST_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "affected_gatekeepers": [],

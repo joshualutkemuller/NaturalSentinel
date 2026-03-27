@@ -75,7 +75,9 @@ from naturalsentinel.agents.data_privacy_agent import DataPrivacyAgent
 from naturalsentinel.agents.leveraged_lending_agent import LeveragedLendingAgent
 from naturalsentinel.agents.liquidity_ratio_agent import LiquidityRatioAgent
 from naturalsentinel.agents.model_risk_agent import ModelRiskAgent
-from naturalsentinel.agents.optimization_constraint_agent import OptimizationConstraintAgent
+from naturalsentinel.agents.optimization_constraint_agent import (
+    OptimizationConstraintAgent,
+)
 from naturalsentinel.agents.platform_compliance_agent import PlatformComplianceAgent
 from naturalsentinel.agents.regulatory_reporting_agent import RegulatoryReportingAgent
 from naturalsentinel.agents.securities_financing_agent import SecuritiesFinancingAgent

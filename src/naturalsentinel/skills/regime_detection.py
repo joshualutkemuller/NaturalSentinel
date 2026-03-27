@@ -786,7 +786,13 @@ class RegimeDetectionSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["regime", "macro-prudential", "classification", "cycle-detection", "signal"],
+        tags=[
+            "regime",
+            "macro-prudential",
+            "classification",
+            "cycle-detection",
+            "signal",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
@@ -815,7 +821,9 @@ class RegimeDetectionSkill(Skill):
                 "NTIA",
             ]
             for domain in query_domains:
-                records = context.memory.get_filing_history(domain=domain.lower(), limit=20)
+                records = context.memory.get_filing_history(
+                    domain=domain.lower(), limit=20
+                )
                 filings.extend(records)
 
         if not filings:
@@ -835,9 +843,13 @@ class RegimeDetectionSkill(Skill):
 
         # ── 3. LLM synthesis or keyword-only fallback ────────────────────────
         if context.llm is not None:
-            data = self._llm_synthesis(context, filings, scored, window_days, signal_threshold)
+            data = self._llm_synthesis(
+                context, filings, scored, window_days, signal_threshold
+            )
         else:
-            data = self._keyword_only_result(scored, filings, window_days, signal_threshold)
+            data = self._keyword_only_result(
+                scored, filings, window_days, signal_threshold
+            )
 
         token_usage = data.pop("_token_usage", 0)
         return SkillResult(
@@ -863,8 +875,12 @@ class RegimeDetectionSkill(Skill):
             domain = str(filing.get("domain", "")).upper()
         else:
             content = getattr(filing, "content", {}) or {}
-            inner_filing = content.get("filing", {}) if isinstance(content, dict) else {}
-            inner_impact = content.get("impact", {}) if isinstance(content, dict) else {}
+            inner_filing = (
+                content.get("filing", {}) if isinstance(content, dict) else {}
+            )
+            inner_impact = (
+                content.get("impact", {}) if isinstance(content, dict) else {}
+            )
             text = " ".join(
                 [
                     str(inner_filing.get("title", "")),
@@ -952,17 +968,23 @@ class RegimeDetectionSkill(Skill):
         window_days: int,
         signal_threshold: float,
     ) -> dict:
-        domains_covered = sorted({self._filing_text_and_domain(f)[1] for f in filings} - {""})
+        domains_covered = sorted(
+            {self._filing_text_and_domain(f)[1] for f in filings} - {""}
+        )
 
         memory_block = "(none)"
         if context.memory is not None:
             try:
-                records = context.memory.recall("regulatory regime cycle prudential phase", top_k=3)
+                records = context.memory.recall(
+                    "regulatory regime cycle prudential phase", top_k=3
+                )
                 snippets = []
                 for rec in records:
                     content = getattr(rec, "content", {}) or {}
                     if isinstance(content, dict):
-                        snippets.append(str(content.get("impact", {}).get("summary", ""))[:200])
+                        snippets.append(
+                            str(content.get("impact", {}).get("summary", ""))[:200]
+                        )
                 memory_block = "\n".join(snippets) or "(none)"
             except Exception:
                 pass
@@ -993,7 +1015,9 @@ class RegimeDetectionSkill(Skill):
                 if s["signal_strength"] > signal_threshold
             ],
             "dormant_regimes": [
-                s["regime_id"] for s in scored if s["signal_strength"] <= signal_threshold
+                s["regime_id"]
+                for s in scored
+                if s["signal_strength"] <= signal_threshold
             ],
             "regime_transitions": [],
             "analysis_window_days": window_days,
@@ -1021,7 +1045,9 @@ class RegimeDetectionSkill(Skill):
         signal_threshold: float,
     ) -> dict:
         active = [s for s in scored if s["signal_strength"] > signal_threshold]
-        dormant = [s["regime_id"] for s in scored if s["signal_strength"] <= signal_threshold]
+        dormant = [
+            s["regime_id"] for s in scored if s["signal_strength"] <= signal_threshold
+        ]
         return {
             "active_regimes": [
                 {

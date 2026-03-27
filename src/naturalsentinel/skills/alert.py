@@ -91,7 +91,12 @@ class AlertThresholdSkill(Skill):
             )
 
         alerts: list[dict] = []
-        severity_counts: dict[str, int] = {"low": 0, "medium": 0, "high": 0, "critical": 0}
+        severity_counts: dict[str, int] = {
+            "low": 0,
+            "medium": 0,
+            "high": 0,
+            "critical": 0,
+        }
 
         for rec in records:
             filing = rec.content.get("filing", {})
@@ -115,7 +120,9 @@ class AlertThresholdSkill(Skill):
                     "deadline": deadline,
                     "urgency_tier": urgency_tier,
                     "action_items": impact.get("action_items", []),
-                    "affected_business_lines": impact.get("affected_business_lines", []),
+                    "affected_business_lines": impact.get(
+                        "affected_business_lines", []
+                    ),
                     "confidence": impact.get("confidence", 0.0),
                     "risk_summary": impact.get("risk_summary", ""),
                 }

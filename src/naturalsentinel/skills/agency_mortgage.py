@@ -93,7 +93,16 @@ class AgencyMortgageSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["agency-lending", "fhfa", "gse", "fannie", "freddie", "tba", "mbs", "crt"],
+        tags=[
+            "agency-lending",
+            "fhfa",
+            "gse",
+            "fannie",
+            "freddie",
+            "tba",
+            "mbs",
+            "crt",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:

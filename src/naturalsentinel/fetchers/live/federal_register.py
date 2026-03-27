@@ -104,7 +104,9 @@ def fetch(
     for domain in domains:
         agency_slug = DOMAIN_TO_AGENCY.get(domain)
         if not agency_slug:
-            logger.debug("No Federal Register agency slug for domain %s — skipping", domain)
+            logger.debug(
+                "No Federal Register agency slug for domain %s — skipping", domain
+            )
             continue
 
         params = {
@@ -149,7 +151,9 @@ def _normalise(
     fr_type = doc.get("type", "")
 
     # Resolve change_type
-    change_type = FR_TYPE_TO_CHANGE_TYPE.get(fr_type) or detect_change_type(f"{title} {abstract}")
+    change_type = FR_TYPE_TO_CHANGE_TYPE.get(fr_type) or detect_change_type(
+        f"{title} {abstract}"
+    )
 
     # Build raw_text: start with abstract, optionally augment with full HTML
     raw_text = abstract

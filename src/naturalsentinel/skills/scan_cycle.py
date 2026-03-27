@@ -33,9 +33,15 @@ class ScanCycleSkill(Skill):
         latency=LatencyClass.BATCH,
         parameters=[
             SkillParameter(
-                "domains", "list[str]", "Agency codes to scan.", required=False, default=[]
+                "domains",
+                "list[str]",
+                "Agency codes to scan.",
+                required=False,
+                default=[],
             ),
-            SkillParameter("since_days", "int", "Look-back window.", required=False, default=30),
+            SkillParameter(
+                "since_days", "int", "Look-back window.", required=False, default=30
+            ),
         ],
         returns="dict — {results: list[dict], stats: dict}",
         dependencies=[
@@ -92,7 +98,10 @@ class ScanCycleSkill(Skill):
             return SkillResult(
                 skill_name=self.metadata.name,
                 success=True,
-                data={"results": [], "stats": {"total": len(all_filings), "new": 0, "analyzed": 0}},
+                data={
+                    "results": [],
+                    "stats": {"total": len(all_filings), "new": 0, "analyzed": 0},
+                },
                 metadata={"message": "No new filings to analyze"},
             )
 
@@ -120,7 +129,9 @@ class ScanCycleSkill(Skill):
                 },
             )
             if not analyze_result.success:
-                results.append({"filing_id": filing.get("id"), "error": analyze_result.error})
+                results.append(
+                    {"filing_id": filing.get("id"), "error": analyze_result.error}
+                )
                 continue
 
             impact = analyze_result.data

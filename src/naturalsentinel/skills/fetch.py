@@ -33,7 +33,11 @@ class FetchFilingsSkill(Skill):
                 default=[],
             ),
             SkillParameter(
-                "since_days", "int", "Look-back window in days.", required=False, default=30
+                "since_days",
+                "int",
+                "Look-back window in days.",
+                required=False,
+                default=30,
             ),
         ],
         returns="list[dict] — serialized RegulatoryFiling objects",

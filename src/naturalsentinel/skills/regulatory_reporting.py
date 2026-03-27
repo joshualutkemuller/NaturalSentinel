@@ -90,7 +90,15 @@ class RegulatoryReportingSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["reporting", "ccar", "dfast", "form-pf", "y-14", "pipeline", "data-engineering"],
+        tags=[
+            "reporting",
+            "ccar",
+            "dfast",
+            "form-pf",
+            "y-14",
+            "pipeline",
+            "data-engineering",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
@@ -120,7 +128,9 @@ class RegulatoryReportingSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(REGULATORY_REPORTING_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            REGULATORY_REPORTING_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "new_reporting_obligations": [],

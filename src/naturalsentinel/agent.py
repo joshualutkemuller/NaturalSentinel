@@ -72,7 +72,9 @@ class RegulatoryMonitorAgent:
         # Build memory context if available
         memory_context = ""
         if self.memory:
-            memory_context = self.memory.build_context_block(filing.domain.value, filing.raw_text)
+            memory_context = self.memory.build_context_block(
+                filing.domain.value, filing.raw_text
+            )
 
         user_prompt = USER_PROMPT_TEMPLATE.format(
             filing_id=filing.id,
@@ -107,7 +109,9 @@ class RegulatoryMonitorAgent:
                 "constraints": ["LLM output was unstructured"],
                 "evidence_items": [f"Source filing: {filing.id}"],
                 "assumptions": ["A human reviewer will complete the decision record"],
-                "counterarguments": ["Automated assessment may be incomplete or malformed"],
+                "counterarguments": [
+                    "Automated assessment may be incomplete or malformed"
+                ],
                 "confidence": 0.3,
                 "expected_revisit_date": filing.published_date,
                 "owner": "Compliance triage",
@@ -141,13 +145,18 @@ class RegulatoryMonitorAgent:
                 "question", f"What response is warranted for filing {filing.id}?"
             ),
             scope=decision_data.get(
-                "scope", f"{filing.domain.value.upper()} filing review for {filing.title}"
+                "scope",
+                f"{filing.domain.value.upper()} filing review for {filing.title}",
             ),
-            time_horizon=decision_data.get("time_horizon", "Near-term regulatory response window"),
+            time_horizon=decision_data.get(
+                "time_horizon", "Near-term regulatory response window"
+            ),
             affected_entities=decision_data.get(
                 "affected_entities", impact.affected_business_lines
             ),
-            candidate_actions=decision_data.get("candidate_actions", impact.action_items),
+            candidate_actions=decision_data.get(
+                "candidate_actions", impact.action_items
+            ),
             constraints=decision_data.get("constraints", []),
             evidence_items=decision_data.get(
                 "evidence_items", [f"Source filing: {filing.id}", filing.source_url]
@@ -155,10 +164,13 @@ class RegulatoryMonitorAgent:
             assumptions=decision_data.get("assumptions", []),
             counterarguments=decision_data.get("counterarguments", []),
             confidence=float(
-                decision_data.get("confidence", parsed.get("confidence", impact.confidence))
+                decision_data.get(
+                    "confidence", parsed.get("confidence", impact.confidence)
+                )
             ),
             expected_revisit_date=decision_data.get(
-                "expected_revisit_date", impact.compliance_deadline or filing.published_date
+                "expected_revisit_date",
+                impact.compliance_deadline or filing.published_date,
             ),
             owner=decision_data.get("owner", "Compliance triage"),
             audit_refs=decision_data.get("audit_refs", [filing.id, filing.source_url]),
@@ -174,7 +186,9 @@ class RegulatoryMonitorAgent:
                 candidate_actions=decision.candidate_actions,
             )
             if evidence_ledger and not decision.evidence_items:
-                decision.evidence_items = [entry.summary for entry in evidence_ledger[:3]]
+                decision.evidence_items = [
+                    entry.summary for entry in evidence_ledger[:3]
+                ]
 
         return MonitorResult(
             filing=filing,
@@ -215,7 +229,9 @@ class RegulatoryMonitorAgent:
     def run_json(self, since_days: int = 30) -> str:
         """Run and return results as a JSON string."""
         results = self.run(since_days=since_days)
-        return json.dumps([serialize_result(r) for r in results], indent=2, default=enum_serializer)
+        return json.dumps(
+            [serialize_result(r) for r in results], indent=2, default=enum_serializer
+        )
 
     def reset_state(self):
         """Clear seen filings to allow re-processing."""

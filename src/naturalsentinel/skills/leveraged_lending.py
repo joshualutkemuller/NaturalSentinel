@@ -132,7 +132,9 @@ class LeveragedLendingSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(LEVERAGED_LENDING_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            LEVERAGED_LENDING_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "leverage_threshold_changes": [],

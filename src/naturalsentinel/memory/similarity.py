@@ -30,7 +30,9 @@ class SimilarityEngine:
             self._use_sklearn = True
             logger.debug("SimilarityEngine: using sklearn TF-IDF")
         except ImportError:
-            logger.debug("SimilarityEngine: sklearn unavailable, using keyword fallback")
+            logger.debug(
+                "SimilarityEngine: sklearn unavailable, using keyword fallback"
+            )
 
     @property
     def backend(self) -> str:
@@ -48,7 +50,9 @@ class SimilarityEngine:
                 # Documents too short or all stop words — fall back to keyword
                 logger.debug("TF-IDF fit failed (short docs?), falling back to keyword")
                 self._matrix = None
-                self._doc_tokens = {did: tokenize(text) for did, text in documents.items()}
+                self._doc_tokens = {
+                    did: tokenize(text) for did, text in documents.items()
+                }
         else:
             self._doc_tokens = {did: tokenize(text) for did, text in documents.items()}
 
@@ -60,7 +64,9 @@ class SimilarityEngine:
         if self._use_sklearn and self._matrix is not None:
             q_vec = self._vectorizer.transform([query])
             scores = self._cosine_similarity(q_vec, self._matrix).flatten()
-            ranked = sorted(zip(self._doc_ids, scores), key=lambda x: x[1], reverse=True)
+            ranked = sorted(
+                zip(self._doc_ids, scores), key=lambda x: x[1], reverse=True
+            )
             return ranked[:top_k]
         else:
             q_tokens = tokenize(query)

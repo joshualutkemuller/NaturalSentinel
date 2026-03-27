@@ -67,7 +67,10 @@ class GenerateBriefingSkill(Skill):
     def execute(self, context: SkillContext) -> SkillResult:
         if context.llm is None:
             return SkillResult(
-                skill_name=self.metadata.name, success=False, data=None, error="LLM access denied"
+                skill_name=self.metadata.name,
+                success=False,
+                data=None,
+                error="LLM access denied",
             )
         if context.memory is None:
             return SkillResult(
@@ -100,7 +103,9 @@ class GenerateBriefingSkill(Skill):
                 f"deadline={deadline}, actions={len(i.get('action_items', []))}"
             )
 
-        prompt = BRIEFING_USER.format(audience=audience, filing_summaries="\n".join(lines))
+        prompt = BRIEFING_USER.format(
+            audience=audience, filing_summaries="\n".join(lines)
+        )
         raw = context.llm.complete(BRIEFING_SYSTEM, prompt, temperature=0.3)
 
         return SkillResult(

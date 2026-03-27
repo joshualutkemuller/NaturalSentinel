@@ -91,7 +91,15 @@ class SecuritiesFinancingSkill(Skill):
         ),
         dependencies=[],
         cacheable=False,
-        tags=["securities-lending", "repo", "tba", "collateral", "haircut", "prime", "sftr"],
+        tags=[
+            "securities-lending",
+            "repo",
+            "tba",
+            "collateral",
+            "haircut",
+            "prime",
+            "sftr",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
@@ -121,7 +129,9 @@ class SecuritiesFinancingSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(SECURITIES_FINANCING_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            SECURITIES_FINANCING_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "rehypothecation_impact": "none",

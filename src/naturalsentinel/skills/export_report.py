@@ -125,8 +125,12 @@ class ExportReportSkill(Skill):
                     "change_type": filing.get("change_type", ""),
                     "published_date": filing.get("published_date", ""),
                     "severity": sev,
-                    "affected_business_lines": ", ".join(impact.get("affected_business_lines", [])),
-                    "affected_regulations": ", ".join(impact.get("affected_regulations", [])),
+                    "affected_business_lines": ", ".join(
+                        impact.get("affected_business_lines", [])
+                    ),
+                    "affected_regulations": ", ".join(
+                        impact.get("affected_regulations", [])
+                    ),
                     "compliance_deadline": impact.get("compliance_deadline") or "",
                     "action_items": impact.get("action_items", []),
                     "risk_summary": impact.get("risk_summary", ""),
@@ -169,7 +173,9 @@ def _empty_content(fmt: str) -> str:
         return _csv_header()
     if fmt == "json":
         return "[]"
-    return "# Regulatory Compliance Report\n\n_No analyses match the current filters._\n"
+    return (
+        "# Regulatory Compliance Report\n\n_No analyses match the current filters._\n"
+    )
 
 
 def _to_markdown(rows: list[dict], domain_filter: str, min_severity: str) -> str:
@@ -208,7 +214,9 @@ def _to_markdown(rows: list[dict], domain_filter: str, min_severity: str) -> str
             lines.append(f"> {row['risk_summary']}")
             lines.append("")
         if row["affected_business_lines"]:
-            lines.append(f"**Affected Business Lines:** {row['affected_business_lines']}")
+            lines.append(
+                f"**Affected Business Lines:** {row['affected_business_lines']}"
+            )
         if row["affected_regulations"]:
             lines.append(f"**Cited Regulations:** {row['affected_regulations']}")
         if row["action_items"]:

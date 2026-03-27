@@ -57,7 +57,9 @@ from naturalsentinel.skills.ai_regulatory import AIRegulatorySkill
 
 # Intelligence / analytics skills
 from naturalsentinel.skills.alert import AlertThresholdSkill
-from naturalsentinel.skills.algorithmic_accountability import AlgorithmicAccountabilitySkill
+from naturalsentinel.skills.algorithmic_accountability import (
+    AlgorithmicAccountabilitySkill,
+)
 from naturalsentinel.skills.analyze import AnalyzeFilingSkill
 from naturalsentinel.skills.belief_tracker import BeliefTrackerSkill
 from naturalsentinel.skills.briefing import GenerateBriefingSkill

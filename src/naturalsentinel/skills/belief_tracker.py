@@ -75,15 +75,21 @@ def _compute_delta_drivers(
                 f"Strong negative update ({delta:.2f}) — contradictory or de-escalatory evidence"
             )
         else:
-            drivers.append(f"Moderate negative update ({delta:.2f}) — mixed or weakening signals")
+            drivers.append(
+                f"Moderate negative update ({delta:.2f}) — mixed or weakening signals"
+            )
 
     # Document-type finality signal
     if change_type in ("final_rule", "enforcement"):
-        drivers.append(f"High-finality document type ({change_type}) narrows uncertainty")
+        drivers.append(
+            f"High-finality document type ({change_type}) narrows uncertainty"
+        )
     elif change_type == "proposed_rule":
         drivers.append("Proposed rule stage — uncertainty persists until finalisation")
     elif change_type in ("guidance", "notice"):
-        drivers.append(f"Interpretive document ({change_type}) — moderate certainty, may evolve")
+        drivers.append(
+            f"Interpretive document ({change_type}) — moderate certainty, may evolve"
+        )
 
     # Prior position context
     if prior < 0.3 and delta > 0:
@@ -255,7 +261,14 @@ class BeliefTrackerSkill(Skill):
         dependencies=[],
         max_token_budget=0,  # No LLM calls
         cacheable=False,
-        tags=["belief", "priors", "posteriors", "delta", "decision-framework", "priority-3"],
+        tags=[
+            "belief",
+            "priors",
+            "posteriors",
+            "delta",
+            "decision-framework",
+            "priority-3",
+        ],
     )
 
     def execute(self, context: SkillContext) -> SkillResult:
@@ -317,7 +330,9 @@ class BeliefTrackerSkill(Skill):
 
         stability_score = round(_compute_stability_score(history_with_current), 4)
         reversal_risk = round(
-            _compute_reversal_risk(delta_confidence, posterior_confidence, history_with_current),
+            _compute_reversal_risk(
+                delta_confidence, posterior_confidence, history_with_current
+            ),
             4,
         )
 

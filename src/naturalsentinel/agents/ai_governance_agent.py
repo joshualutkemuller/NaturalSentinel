@@ -130,7 +130,11 @@ class AIGovernanceAgent:
         result = self.runtime.execute_skill(
             "regime_detection",
             {
-                "domain_filter": ["ai_governance", "algorithmic_accountability", "ftc_ai"],
+                "domain_filter": [
+                    "ai_governance",
+                    "algorithmic_accountability",
+                    "ftc_ai",
+                ],
                 "window_days": window_days,
             },
         )
@@ -149,7 +153,11 @@ class AIGovernanceAgent:
         result = self.runtime.execute_skill(
             "compliance_deadline",
             {
-                "domain_filter": ["ai_governance", "algorithmic_accountability", "model_risk"],
+                "domain_filter": [
+                    "ai_governance",
+                    "algorithmic_accountability",
+                    "model_risk",
+                ],
                 "look_ahead_days": look_ahead_days,
             },
         )

@@ -73,15 +73,23 @@ class ComplianceTrackerAgent:
 
     def overdue(self, domain_filter: str = "", limit: int = 100) -> list[dict]:
         """Return only overdue compliance items — fast path for alerts."""
-        calendar = self._get_calendar(look_ahead_days=1, domain_filter=domain_filter, limit=limit)
+        calendar = self._get_calendar(
+            look_ahead_days=1, domain_filter=domain_filter, limit=limit
+        )
         return calendar.get("overdue", [])
 
-    def due_soon(self, look_ahead_days: int = 30, domain_filter: str = "") -> list[dict]:
+    def due_soon(
+        self, look_ahead_days: int = 30, domain_filter: str = ""
+    ) -> list[dict]:
         """Return compliance items due within look_ahead_days."""
-        calendar = self._get_calendar(look_ahead_days=look_ahead_days, domain_filter=domain_filter)
+        calendar = self._get_calendar(
+            look_ahead_days=look_ahead_days, domain_filter=domain_filter
+        )
         return calendar.get("due_soon", [])
 
-    def export(self, fmt: str = "markdown", domain_filter: str = "", limit: int = 25) -> str:
+    def export(
+        self, fmt: str = "markdown", domain_filter: str = "", limit: int = 25
+    ) -> str:
         """Render a compliance report in the specified format and return the content."""
         result = self.runtime.execute_skill(
             "export_report",
@@ -98,7 +106,9 @@ class ComplianceTrackerAgent:
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
-    def _get_calendar(self, look_ahead_days: int, domain_filter: str, limit: int = 100) -> dict:
+    def _get_calendar(
+        self, look_ahead_days: int, domain_filter: str, limit: int = 100
+    ) -> dict:
         result = self.runtime.execute_skill(
             "compliance_deadline",
             {
@@ -129,7 +139,11 @@ class ComplianceTrackerAgent:
         )
         if result.success:
             return result.data
-        return {"format": fmt, "content": f"[Export failed: {result.error}]", "row_count": 0}
+        return {
+            "format": fmt,
+            "content": f"[Export failed: {result.error}]",
+            "row_count": 0,
+        }
 
     def _get_briefing(self, include: bool) -> str | None:
         if not include:

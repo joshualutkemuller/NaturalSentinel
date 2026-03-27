@@ -136,7 +136,9 @@ class TechMergerReviewSkill(Skill):
             memory_block=memory_block,
         )
 
-        raw = context.llm.complete(TECH_MERGER_REVIEW_SYSTEM, user_prompt, temperature=0.1)
+        raw = context.llm.complete(
+            TECH_MERGER_REVIEW_SYSTEM, user_prompt, temperature=0.1
+        )
 
         fallback = {
             "notification_threshold_triggered": False,
@@ -164,6 +166,8 @@ class TechMergerReviewSkill(Skill):
             token_usage=len(user_prompt) // 4 + len(raw) // 4,
             metadata={
                 "filing_id": filing.get("id"),
-                "notification_threshold_triggered": parsed.get("notification_threshold_triggered"),
+                "notification_threshold_triggered": parsed.get(
+                    "notification_threshold_triggered"
+                ),
             },
         )

@@ -68,3 +68,5 @@ Thumbs.db
 # Devcontainer
 .devcontainer/.env
 .devcontainer/docker-compose.override.yml
+
+frontend/.tanstack/tmp/*

@@ -49,6 +49,7 @@ services:
       - ./frontend/src:/app/frontend/src
       - ./frontend/public:/app/frontend/public
       - ./frontend/index.html:/app/frontend/index.html
+      - ./frontend/.tanstack:/app/frontend/.tanstack
     develop:
       watch:
         - path: ./frontend/package.json

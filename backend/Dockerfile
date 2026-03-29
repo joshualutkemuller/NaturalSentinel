@@ -1,3 +1,12 @@
+# Stage 1: Build email templates (MJML → HTML)
+FROM node:22-slim AS email-templates
+
+WORKDIR /templates
+COPY ./backend/app/email-templates/src/ ./src/
+RUN npx mjml@4 src/*.mjml -o build/
+
+
+# Stage 2: Python backend
 FROM python:3.12
 
 ENV PYTHONUNBUFFERED=1
@@ -32,6 +41,9 @@ COPY ./backend/scripts /app/backend/scripts
 COPY ./backend/pyproject.toml ./backend/alembic.ini /app/backend/
 
 COPY ./backend/app /app/backend/app
+
+# Copy built email templates from Stage 1
+COPY --from=email-templates /templates/build/ /app/backend/app/email-templates/build/
 
 # Sync the project
 # Ref: https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers

@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from collections.abc import Generator
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 import jwt
 from fastapi import Depends, HTTPException, status
@@ -14,6 +12,8 @@ from app.core import security
 from app.core.config import settings
 from app.core.db import engine
 from app.models import TokenPayload, User
+from app.naturalsentinel.agent_framework import AgentRuntime
+from app.naturalsentinel.memory.pg_store import PgMemoryStore
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
@@ -63,25 +63,19 @@ def get_current_active_superuser(current_user: CurrentUser) -> User:
 
 
 def get_ns_memory(session: SessionDep) -> PgMemoryStore:
-    from app.naturalsentinel.memory.pg_store import PgMemoryStore
-
     return PgMemoryStore(session)
 
 
+NsMemoryDep = Annotated[PgMemoryStore, Depends(get_ns_memory)]
+
+
 def get_ns_runtime(
-    memory: Annotated[PgMemoryStore, Depends(get_ns_memory)],
+    memory: NsMemoryDep,
 ) -> AgentRuntime:
-    from app.core.config import settings
-    from app.naturalsentinel.agent_framework import AgentRuntime
     from app.naturalsentinel.providers import get_provider
 
     provider = get_provider(settings.SENTINEL_PROVIDER, settings.SENTINEL_MODEL)
     return AgentRuntime(provider=provider, memory=memory)
 
 
-if TYPE_CHECKING:
-    from app.naturalsentinel.agent_framework import AgentRuntime
-    from app.naturalsentinel.memory.pg_store import PgMemoryStore
-
-NsMemoryDep = Annotated["PgMemoryStore", Depends(get_ns_memory)]
-NsRuntimeDep = Annotated["AgentRuntime", Depends(get_ns_runtime)]
+NsRuntimeDep = Annotated[AgentRuntime, Depends(get_ns_runtime)]

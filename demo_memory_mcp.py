@@ -108,7 +108,9 @@ def main():
 
     for fb in feedbacks:
         memory.record_feedback(**fb)
-        print(f"  ✓ Feedback: {fb['filing_id']}.{fb['field']} → {fb['new_value'][:50]}…")
+        print(
+            f"  ✓ Feedback: {fb['filing_id']}.{fb['field']} → {fb['new_value'][:50]}…"
+        )
 
     stats = memory.stats()
     print("\n  Memory after feedback:")
@@ -133,7 +135,9 @@ def main():
         print(f'  Query: "{query}"{label}')
         results = memory.recall(query, top_k=2, memory_type=mt)
         for r in results:
-            print(f"    → [{r.memory_type.value}] {r.key}  (relevance: {r.relevance_score:.3f})")
+            print(
+                f"    → [{r.memory_type.value}] {r.key}  (relevance: {r.relevance_score:.3f})"
+            )
         print()
 
     # ──────────────────────────────────────────────────────────────────
@@ -164,7 +168,8 @@ def main():
     divider("STEP 6: Memory Context Block (injected into LLM prompts)")
 
     context = memory.build_context_block(
-        "sec", "New SEC proposed rule on cybersecurity incident reporting for public companies"
+        "sec",
+        "New SEC proposed rule on cybersecurity incident reporting for public companies",
     )
     print(context if context else "  (no context available)")
 
@@ -182,7 +187,10 @@ def main():
 
     mcp_requests = [
         {"method": "tools/list", "params": {}},
-        {"method": "tools/call", "params": {"name": "get_memory_stats", "arguments": {}}},
+        {
+            "method": "tools/call",
+            "params": {"name": "get_memory_stats", "arguments": {}},
+        },
         {
             "method": "tools/call",
             "params": {

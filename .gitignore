@@ -40,6 +40,15 @@ monitor_state.json
 # uv
 .python-version
 
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+frontend/build/
+
+# Backend venv (inside backend/ dir)
+backend/.venv/
+
 # Ruff
 .ruff_cache/
 
@@ -59,3 +68,5 @@ Thumbs.db
 # Devcontainer
 .devcontainer/.env
 .devcontainer/docker-compose.override.yml
+
+frontend/.tanstack/tmp/*

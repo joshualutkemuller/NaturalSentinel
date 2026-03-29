@@ -33,6 +33,7 @@ services:
       - .env
     environment:
       - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
 
   backend:
     image: '${DOCKER_IMAGE_BACKEND:-backend}:${TAG-latest}'
@@ -47,6 +48,7 @@ services:
       - .env
     environment:
       - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
       interval: 10s

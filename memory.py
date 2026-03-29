@@ -125,7 +125,9 @@ class SimilarityEngine:
         if self._use_sklearn and self._matrix is not None:
             q_vec = self._vectorizer.transform([query])
             scores = self._cosine_similarity(q_vec, self._matrix).flatten()
-            ranked = sorted(zip(self._doc_ids, scores), key=lambda x: x[1], reverse=True)
+            ranked = sorted(
+                zip(self._doc_ids, scores), key=lambda x: x[1], reverse=True
+            )
             return ranked[:top_k]
         else:
             q_tokens = _tokenize(query)
@@ -215,7 +217,8 @@ class MemoryStore:
     def count(self, memory_type: MemoryType | None = None) -> int:
         if memory_type:
             row = self.conn.execute(
-                "SELECT COUNT(*) FROM memories WHERE memory_type = ?", (memory_type.value,)
+                "SELECT COUNT(*) FROM memories WHERE memory_type = ?",
+                (memory_type.value,),
             ).fetchone()
         else:
             row = self.conn.execute("SELECT COUNT(*) FROM memories").fetchone()
@@ -232,8 +235,12 @@ class MemoryStore:
             "SELECT namespace, COUNT(*) as c FROM memories GROUP BY namespace"
         ):
             by_ns[row["namespace"]] = row["c"]
-        feedback_count = self.conn.execute("SELECT COUNT(*) FROM feedback_log").fetchone()[0]
-        relation_count = self.conn.execute("SELECT COUNT(*) FROM entity_relations").fetchone()[0]
+        feedback_count = self.conn.execute(
+            "SELECT COUNT(*) FROM feedback_log"
+        ).fetchone()[0]
+        relation_count = self.conn.execute(
+            "SELECT COUNT(*) FROM entity_relations"
+        ).fetchone()[0]
         return {
             "total_memories": total,
             "by_type": by_type,
@@ -310,7 +317,9 @@ class MemoryStore:
 
         logger.debug("Stored episodic memory: %s", filing_id)
 
-    def store_entity(self, entity_name: str, attributes: dict, namespace: str = "global"):
+    def store_entity(
+        self, entity_name: str, attributes: dict, namespace: str = "global"
+    ):
         """Store or update knowledge about a specific entity (regulation, agency, etc.)."""
         now = datetime.utcnow().isoformat()
         eid = f"entity:{hashlib.sha256(entity_name.encode()).hexdigest()[:16]}"
@@ -330,7 +339,12 @@ class MemoryStore:
         self._upsert(record)
 
     def record_feedback(
-        self, filing_id: str, field: str, old_value: str, new_value: str, reason: str = ""
+        self,
+        filing_id: str,
+        field: str,
+        old_value: str,
+        new_value: str,
+        reason: str = "",
     ):
         """
         Record a human correction. This creates both a feedback log entry
@@ -354,7 +368,9 @@ class MemoryStore:
         context_text = ""
         if episodic:
             f = episodic.content.get("filing", {})
-            context_text = f"{f.get('title', '')} {f.get('domain', '')} {f.get('summary', '')}"
+            context_text = (
+                f"{f.get('title', '')} {f.get('domain', '')} {f.get('summary', '')}"
+            )
 
         embed_text = (
             f"correction {field} from {old_value} to {new_value} "
@@ -379,18 +395,27 @@ class MemoryStore:
         )
         self._upsert(record)
         self.conn.commit()
-        logger.info("Recorded feedback for %s.%s: %s → %s", filing_id, field, old_value, new_value)
+        logger.info(
+            "Recorded feedback for %s.%s: %s → %s",
+            filing_id,
+            field,
+            old_value,
+            new_value,
+        )
 
     # -- Retrieval ----------------------------------------------------------
 
     def get(self, memory_id: str) -> MemoryRecord | None:
         """Retrieve a specific memory by ID."""
-        row = self.conn.execute("SELECT * FROM memories WHERE id = ?", (memory_id,)).fetchone()
+        row = self.conn.execute(
+            "SELECT * FROM memories WHERE id = ?", (memory_id,)
+        ).fetchone()
         if not row:
             return None
         # Bump access count
         self.conn.execute(
-            "UPDATE memories SET access_count = access_count + 1 WHERE id = ?", (memory_id,)
+            "UPDATE memories SET access_count = access_count + 1 WHERE id = ?",
+            (memory_id,),
         )
         self.conn.commit()
         return self._row_to_record(row)
@@ -412,7 +437,9 @@ class MemoryStore:
         for doc_id, score in candidates:
             if score <= 0:
                 continue
-            row = self.conn.execute("SELECT * FROM memories WHERE id = ?", (doc_id,)).fetchone()
+            row = self.conn.execute(
+                "SELECT * FROM memories WHERE id = ?", (doc_id,)
+            ).fetchone()
             if not row:
                 continue
             if memory_type and row["memory_type"] != memory_type.value:
@@ -439,7 +466,9 @@ class MemoryStore:
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def get_precedents_for_domain(self, domain: str, top_k: int = 5) -> list[MemoryRecord]:
+    def get_precedents_for_domain(
+        self, domain: str, top_k: int = 5
+    ) -> list[MemoryRecord]:
         """Get correction precedents relevant to a specific regulatory domain."""
         return self.recall(
             query=f"{domain} regulatory correction precedent",
@@ -447,7 +476,9 @@ class MemoryStore:
             memory_type=MemoryType.PRECEDENT,
         )
 
-    def get_filing_history(self, domain: str | None = None, limit: int = 20) -> list[MemoryRecord]:
+    def get_filing_history(
+        self, domain: str | None = None, limit: int = 20
+    ) -> list[MemoryRecord]:
         """Retrieve recent episodic memories, optionally filtered by domain."""
         if domain:
             rows = self.conn.execute(
@@ -508,10 +539,14 @@ class MemoryStore:
                     f"{c.get('old_value', '?')} → {c.get('new_value', '?')} "
                     f"(reason: {c.get('reason', 'n/a')})"
                 )
-            sections.append("CORRECTION PRECEDENTS (learn from these):\n" + "\n".join(lines))
+            sections.append(
+                "CORRECTION PRECEDENTS (learn from these):\n" + "\n".join(lines)
+            )
 
         # 3. Entity knowledge
-        entities = self.recall(filing_text[:300], top_k=3, memory_type=MemoryType.ENTITY)
+        entities = self.recall(
+            filing_text[:300], top_k=3, memory_type=MemoryType.ENTITY
+        )
         if entities:
             lines = []
             for rec in entities:
@@ -569,7 +604,9 @@ class MemoryStore:
 
     def prune(self, older_than_days: int = 365, min_access: int = 0):
         """Remove old, low-access memories to keep the store lean."""
-        cutoff = datetime(datetime.utcnow().year, datetime.utcnow().month, datetime.utcnow().day)
+        cutoff = datetime(
+            datetime.utcnow().year, datetime.utcnow().month, datetime.utcnow().day
+        )
         from datetime import timedelta
 
         cutoff = (cutoff - timedelta(days=older_than_days)).isoformat()
@@ -588,12 +625,17 @@ class MemoryStore:
 
     def export_json(self) -> str:
         """Export all memories as JSON for backup/migration."""
-        rows = self.conn.execute("SELECT * FROM memories ORDER BY created_at").fetchall()
+        rows = self.conn.execute(
+            "SELECT * FROM memories ORDER BY created_at"
+        ).fetchall()
         records = [dict(r) for r in rows]
         relations = [
-            dict(r) for r in self.conn.execute("SELECT * FROM entity_relations").fetchall()
+            dict(r)
+            for r in self.conn.execute("SELECT * FROM entity_relations").fetchall()
         ]
-        feedback = [dict(r) for r in self.conn.execute("SELECT * FROM feedback_log").fetchall()]
+        feedback = [
+            dict(r) for r in self.conn.execute("SELECT * FROM feedback_log").fetchall()
+        ]
         return json.dumps(
             {
                 "memories": records,

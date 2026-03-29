@@ -1,0 +1,62 @@
+services:
+
+  db:
+    restart: "no"
+    ports:
+      - "5433:5432"
+
+  backend:
+    restart: "no"
+    ports:
+      - "8000:8000"
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command:
+      - fastapi
+      - run
+      - --reload
+      - "app/main.py"
+    develop:
+      watch:
+        - path: ./backend
+          action: sync
+          target: /app/backend
+          ignore:
+            - ./backend/.venv
+            - .venv
+        - path: ./backend/pyproject.toml
+          action: rebuild
+    volumes:
+      - ./backend/htmlcov:/app/backend/htmlcov
+    environment:
+      SMTP_HOST: "mailcatcher"
+      SMTP_PORT: "1025"
+      SMTP_TLS: "false"
+      EMAILS_FROM_EMAIL: "noreply@example.com"
+
+  frontend:
+    restart: "no"
+    ports:
+      - "5173:5173"
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: dev
+      args:
+        - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend/src:/app/frontend/src
+      - ./frontend/public:/app/frontend/public
+      - ./frontend/index.html:/app/frontend/index.html
+      - ./frontend/.tanstack:/app/frontend/.tanstack
+    develop:
+      watch:
+        - path: ./frontend/package.json
+          action: rebuild
+
+  mailcatcher:
+    image: schickling/mailcatcher
+    ports:
+      - "1080:1080"
+      - "1025:1025"

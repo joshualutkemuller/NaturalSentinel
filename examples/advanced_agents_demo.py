@@ -10,16 +10,19 @@ Demonstrates:
 
 No API keys needed — uses MockProvider throughout.
 
-    PYTHONPATH=src python examples/advanced_agents_demo.py
+    uv run --directory backend python ../examples/advanced_agents_demo.py
 """
 
 import sys
+from pathlib import Path
 
-from naturalsentinel.agent_framework import AgentRuntime
-from naturalsentinel.agents import AlertAgent, ComplianceTrackerAgent
-from naturalsentinel.memory import MemoryStore
-from naturalsentinel.providers import MockProvider
-from naturalsentinel.skills import ALL_SKILLS
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+
+from app.naturalsentinel.agent_framework import AgentRuntime  # noqa: E402
+from app.naturalsentinel.agents import AlertAgent, ComplianceTrackerAgent  # noqa: E402
+from app.naturalsentinel.memory import MemoryStore  # noqa: E402
+from app.naturalsentinel.providers import MockProvider  # noqa: E402
+from app.naturalsentinel.skills import ALL_SKILLS  # noqa: E402
 
 # ── Shared helpers ────────────────────────────────────────────────────────────
 
@@ -89,7 +92,9 @@ def demo_alert_agent(runtime: AgentRuntime) -> None:
     for alert in alerts[:3]:
         tier = alert.get("urgency_tier", "?")
         print(f"  [{alert['severity'].upper()}] [{tier.upper()}] {alert['title']}")
-        print(f"    Domain: {alert['domain']} | Deadline: {alert.get('deadline') or 'none'}")
+        print(
+            f"    Domain: {alert['domain']} | Deadline: {alert.get('deadline') or 'none'}"
+        )
         if alert.get("action_items"):
             print(f"    Action: {alert['action_items'][0]}")
         print()
@@ -102,7 +107,9 @@ def demo_alert_agent(runtime: AgentRuntime) -> None:
     if trends:
         _section("Trend Signals")
         for sig in trends.get("trend_signals", [])[:4]:
-            arrow = {"escalating": "▲", "stable": "→", "de-escalating": "▼"}.get(sig["signal"], "?")
+            arrow = {"escalating": "▲", "stable": "→", "de-escalating": "▼"}.get(
+                sig["signal"], "?"
+            )
             print(
                 f"  {arrow} {sig['domain']}: {sig['signal']} "
                 f"(older={sig['avg_severity_older']}, recent={sig['avg_severity_recent']})"
@@ -147,7 +154,9 @@ def demo_compliance_tracker(runtime: AgentRuntime) -> None:
 def demo_trend_analysis(runtime: AgentRuntime) -> None:
     _header("3 / 5  TrendAnalysisSkill — Regulatory Escalation Patterns")
 
-    result = runtime.execute_skill("trend_analysis", {"limit": 50, "include_narrative": False})
+    result = runtime.execute_skill(
+        "trend_analysis", {"limit": 50, "include_narrative": False}
+    )
     if not result.success:
         print(f"  Failed: {result.error}")
         return
@@ -162,7 +171,9 @@ def demo_trend_analysis(runtime: AgentRuntime) -> None:
 
     _section("Trend Signals")
     for sig in data.get("trend_signals", []):
-        arrow = {"escalating": "▲", "stable": "→", "de-escalating": "▼"}.get(sig["signal"], "?")
+        arrow = {"escalating": "▲", "stable": "→", "de-escalating": "▼"}.get(
+            sig["signal"], "?"
+        )
         print(f"  {arrow} {sig['domain']:<6} {sig['signal']:<15} Δ={sig['delta']:+.2f}")
 
 

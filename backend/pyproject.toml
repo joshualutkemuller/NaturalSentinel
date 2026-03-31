@@ -25,6 +25,7 @@ dependencies = [
     "google-genai>=1.0",
     "mcp>=1.0",
     "scikit-learn>=1.4",
+    "openviking>=0.2",
 ]
 
 [dependency-groups]

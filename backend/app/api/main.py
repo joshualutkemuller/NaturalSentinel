@@ -6,6 +6,7 @@ from app.api.routes import (
     login,
     mcp,
     memory,
+    openviking,
     private,
     tools,
     users,
@@ -22,6 +23,7 @@ api_router.include_router(filings.router, prefix="/filings", tags=["filings"])
 api_router.include_router(memory.router, prefix="/memory", tags=["memory"])
 api_router.include_router(tools.router, prefix="/tools", tags=["tools"])
 api_router.include_router(mcp.router, prefix="/mcp", tags=["mcp"])
+api_router.include_router(openviking.router, prefix="/openviking", tags=["openviking"])
 
 
 if settings.ENVIRONMENT == "local":

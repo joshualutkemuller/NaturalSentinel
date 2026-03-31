@@ -63,6 +63,7 @@ except ImportError:
 # Local imports
 from app.naturalsentinel.cli import build_provider, create_runtime
 from app.naturalsentinel.fetchers import DOMAIN_BUSINESS_LINES
+from app.naturalsentinel.mcp import openviking as ov_bridge
 from app.naturalsentinel.memory.store import MemoryStore
 from app.naturalsentinel.memory.types import MemoryType
 from app.naturalsentinel.models import RegulatoryDomain, RegulatoryFiling
@@ -270,6 +271,109 @@ def create_mcp_server() -> "Server":
                 description="Get statistics about the agent's memory store — how many filings analyzed, feedback recorded, entities tracked.",
                 inputSchema={"type": "object", "properties": {}},
             ),
+            # ── OpenViking context database tools ──────────────────────────
+            Tool(
+                name="openviking_search",
+                description=(
+                    "Semantic search across the OpenViking context store. "
+                    "Returns the most relevant resources for a natural-language query. "
+                    "Use to find regulatory documents, prior analyses, or any ingested content."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Natural-language search query"},
+                        "target_uri": {
+                            "type": "string",
+                            "description": "Restrict search to this viking:// URI subtree (optional)",
+                            "default": "",
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum results to return (default: 10)",
+                            "default": 10,
+                        },
+                    },
+                    "required": ["query"],
+                },
+            ),
+            Tool(
+                name="openviking_read",
+                description="Read the full content of a resource at a viking:// URI.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "uri": {"type": "string", "description": "viking:// URI of the resource"},
+                    },
+                    "required": ["uri"],
+                },
+            ),
+            Tool(
+                name="openviking_list",
+                description="List resources under a viking:// URI (directory listing).",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "uri": {
+                            "type": "string",
+                            "description": "viking:// URI to list (default: viking://)",
+                            "default": "viking://",
+                        },
+                    },
+                },
+            ),
+            Tool(
+                name="openviking_add_resource",
+                description="Ingest a URL or local file path into the OpenViking context store.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "URL or local file path to ingest"},
+                        "wait": {
+                            "type": "boolean",
+                            "description": "Block until processing is complete (default: true)",
+                            "default": True,
+                        },
+                    },
+                    "required": ["path"],
+                },
+            ),
+            Tool(
+                name="openviking_grep",
+                description="Regex content search within resources under a viking:// URI.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "uri": {"type": "string", "description": "viking:// URI subtree to search"},
+                        "pattern": {"type": "string", "description": "Regex pattern"},
+                        "case_insensitive": {"type": "boolean", "default": False},
+                    },
+                    "required": ["uri", "pattern"],
+                },
+            ),
+            Tool(
+                name="openviking_glob",
+                description="Path-pattern match (glob) within the OpenViking filesystem.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "pattern": {"type": "string", "description": "Glob pattern e.g. **/*.md"},
+                        "uri": {"type": "string", "description": "Root URI (default: viking://)", "default": "viking://"},
+                    },
+                    "required": ["pattern"],
+                },
+            ),
+            Tool(
+                name="openviking_memory_commit",
+                description="Commit a session to long-term memory in OpenViking.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "session_id": {"type": "string", "description": "OpenViking session ID to commit"},
+                    },
+                    "required": ["session_id"],
+                },
+            ),
         ]
 
     @server.call_tool()
@@ -374,6 +478,46 @@ def create_mcp_server() -> "Server":
 
         elif name == "get_memory_stats":
             return json.dumps(mem.stats(), indent=2)
+
+        # ── OpenViking tools ────────────────────────────────────────────
+        elif name == "openviking_search":
+            result = ov_bridge.ov_search(
+                query=args["query"],
+                target_uri=args.get("target_uri", ""),
+                limit=args.get("limit", 10),
+            )
+            return json.dumps(result, indent=2, default=str)
+
+        elif name == "openviking_read":
+            return ov_bridge.ov_read(args["uri"])
+
+        elif name == "openviking_list":
+            result = ov_bridge.ov_list(args.get("uri", "viking://"))
+            return json.dumps(result, indent=2, default=str)
+
+        elif name == "openviking_add_resource":
+            result = ov_bridge.ov_add_resource(
+                path=args["path"], wait=args.get("wait", True)
+            )
+            return json.dumps(result, indent=2, default=str)
+
+        elif name == "openviking_grep":
+            result = ov_bridge.ov_grep(
+                uri=args["uri"],
+                pattern=args["pattern"],
+                case_insensitive=args.get("case_insensitive", False),
+            )
+            return json.dumps(result, indent=2, default=str)
+
+        elif name == "openviking_glob":
+            result = ov_bridge.ov_glob(
+                pattern=args["pattern"], uri=args.get("uri", "viking://")
+            )
+            return json.dumps(result, indent=2, default=str)
+
+        elif name == "openviking_memory_commit":
+            result = ov_bridge.ov_commit_session(args["session_id"])
+            return json.dumps(result, indent=2, default=str)
 
         else:
             return json.dumps({"error": f"Unknown tool: {name}"})
@@ -647,6 +791,14 @@ class StandaloneServer:
             "provide_feedback": self._feedback,
             "get_entity_relations": self._relations,
             "get_memory_stats": self._stats,
+            # OpenViking context database
+            "openviking_search": self._ov_search,
+            "openviking_read": self._ov_read,
+            "openviking_list": self._ov_list,
+            "openviking_add_resource": self._ov_add_resource,
+            "openviking_grep": self._ov_grep,
+            "openviking_glob": self._ov_glob,
+            "openviking_memory_commit": self._ov_memory_commit,
         }
 
     def handle_request(self, request: dict) -> dict:
@@ -712,6 +864,37 @@ class StandaloneServer:
 
     def _stats(self, args: dict) -> dict:
         return self.memory.stats()
+
+    # ── OpenViking handlers ──────────────────────────────────────────────
+
+    def _ov_search(self, args: dict) -> Any:
+        return ov_bridge.ov_search(
+            query=args["query"],
+            target_uri=args.get("target_uri", ""),
+            limit=args.get("limit", 10),
+        )
+
+    def _ov_read(self, args: dict) -> str:
+        return ov_bridge.ov_read(args["uri"])
+
+    def _ov_list(self, args: dict) -> list:
+        return ov_bridge.ov_list(args.get("uri", "viking://"))
+
+    def _ov_add_resource(self, args: dict) -> dict:
+        return ov_bridge.ov_add_resource(path=args["path"], wait=args.get("wait", True))
+
+    def _ov_grep(self, args: dict) -> dict:
+        return ov_bridge.ov_grep(
+            uri=args["uri"],
+            pattern=args["pattern"],
+            case_insensitive=args.get("case_insensitive", False),
+        )
+
+    def _ov_glob(self, args: dict) -> dict:
+        return ov_bridge.ov_glob(pattern=args["pattern"], uri=args.get("uri", "viking://"))
+
+    def _ov_memory_commit(self, args: dict) -> dict:
+        return ov_bridge.ov_commit_session(args["session_id"])
 
     def _read_resource(self, uri: str) -> Any:
         if uri == "naturalsentinel://memory/stats":

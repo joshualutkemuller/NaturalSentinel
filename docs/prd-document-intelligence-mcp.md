@@ -27,6 +27,8 @@ Status: Draft
 14. [Security & Compliance](#14-security--compliance)
 15. [Deployment Architecture](#15-deployment-architecture)
 16. [Migration & Rollout Plan](#16-migration--rollout-plan)
+17. [Source-Grounded Analysis & Line-Level Citation](#17-source-grounded-analysis--line-level-citation)
+18. [State-Level Regulatory Monitoring by Industry Sector](#18-state-level-regulatory-monitoring-by-industry-sector)
 
 ---
 
@@ -240,7 +242,7 @@ This system is **additive, not replacing**. It extends the existing architecture
 | `AgentRuntime` + `SkillRegistry` | New document skills register alongside existing 35 skills. Same Permission model, same AuditLog, same SecurityPolicy. |
 | `PgMemoryStore` + `PgMemory` table | Continues to store episodic/entity/precedent memories. Document analysis results become episodic memories. Entity relations link document sections to regulatory concepts. |
 | `SimilarityEngine` | Replaced by Qdrant for vector search. Token-overlap scoring in `pg_store.py` becomes a fallback, not the primary path. |
-| Existing MCP server (`mcp/server.py`) | Remains as-is for regulatory monitoring tools (`scan_regulatory_filings`, `analyze_filing_text`, etc.). The new document MCP server is a separate server that can run alongside it or be merged later. |
+| Existing MCP server (`mcp/server.py`) | Extended — state monitoring tools (`scan_state_filings`, `get_sector_regulatory_calendar`) are added here because they are monitoring operations, not document review. The document intelligence tools (`ingest_document`, `recall_context`, `follow_process`, `list_documents`, `document_status`, `register_process`) run in a **second MCP server** (`mcp/document_server.py`). Both servers share the same Qdrant and OpenViking backends via `deps.py` dependency injection. An agent that needs both capabilities connects to both servers. |
 | `Settings` in `core/config.py` | Extended with Qdrant and OpenViking configuration fields. |
 | `compose.yml` | Qdrant service already provisioned. OpenViking service added. |
 | Fetchers (`fetchers/live/`) | Continue to fetch regulatory filings. Document ingestion is a separate pipeline for user-uploaded documents, but shares the same `html_to_text` and parsing utilities from `fetchers/live/parsers.py`. |
@@ -266,7 +268,12 @@ The server supports the same transports as the existing MCP server, controlled b
 **Input Schema:**
 ```json
 {
-  "file_path": "string (required) — absolute path to the document file",
+  "source": {
+    "file_path": "string — absolute local path (CLI / backend use only)",
+    "url":       "string — fetch document from this URL (agent-friendly; used for regulatory filings)",
+    "content":   "string — base64-encoded file content (for agent file-attachment uploads)"
+  },
+  "content_type": "string (optional) — MIME type hint when using 'content' source",
   "doc_type": "string (optional) — 'legal', 'medical', 'compliance', 'generic'. Auto-detected if omitted.",
   "metadata": {
     "client_name": "string (optional)",
@@ -277,6 +284,12 @@ The server supports the same transports as the existing MCP server, controlled b
   },
   "wait": "boolean (optional, default true) — block until processing completes"
 }
+```
+
+Exactly one of `source.file_path`, `source.url`, or `source.content` must be provided.
+`file_path` is for local/CLI use only and is rejected over remote MCP connections.
+`url` is the standard path for regulatory filing ingestion — the pipeline fetches, parses,
+and stores the document, making it safe for remote agents without exposing server filesystem paths.
 ```
 
 **Output:**
@@ -310,11 +323,22 @@ The server supports the same transports as the existing MCP server, controlled b
 ```json
 {
   "query": "string (required) — the agent's question or information need",
-  "doc_ids": ["string (optional) — scope to specific documents. Empty = search all."],
-  "token_budget": "int (optional, default 4096) — max tokens in returned context",
+  "doc_ids": ["string (optional) — scope to specific documents. Empty = search all user-uploaded docs."],
+  "collections": ["string (optional) — Qdrant collections to search. Default: ['ns_documents']. Include 'ns_state_filings' for regulatory content, 'ns_sessions' for past session memories."],
+  "token_budget": "int (optional, default 6144) — max tokens in returned context",
   "depth": "'abstract' | 'overview' | 'detail' (optional, default 'overview') — maximum L-level to return",
   "include_cross_references": "boolean (optional, default true) — follow document cross-references"
 }
+```
+
+**Collection routing:**
+- `ns_documents` — user-uploaded documents (contracts, policies, medical records)
+- `ns_state_filings` — ingested state regulatory filings (use for regulatory gap analysis)
+- `ns_sessions` — cross-session memories extracted from prior reviews
+
+When both `ns_documents` and `ns_state_filings` are searched (e.g., a compliance gap analysis
+comparing an internal policy against a new state rule), results from both collections are merged
+via rank fusion before tiered assembly.
 ```
 
 **Output:**
@@ -597,19 +621,23 @@ File Input
 │   3. Write to Qdrant                         │
 │      Collection: ns_documents                │
 │      Point:                                  │
-│        id: deterministic UUID from uri+level │
-│        vector: dense embedding               │
-│        payload:                              │
-│          uri: viking://documents/...         │
-│          doc_id: parent document UUID        │
-│          section_path: "Art 5 > § 5.2"       │
-│          level: 0 | 1 | 2                    │
-│          doc_type: "legal"                   │
-│          node_type: "section" | "clause" ... │
-│          title: section heading              │
-│          abstract: L0 text                   │
-│          created_at: ISO timestamp           │
-│          tags: from document metadata        │
+│        id: deterministic UUID from viking_uri+level   │
+│        vector: dense embedding                        │
+│        payload:                                       │
+│          viking_uri: viking://documents/...           │
+│          chunk_id: "{doc_id}:{section}:{index}"       │
+│          doc_id: parent document UUID                 │
+│          source_url: original file URL or path        │
+│          section_path: "Art 5 > § 5.2"               │
+│          level: 0 | 1 | 2                             │
+│          doc_type: "legal"                            │
+│          node_type: "section" | "clause" ...          │
+│          title: section heading                       │
+│          abstract: L0 text                            │
+│          excerpt: verbatim text (L2 only)             │
+│          line_start/line_end: (L2 only)               │
+│          created_at: ISO timestamp                    │
+│          tags: from document metadata                 │
 │                                              │
 │ Why dual-write:                              │
 │ - OpenViking vector index: used internally   │
@@ -690,6 +718,24 @@ viking://
     └── skills/
 ```
 
+### OpenViking URI Namespace Policy
+
+All paths under `viking://` follow a defined namespace convention:
+
+| Namespace | Content | Owner |
+|---|---|---|
+| `viking://documents/{doc_id}/` | User-uploaded documents (contracts, policies, medical records) | Per-user (`created_by` enforced) |
+| `viking://federal_regulations/{domain}/{doc_id}/` | Federal regulatory filings ingested by the fetcher pipeline | Shared (read-only for users) |
+| `viking://state_regulations/{state_code}/{sector}/{doc_id}/` | State regulatory filings by state + sector | Shared (read-only for users) |
+| `viking://processes/{process_name}/` | Registered process definitions | Shared (firm-wide) |
+| `viking://sessions/{session_id}/` | Active/archived conversation sessions | Per-session |
+| `viking://user/memories/` | User preference and entity memories | Per-user |
+| `viking://agent/memories/` | Agent pattern and case memories | Shared |
+
+This namespace convention means retrieval can be scoped by type without additional metadata filters:
+`client.ls("viking://state_regulations/CA/")` lists all CA state filings.
+`client.search(query, target="viking://documents/")` searches only user-uploaded docs.
+
 **Key OpenViking operations used:**
 
 | Operation | API Call | Purpose |
@@ -719,18 +765,30 @@ Distance: Cosine
 Index: HNSW (ef_construct=128, m=16)
 
 Payload schema:
-  uri:            keyword    — viking:// URI for this section+level
-  doc_id:         keyword    — parent document UUID
-  section_path:   text       — human-readable path ("Article 5 > Section 5.2")
-  level:          integer    — 0 (L0), 1 (L1), 2 (L2)
-  doc_type:       keyword    — "legal", "medical", "compliance", "generic"
-  node_type:      keyword    — "article", "section", "clause", "exhibit", etc.
-  title:          text       — section heading
-  abstract:       text       — L0 text (always populated)
-  created_at:     datetime   — ingestion timestamp
-  tags:           keyword[]  — from document metadata
-  word_count:     integer    — token estimate for budget planning
+  viking_uri:           keyword    — viking:// URI for this section+level (stable pointer)
+  chunk_id:             keyword    — "{doc_id}:{section_path}:{chunk_index}" (citation anchor)
+  doc_id:               keyword    — parent document UUID
+  source_url:           keyword    — original file URL or local path (for citation)
+  section_path:         text       — human-readable path ("Article 5 > Section 5.2")
+  level:                integer    — 0 (L0), 1 (L1), 2 (L2)
+  doc_type:             keyword    — "legal", "medical", "compliance", "generic"
+  node_type:            keyword    — "article", "section", "clause", "exhibit", etc.
+  title:                text       — section heading
+  abstract:             text       — L0 text (always populated, for fast L0 scanning)
+  excerpt:              text       — first 200 chars of verbatim source text (L2 only)
+  line_start:           integer    — 1-indexed line number in source file (L2 only)
+  line_end:             integer    — (L2 only)
+  char_offset_start:    integer    — byte offset in source file (L2 only)
+  char_offset_end:      integer    — (L2 only)
+  page_number:          integer    — PDF page number (L2 only, null for text/HTML sources)
+  created_at:           datetime   — ingestion timestamp
+  tags:                 keyword[]  — from document metadata
+  word_count:           integer    — token estimate for budget planning
 ```
+
+Citation fields (`excerpt`, `line_start`, `line_end`, `char_offset_*`, `page_number`) are populated
+only for L2 points. L0 and L1 points leave these null — they are generated summaries, not
+source text, and cannot be cited. Only L2 points carry verbatim source passages eligible for citation.
 
 **Why Qdrant alongside OpenViking's internal vector index:**
 
@@ -795,12 +853,17 @@ A naive system returns the full indemnification section (3,000 tokens) plus rela
 - Load full L2 text for only the 1-3 sections the agent explicitly needs
 - This is the original clause language with full context
 
-**Token budget comparison:**
+**Token budget comparison** (using `token_budget=6144`, the recommended default for complex queries):
 | Approach | Tokens consumed |
 |---|---|
 | Full document in context | ~80,000 |
 | Traditional RAG (top-10 chunks) | ~20,000 |
 | This system (L0 scan → L1 for 10 → L2 for 2) | ~5,500 |
+
+The `recall_context` default `token_budget` of 6144 is chosen to comfortably fit this profile:
+25 × L0 (2,500) + 10 × L1 (up to 10,000, trimmed to fit) + 1-2 × L2 (on demand, returned as
+`L2_available` hints rather than inline content). For simple lookups, `token_budget=2048` returns
+L0 only; for deep research set `token_budget=12288` to inline more L1s.
 
 ### Retrieval Flow Detail
 
@@ -846,22 +909,23 @@ Agent query: "What are the indemnification obligations?"
           ┌──────────▼──────────────┐
           │ 4. TIERED ASSEMBLY      │
           │                         │
-          │ Budget: 4096 tokens     │
+          │ Budget: 6144 tokens     │
           │                         │
           │ Step 1: Load all L0s    │
           │   25 × ~100 = 2,500 t  │
           │                         │
           │ Step 2: Remaining budget│
-          │   4096 - 2500 = 1,596 t │
+          │   6144 - 2500 = 3,644 t │
           │                         │
           │ Step 3: Promote top     │
           │   candidates to L1      │
           │   ~1,000 t each         │
-          │   Promote top 1-2       │
+          │   Promote top 3         │
           │                         │
-          │ Step 4: If still budget,│
-          │   note L2 available for │
-          │   agent to request      │
+          │ Step 4: Remaining ~644t │
+          │   Note L2 available as  │
+          │   hints for agent to    │
+          │   explicitly request    │
           └──────────┬──────────────┘
                      │
           ┌──────────▼──────────────┐
@@ -1154,7 +1218,7 @@ QDRANT_COLLECTION_PREFIX: str = "ns_"
 # OpenViking
 OPENVIKING_WORKSPACE: str = "./openviking_data"
 OPENVIKING_VLM_PROVIDER: str = "litellm"
-OPENVIKING_VLM_MODEL: str = "claude-sonnet-4-6-20250514"
+OPENVIKING_VLM_MODEL: str = "claude-sonnet-4-6"
 OPENVIKING_EMBEDDING_PROVIDER: str = "openai"
 OPENVIKING_EMBEDDING_MODEL: str = "text-embedding-3-large"
 OPENVIKING_EMBEDDING_DIMENSION: int = 3072
@@ -1187,7 +1251,13 @@ No separate OpenViking server container needed — the embedded Python client ru
 
 #### `PgDocument` (`ns_documents`)
 
-Tracks ingested documents at the relational level. Complements the OpenViking filesystem representation.
+Tracks **user-uploaded documents** at the relational level (contracts, policies, medical records).
+Complements the OpenViking filesystem representation.
+
+> **Not used for regulatory filings.** State and federal regulatory filings are tracked via the
+> existing `ns_memories` table (episodic memory of each ingestion event) and the `ns_state_filings`
+> Qdrant collection. `PgDocument` is for documents the user explicitly uploads, not for
+> programmatically-fetched regulatory content. This keeps the two ingestion tracks independent.
 
 ```python
 class PgDocument(SQLModel, table=True):
@@ -1304,7 +1374,7 @@ class ProcessExecutionPublic(SQLModel):
 | `QDRANT_COLLECTION_PREFIX` | `ns_` | Prefix for all Qdrant collections |
 | `OPENVIKING_WORKSPACE` | `./openviking_data` | Local filesystem path for AGFS storage |
 | `OPENVIKING_VLM_PROVIDER` | `litellm` | VLM provider for L0/L1 generation |
-| `OPENVIKING_VLM_MODEL` | `claude-sonnet-4-6-20250514` | VLM model name |
+| `OPENVIKING_VLM_MODEL` | `claude-sonnet-4-6` | VLM model name |
 | `OPENVIKING_EMBEDDING_PROVIDER` | `openai` | Embedding provider |
 | `OPENVIKING_EMBEDDING_MODEL` | `text-embedding-3-large` | Embedding model name |
 | `OPENVIKING_EMBEDDING_DIMENSION` | `3072` | Embedding vector dimension |
@@ -1442,3 +1512,548 @@ For high-throughput deployments (many concurrent users, large document volumes),
 ---
 
 *This document is a living specification. Each layer section should be updated as implementation decisions are made and validated.*
+
+---
+
+## 17. Source-Grounded Analysis & Line-Level Citation
+
+### Problem
+
+LLM-generated analysis conclusions are only as trustworthy as the evidence they cite. Without
+explicit back-references to the source document, there is no way to verify that a finding is
+grounded in the actual regulatory text — or to audit which passage drove a compliance decision.
+This matters especially for regulatory documents where a single word difference ("shall" vs "may",
+"licensee" vs "registrant") can change the compliance obligation entirely.
+
+### Design Goal
+
+Every conclusion in an `ImpactAssessment` and every entry in a `MonitorResult.evidence_ledger`
+must be traceable to a specific passage in the original source document, identified by:
+- `source_url` — direct URL to the original filing
+- `viking_uri` — stable OpenViking URI to the exact passage
+- `line_start` / `line_end` — line numbers within the source text
+- `excerpt` — the verbatim text passage that grounds the conclusion
+
+---
+
+### Position-Aware Chunking
+
+When a regulatory document is ingested (Layer 2), the structure extractor splits it into chunks
+at paragraph or semantic-section boundaries. Each chunk carries position metadata computed during
+extraction:
+
+```python
+@dataclass
+class DocumentChunk:
+    chunk_id: str          # "{doc_id}:{section_path}:{chunk_index}"
+    doc_id: str
+    section_path: str      # e.g. "Section 3 > Subsection 2(b)"
+    text: str              # verbatim original text — always L2 content, never summarised
+    line_start: int        # 1-indexed line number in the original source file
+    line_end: int
+    char_offset_start: int # byte offset from start of source file
+    char_offset_end: int
+    page_number: int | None  # for PDF sources; None for HTML/text sources
+```
+
+`DocumentChunk` always represents verbatim source text (L2). The L0 and L1 tiers are
+**generated from** chunks after ingestion via the VLM pipeline (Stage 5 of Layer 2).
+`DocumentChunk` is the input to that pipeline, not an output of it — so it has no `level` field.
+
+For PDFs: `page_number` is populated from the PDF parser; `line_start`/`line_end` are
+line numbers within that page.
+
+For HTML/text: line numbers are computed by counting `\n` characters up to the chunk's
+`char_offset_start` in the raw source.
+
+**Chunking rules:**
+- Maximum chunk size: 512 tokens (fits comfortably in embedding context)
+- Minimum chunk size: 50 tokens (avoid embedding fragments)
+- Split on paragraph boundaries first; fall back to sentence boundaries if a paragraph
+  exceeds the maximum
+- Overlapping context: each chunk carries the last sentence of the preceding chunk as a
+  prefix (not counted in line numbers) to prevent citation loss at boundaries
+
+---
+
+### Qdrant Payload Schema (Extended)
+
+The `ns_documents` and `ns_state_filings` collections store one point per chunk. The payload
+includes all citation metadata needed to back-reference a conclusion to its source:
+
+```json
+{
+  "doc_id":              "ca-dfpi-2026-04-11",
+  "chunk_id":            "ca-dfpi-2026-04-11:section_3:para_2:0",
+  "viking_uri":          "viking://state_regulations/CA/financial_services/ca-dfpi-2026-04-11/section_3/para_2",
+  "source_url":          "https://dfpi.ca.gov/filings/2026-04-11-rule.pdf",
+  "section_path":        "Section 3 > Paragraph 2",
+  "line_start":          145,
+  "line_end":            167,
+  "char_offset_start":   8340,
+  "char_offset_end":     9120,
+  "page_number":         4,
+  "excerpt":             "No licensee shall charge a fee exceeding...",
+  "level":               2,
+  "doc_type":            "final_rule",
+  "jurisdiction":        "state",
+  "state_code":          "CA",
+  "industry_sectors":    ["financial_services", "insurance"],
+  "published_date":      "2026-04-11",
+  "title":               "DFPI Final Rule — Consumer Fee Limits"
+}
+```
+
+The `excerpt` field stores the first 200 characters of the chunk verbatim. This lets a
+citation be shown to a user without a round-trip to OpenViking or the source URL.
+
+---
+
+### OpenViking L2 Storage for Source Provenance
+
+The full original text of every chunk is stored at L2 in OpenViking. The directory hierarchy
+mirrors the document structure:
+
+```
+viking://state_regulations/{state_code}/{sector}/{doc_id}/
+  ├── .abstract.md            (L0 — ~100 tokens, generated)
+  ├── .overview.md            (L1 — ~1000 tokens, generated)
+  ├── metadata.json           (doc_id, source_url, published_date, jurisdiction, ...)
+  ├── section_1/
+  │   └── .overview.md
+  ├── section_2/
+  └── section_3/
+      ├── .overview.md
+      └── para_2/
+          ├── full_text.md    (L2 — verbatim original text, lines 145–167)
+          └── metadata.json   (chunk_id, line_start, line_end, char_offset_start, ...)
+```
+
+`full_text.md` contains the **verbatim original text** — no summarisation, no paraphrasing.
+This ensures that when a citation is surfaced to a user, it reflects exactly what was
+published by the regulatory body.
+
+The `metadata.json` at the chunk level duplicates the position fields from the Qdrant
+payload. This means citation metadata is recoverable from either storage system independently.
+
+---
+
+### Extended `EvidenceLedgerEntry`
+
+`backend/app/naturalsentinel/evidence.py` — add citation location fields:
+
+```python
+class EvidenceLedgerEntry(BaseModel):
+    evidence_id: str
+    source_type: str
+
+    # Citation location — populated for all document-grounded evidence
+    source_url: str = ""            # direct URL to original document
+    viking_uri: str = ""            # viking:// URI for OpenViking retrieval
+    line_start: int | None = None   # line in original source
+    line_end: int | None = None
+    page_number: int | None = None  # for PDF sources
+    excerpt: str = ""               # verbatim passage (≤200 chars)
+    section_path: str = ""          # human-readable section label
+
+    # Existing scoring fields (unchanged)
+    supports: list[str] = Field(default_factory=list)
+    contradicts: list[str] = Field(default_factory=list)
+    strength_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    novelty_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    trace: list[str] = Field(default_factory=list)
+    source_authority: float = Field(default=0.0, ge=0.0, le=1.0)
+    recency_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    policy_finality_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    jurisdiction_relevance: float = Field(default=0.0, ge=0.0, le=1.0)
+    business_line_proximity: float = Field(default=0.0, ge=0.0, le=1.0)
+    historical_predictive_usefulness: float = Field(default=0.0, ge=0.0, le=1.0)
+    contradiction_risk: float = Field(default=0.0, ge=0.0, le=1.0)
+    summary: str = ""
+```
+
+---
+
+### Citation Flow Through Analysis
+
+```
+1. RETRIEVAL
+   Qdrant kNN search → top-k chunks (each has chunk_id, viking_uri, line_start/end, excerpt)
+
+2. CONTEXT ASSEMBLY
+   Chunks are formatted for the LLM with citation anchors:
+   "[CITE:ca-dfpi-2026-04-11:section_3:para_2:0]
+    No licensee shall charge a fee exceeding..."
+
+3. LLM ANALYSIS (AnalyzeFilingSkill)
+   System prompt instructs: "For every finding, you MUST cite the chunk IDs that
+   support it using [CITE:<chunk_id>] markers. Do not make claims that are not
+   grounded in the provided chunks."
+
+4. CITATION EXTRACTION
+   Post-process the LLM response to extract [CITE:...] markers → resolve each
+   chunk_id to its Qdrant payload → populate EvidenceLedgerEntry with
+   source_url, viking_uri, line_start, line_end, excerpt.
+
+5. VERIFICATION
+   Any ImpactAssessment.action_item or risk_summary clause that contains no
+   resolved citation is flagged with confidence penalty and marked
+   provenance: {"status": "ungrounded"}.
+
+6. OUTPUT
+   MonitorResult.evidence_ledger contains fully-resolved EvidenceLedgerEntry
+   objects. The frontend can render "Source: CA DFPI Final Rule, §3 ¶2 (lines 145–167)"
+   as a clickable link to source_url#L145.
+```
+
+---
+
+### Audit Trail Extension
+
+The existing `DOCUMENT_RECALLED` audit event is extended with citation counts:
+
+| Event Type | Additional Payload |
+|---|---|
+| `ANALYSIS_COMPLETED` | filing_id, citation_count, ungrounded_count, evidence_ledger_ids |
+| `CITATION_RESOLVED` | chunk_id, viking_uri, source_url, line_start, line_end |
+| `UNGROUNDED_FINDING` | filing_id, finding_text, confidence_penalty |
+
+---
+
+## 18. State-Level Regulatory Monitoring by Industry Sector
+
+### Problem
+
+Federal regulatory monitoring misses a significant portion of compliance obligations.
+State-level regulations — from state banking commissions, insurance departments, health
+agencies, and public utility commissions — often impose stricter requirements than federal
+rules and frequently diverge across states. A business operating in multiple states faces
+a patchwork of obligations that no single federal feed captures.
+
+### Design Goal
+
+Extend NaturalSentinel to monitor US state-level regulatory filings, tagged by **industry
+sector**, so customers can see exactly which states are making regulatory changes relevant
+to their business — and receive the same grounded, cited analysis as federal filings.
+
+---
+
+### New Domain Models
+
+`backend/app/naturalsentinel/models.py`:
+
+```python
+class StateCode(Enum):
+    AL = "AL"  # Alabama          AK = "AK"  # Alaska
+    AZ = "AZ"  # Arizona          AR = "AR"  # Arkansas
+    CA = "CA"  # California       CO = "CO"  # Colorado
+    CT = "CT"  # Connecticut      DE = "DE"  # Delaware
+    FL = "FL"  # Florida          GA = "GA"  # Georgia
+    HI = "HI"  # Hawaii           ID = "ID"  # Idaho
+    IL = "IL"  # Illinois         IN = "IN"  # Indiana
+    IA = "IA"  # Iowa             KS = "KS"  # Kansas
+    KY = "KY"  # Kentucky         LA = "LA"  # Louisiana
+    ME = "ME"  # Maine            MD = "MD"  # Maryland
+    MA = "MA"  # Massachusetts    MI = "MI"  # Michigan
+    MN = "MN"  # Minnesota        MS = "MS"  # Mississippi
+    MO = "MO"  # Missouri         MT = "MT"  # Montana
+    NE = "NE"  # Nebraska         NV = "NV"  # Nevada
+    NH = "NH"  # New Hampshire    NJ = "NJ"  # New Jersey
+    NM = "NM"  # New Mexico       NY = "NY"  # New York
+    NC = "NC"  # North Carolina   ND = "ND"  # North Dakota
+    OH = "OH"  # Ohio             OK = "OK"  # Oklahoma
+    OR = "OR"  # Oregon           PA = "PA"  # Pennsylvania
+    RI = "RI"  # Rhode Island     SC = "SC"  # South Carolina
+    SD = "SD"  # South Dakota     TN = "TN"  # Tennessee
+    TX = "TX"  # Texas            UT = "UT"  # Utah
+    VT = "VT"  # Vermont          VA = "VA"  # Virginia
+    WA = "WA"  # Washington       WV = "WV"  # West Virginia
+    WI = "WI"  # Wisconsin        WY = "WY"  # Wyoming
+    DC = "DC"  # District of Columbia
+
+class Jurisdiction(Enum):
+    FEDERAL = "federal"
+    STATE   = "state"
+
+class IndustrySector(Enum):
+    FINANCIAL_SERVICES = "financial_services"
+    HEALTHCARE         = "healthcare"
+    INSURANCE          = "insurance"
+    ENERGY_UTILITIES   = "energy_utilities"
+    REAL_ESTATE        = "real_estate"
+    TECHNOLOGY         = "technology"
+    MANUFACTURING      = "manufacturing"
+    TRANSPORTATION     = "transportation"
+```
+
+`RegulatoryFiling` is extended with three new optional fields:
+
+```python
+class RegulatoryFiling(BaseModel):
+    ...
+    jurisdiction: Jurisdiction = Jurisdiction.FEDERAL
+    state_code: StateCode | None = None          # None for federal filings
+    industry_sectors: list[str] = Field(default_factory=list)  # IndustrySector values
+```
+
+---
+
+### Sector → Agency Mapping
+
+`backend/app/naturalsentinel/fetchers/state_domains.py` (new file):
+
+```python
+# Which industry sectors map to which federal regulatory domains
+# NOTE: MVP mapping — intentionally conservative. Expand in Phase 8 based on
+# customer feedback. "technology" in particular will need FTC and NIST once
+# those domains are added to RegulatoryDomain.
+SECTOR_TO_FEDERAL_DOMAINS: dict[str, list[str]] = {
+    "financial_services": ["sec", "cfpb", "fed", "fdic", "occ", "finra", "cftc", "basel"],
+    "healthcare":         ["fda"],
+    "insurance":          ["cfpb", "fhfa"],
+    "energy_utilities":   ["epa"],
+    "real_estate":        ["fhfa", "cfpb", "fdic"],
+    "transportation":     ["ustr", "epa"],
+    "manufacturing":      ["epa", "ustr"],
+    "technology":         ["sec", "cfpb", "ustr"],
+}
+
+# State RSS feeds by state, each tagged with relevant sectors
+# Priority states for MVP: CA, NY, TX, FL, IL, MA
+STATE_AGENCY_RSS_FEEDS: dict[str, list[dict]] = {
+    "CA": [
+        {"url": "https://www.oal.ca.gov/rss/regulations.xml",
+         "agency": "CA OAL", "sectors": ["financial_services", "insurance", "healthcare"]},
+        {"url": "https://dfpi.ca.gov/feed/",
+         "agency": "CA DFPI", "sectors": ["financial_services", "insurance"]},
+    ],
+    "NY": [
+        {"url": "https://www.dfs.ny.gov/reports_and_publications/rss",
+         "agency": "NY DFS", "sectors": ["financial_services", "insurance"]},
+    ],
+    "TX": [
+        {"url": "https://www.sos.texas.gov/texreg/rss/",
+         "agency": "TX SOS", "sectors": ["financial_services", "insurance", "energy_utilities"]},
+    ],
+    # Additional states added in Phase 2 rollout
+}
+```
+
+---
+
+### Data Sources
+
+Four complementary sources are used, each covering a different slice of state regulatory activity:
+
+#### 1. Open States API (`fetchers/live/open_states.py`)
+- **What:** State legislative bills, votes, and session activity for all 50 states
+- **API:** `GET https://v3.openstates.org/bills?jurisdiction={state}&updated_since={date}`
+- **Auth:** `OPEN_STATES_API_KEY` env var (free tier available)
+- **Sector tagging:** Bill subjects are matched against a keyword dictionary to assign `IndustrySector`
+- **Coverage:** All 50 states; legislative track (bills that become law)
+
+#### 2. State Agency RSS Feeds (`fetchers/live/state_rss.py`)
+- **What:** Executive agency regulatory notices published to state registers
+- **Implementation:** Reads `STATE_AGENCY_RSS_FEEDS` from `state_domains.py`; uses `feedparser`
+- **Coverage:** Priority states (CA, NY, TX, FL, IL, MA) for Phase 1; expanded in Phase 2
+- **Error handling:** Per-feed try/except; individual feed failure does not block other states
+
+#### 3. Sector Aggregators (`fetchers/live/nasaa.py`, `naic.py`, `csbs.py`)
+- **NASAA** — National securities regulators aggregate; covers `financial_services`
+- **NAIC** — National insurance regulators aggregate; covers `insurance`
+- **CSBS** — Conference of State Bank Supervisors; covers `financial_services`
+- Each aggregator pre-groups filings by sector, reducing the mapping burden
+
+#### 4. Federal Register State Filter (existing `fetchers/live/federal_register.py`)
+- **What:** Federal Register items tagged with state-specific applicability
+- **Implementation:** Add `filter_path=state-filings` query param to existing fetcher
+- **Coverage:** All 50 states; federal items with state impact notices
+
+---
+
+### `fetch_filings()` Extension
+
+`backend/app/naturalsentinel/fetchers/base.py`:
+
+```python
+def fetch_filings(
+    domains: list[RegulatoryDomain] | None = None,
+    sectors: list[IndustrySector] | None = None,      # NEW
+    state_codes: list[StateCode] | None = None,        # NEW
+    jurisdiction: Jurisdiction | None = None,          # NEW — None = both
+    since_days: int = 7,
+    live: bool = False,
+    fetch_full_text: bool = False,
+) -> list[RegulatoryFiling]:
+```
+
+When `sectors` is provided and `domains` is not, `domains` is auto-expanded from
+`SECTOR_TO_FEDERAL_DOMAINS` so that a sector query also pulls relevant federal filings.
+
+A new `_fetch_state_live()` function mirrors the existing `_fetch_live()` pattern — calling
+each state fetcher in a try/except block with `logger.warning` fallback, deduplicating
+by ID, and normalising to `RegulatoryFiling` with `jurisdiction=STATE`.
+
+### State Filings Use the Same Layer 2 Pipeline
+
+State regulatory filings are not a separate ingestion path — they go through the same
+Layer 2 pipeline as user-uploaded documents. The difference is the trigger and source:
+
+```
+User uploads a PDF → ingest_document(source.file_path) → Layer 2 → viking://documents/...
+Fetcher pulls state filing → IngestFilingSkill(url=filing.source_url) → Layer 2 → viking://state_regulations/...
+```
+
+`scan_state_filings` calls `IngestFilingSkill` (which wraps `ingest_document` with `source.url`)
+for each new filing before running `AnalyzeFilingSkill`. The ingestion is idempotent — if the
+`doc_id` is already in Qdrant (`ns_state_filings`) and OpenViking, it is skipped. Only new filings
+trigger the full pipeline (structure extraction → hierarchy build → L0/L1/L2 generation → dual-write).
+
+This means state regulatory filings get the same position-aware chunking, verbatim L2 storage,
+and L0/L1 summary generation as contracts and medical records. The citation system in §17 therefore
+applies identically to both state filings and user-uploaded documents.
+
+---
+
+### Customer Sector Watch Profiles
+
+A new `SectorWatch` table lets customers persist their monitoring preferences:
+
+```
+SectorWatch
+  id              UUID PK
+  owner_id        UUID FK → user.id (CASCADE DELETE)
+  industry_sectors  JSON   list[str]   — IndustrySector values
+  state_codes       JSON   list[str]   — StateCode values; empty = all states
+  active          BOOL    DEFAULT TRUE
+  created_at      TIMESTAMPTZ
+```
+
+**API routes** (`backend/app/api/routes/sector_watch.py`):
+
+```
+GET    /sector-watch/                → list current user's profiles
+POST   /sector-watch/                → create a profile
+PUT    /sector-watch/{id}            → update sectors / state list
+DELETE /sector-watch/{id}            → remove
+GET    /sector-watch/{id}/filings    → live fetch for this profile (?since_days=7)
+```
+
+---
+
+### New MCP Tools
+
+Two new tools are added to `backend/app/naturalsentinel/mcp/server.py`:
+
+#### `scan_state_filings`
+```
+Input:
+  state_codes  list[str] | "all"   — StateCode values or "all" for every state
+  sectors      list[str]           — IndustrySector values
+  since_days   int (default 7)
+
+Processing:
+  1. Call fetch_filings(sectors, state_codes, jurisdiction=STATE, live=True)
+  2. Run AnalyzeFilingSkill with citation-extraction prompt for each filing
+  3. Dual-write: Qdrant (ns_state_filings) + OpenViking (viking://state_regulations/...)
+  4. Resolve [CITE:...] markers → populate EvidenceLedgerEntry with line-level citations
+
+Output:
+  Grouped summary: { state: { sector: [ { filing, impact, evidence_ledger } ] } }
+```
+
+#### `get_sector_regulatory_calendar`
+```
+Input:
+  sector       str              — IndustrySector value
+  state_codes  list[str]        — StateCode values
+  months_ahead int (default 3)
+
+Processing:
+  Query Qdrant ns_state_filings filtered by sector + state_codes,
+  extract compliance_deadline from ImpactAssessment, sort chronologically.
+
+Output:
+  Chronological list of { deadline, filing_title, state, source_url, viking_uri }
+```
+
+The existing `scan_regulatory_filings` tool gains optional `jurisdiction` and `sectors`
+parameters to enable cross-jurisdiction queries (e.g., "show me all financial_services
+filings — federal and state — in the last 30 days").
+
+---
+
+### OpenViking Directory Structure for State Filings
+
+```
+viking://state_regulations/
+  └── {state_code}/                  e.g. CA/
+      └── {sector}/                  e.g. financial_services/
+          └── {doc_id}/              e.g. ca-dfpi-2026-04-11/
+              ├── .abstract.md       (L0 — generated summary)
+              ├── .overview.md       (L1 — section-level overview)
+              ├── metadata.json      (source_url, jurisdiction, state_code, sectors, ...)
+              └── {section}/
+                  └── {paragraph}/
+                      ├── full_text.md   (L2 — verbatim original text)
+                      └── metadata.json  (line_start, line_end, char_offset, ...)
+```
+
+This hierarchy supports both directory-scoped retrieval ("show me all CA financial_services
+filings this month") and global vector search across all states and sectors via Qdrant.
+
+---
+
+### Qdrant Collection for State Filings
+
+A dedicated `ns_state_filings` collection separates state filings from general documents:
+
+| Field | Type | Notes |
+|---|---|---|
+| vector | float[3072] | text-embedding-3-large of chunk text |
+| doc_id | string | unique filing identifier |
+| chunk_id | string | `{doc_id}:{section}:{para}:{index}` |
+| viking_uri | string | stable OpenViking pointer |
+| source_url | string | original filing URL |
+| state_code | string | StateCode value |
+| sector | string | IndustrySector value |
+| jurisdiction | string | always "state" |
+| agency | string | issuing agency name |
+| line_start | int | line in original source |
+| line_end | int | |
+| excerpt | string | first 200 chars of chunk |
+| published_date | string | ISO 8601 |
+| change_type | string | ChangeType value |
+
+Filtered searches: `sector = "financial_services" AND state_code IN ["CA", "NY", "TX"]`
+Date-range searches: `published_date >= "2026-01-01"`
+
+---
+
+### Rollout Phases (State Monitoring)
+
+> **Dependency:** Phases 7–10 require Phase 1 (Qdrant + OpenViking integration) to be complete.
+> Qdrant collection creation, OpenViking client initialization, and `deps.py` wiring must all be
+> in place before any state filing can be ingested or searched.
+
+#### Phase 7: State Data Sources
+- Implement `open_states.py`, `state_rss.py`, `nasaa.py`, `naic.py`, `csbs.py`
+- Add `StateCode`, `Jurisdiction`, `IndustrySector` enums to models
+- Extend `RegulatoryFiling` with jurisdiction fields
+- Validate: `fetch_filings(sectors=["financial_services"], state_codes=["CA", "NY"], live=True)` returns results
+
+#### Phase 8: State Storage Pipeline
+- Create `ns_state_filings` Qdrant collection
+- Add OpenViking `state_regulations/` directory hierarchy to ingestion pipeline
+- Dual-write state filings through citation-aware chunking
+- Validate: Qdrant contains `CA` + `financial_services` vectors with `line_start`/`line_end` payloads
+
+#### Phase 9: Sector Watch & MCP
+- Add `SectorWatch` DB table + API routes
+- Add `scan_state_filings` and `get_sector_regulatory_calendar` MCP tools
+- Validate: call `scan_state_filings` via Claude Desktop, verify cited `EvidenceLedgerEntry` entries
+
+#### Phase 10: Frontend
+- Build `/sector-watch` page with sector + state filter bar and filing table
+- Add sidebar entry
+- Validate: create a watch profile, confirm live filings appear grouped by state and sector

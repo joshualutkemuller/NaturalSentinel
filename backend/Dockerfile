@@ -3,7 +3,7 @@ FROM node:22-slim AS email-templates
 
 WORKDIR /templates
 COPY ./backend/app/email-templates/src/ ./src/
-RUN npx mjml@4 src/*.mjml -o build/
+RUN mkdir -p build && for f in src/*.mjml; do npx mjml@4 "$f" -o "build/$(basename "${f%.mjml}.html")"; done
 
 
 # Stage 2: Python backend

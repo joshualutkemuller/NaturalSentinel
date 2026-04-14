@@ -1,249 +1,74 @@
-"""Domain types shared across the entire naturalsentinel package."""
+"""DEPRECATED — use ``app.naturalsentinel.domain`` instead.
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
-from enum import Enum
-from typing import Annotated
+This module used to mix enum definitions (RegulatoryDomain, ChangeType,
+Severity, IndustrySector, StateCode, Jurisdiction), Pydantic filing
+models (RegulatoryFiling, ImpactAssessment, DecisionFrame, BeliefState,
+MonitorResult), and the document chunk dataclass (DocumentChunk) in a
+single 250-line file.
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+Phase R split them into focused modules under
+``app.naturalsentinel.domain``:
 
-from app.naturalsentinel.evidence import EvidenceLedgerEntry
+    domain/enums.py    — RegulatoryDomain, Jurisdiction, StateCode,
+                         IndustrySector, Severity, ChangeType, UnitFloat
+    domain/filing.py   — RegulatoryFiling, ImpactAssessment, DecisionFrame,
+                         BeliefState, MonitorResult
+    domain/document.py — DocumentNode, DocumentTree, DocumentChunk
 
-# ---------------------------------------------------------------------------
-# Enums
-# ---------------------------------------------------------------------------
+This shim re-exports every public name so legacy imports keep working.
+It emits a DeprecationWarning at import time. New code should import
+from ``app.naturalsentinel.domain`` directly. This shim will be removed
+in a future release.
+"""
 
+from __future__ import annotations
 
-class RegulatoryDomain(Enum):
-    SEC = "sec"
-    CFPB = "cfpb"
-    FED = "fed"
-    FDA = "fda"
-    EPA = "epa"
-    USTR = "ustr"
-    # Securities finance & lending domains
-    FHFA = "fhfa"  # Federal Housing Finance Agency
-    OCC = "occ"  # Office of the Comptroller of the Currency
-    FINRA = "finra"  # Financial Industry Regulatory Authority
-    CFTC = "cftc"  # Commodity Futures Trading Commission
-    FDIC = "fdic"  # Federal Deposit Insurance Corporation
-    BASEL = "basel"  # Basel Committee on Banking Supervision
+import warnings
 
+warnings.warn(
+    "app.naturalsentinel.models is deprecated; "
+    "import from app.naturalsentinel.domain instead. "
+    "This shim will be removed in a future release.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-class Jurisdiction(Enum):
-    FEDERAL = "federal"
-    STATE = "state"
+from app.naturalsentinel.domain.document import (  # noqa: E402,F401
+    DocumentChunk,
+    DocumentNode,
+    DocumentTree,
+)
+from app.naturalsentinel.domain.enums import (  # noqa: E402,F401
+    ChangeType,
+    IndustrySector,
+    Jurisdiction,
+    RegulatoryDomain,
+    Severity,
+    StateCode,
+    UnitFloat,
+)
+from app.naturalsentinel.domain.filing import (  # noqa: E402,F401
+    BeliefState,
+    DecisionFrame,
+    ImpactAssessment,
+    MonitorResult,
+    RegulatoryFiling,
+)
 
-
-class StateCode(Enum):
-    AL = "AL"
-    AK = "AK"
-    AZ = "AZ"
-    AR = "AR"
-    CA = "CA"
-    CO = "CO"
-    CT = "CT"
-    DE = "DE"
-    FL = "FL"
-    GA = "GA"
-    HI = "HI"
-    ID = "ID"
-    IL = "IL"
-    IN = "IN"
-    IA = "IA"
-    KS = "KS"
-    KY = "KY"
-    LA = "LA"
-    ME = "ME"
-    MD = "MD"
-    MA = "MA"
-    MI = "MI"
-    MN = "MN"
-    MS = "MS"
-    MO = "MO"
-    MT = "MT"
-    NE = "NE"
-    NV = "NV"
-    NH = "NH"
-    NJ = "NJ"
-    NM = "NM"
-    NY = "NY"
-    NC = "NC"
-    ND = "ND"
-    OH = "OH"
-    OK = "OK"
-    OR = "OR"
-    PA = "PA"
-    RI = "RI"
-    SC = "SC"
-    SD = "SD"
-    TN = "TN"
-    TX = "TX"
-    UT = "UT"
-    VT = "VT"
-    VA = "VA"
-    WA = "WA"
-    WV = "WV"
-    WI = "WI"
-    WY = "WY"
-    DC = "DC"
-
-
-class IndustrySector(Enum):
-    FINANCIAL_SERVICES = "financial_services"
-    HEALTHCARE = "healthcare"
-    INSURANCE = "insurance"
-    ENERGY_UTILITIES = "energy_utilities"
-    REAL_ESTATE = "real_estate"
-    TECHNOLOGY = "technology"
-    MANUFACTURING = "manufacturing"
-    TRANSPORTATION = "transportation"
-
-
-class Severity(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-
-class ChangeType(Enum):
-    PROPOSED_RULE = "proposed_rule"
-    FINAL_RULE = "final_rule"
-    GUIDANCE = "guidance"
-    ENFORCEMENT = "enforcement"
-    NOTICE = "notice"
-    AMENDMENT = "amendment"
-    EXECUTIVE_ORDER = "executive_order"
-
-
-# ---------------------------------------------------------------------------
-# Reusable annotated types
-# ---------------------------------------------------------------------------
-
-UnitFloat = Annotated[float, Field(ge=0.0, le=1.0)]
-"""A float constrained to [0.0, 1.0]."""
-
-# ---------------------------------------------------------------------------
-# Core domain models
-# ---------------------------------------------------------------------------
-
-
-class RegulatoryFiling(BaseModel):
-    """A single regulatory document ingested from a government source."""
-
-    model_config = ConfigDict(use_enum_values=False)
-
-    id: str
-    title: str
-    domain: RegulatoryDomain
-    source_url: str
-    published_date: str
-    raw_text: str
-    change_type: ChangeType = ChangeType.NOTICE
-    summary: str = ""
-    fetched_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
-    # Jurisdiction fields — populated for state filings, defaults for federal
-    jurisdiction: Jurisdiction = Jurisdiction.FEDERAL
-    state_code: StateCode | None = None
-    industry_sectors: list[str] = Field(default_factory=list)
-
-
-class ImpactAssessment(BaseModel):
-    """LLM-extracted structured analysis of a regulatory filing's impact."""
-
-    model_config = ConfigDict(use_enum_values=False)
-
-    filing_id: str
-    severity: Severity
-    affected_business_lines: list[str]
-    affected_regulations: list[str]
-    compliance_deadline: str | None
-    action_items: list[str]
-    risk_summary: str
-    confidence: UnitFloat
-    # Lineage / explainability fields (optional — populated by AnalyzeFilingSkill)
-    citations: dict = Field(default_factory=dict)
-    trace_id: str | None = None
-    provenance: dict = Field(default_factory=dict)
-
-
-class DecisionFrame(BaseModel):
-    """Structured decision context for a regulatory question."""
-
-    decision_id: str
-    question: str
-    scope: str
-    time_horizon: str
-    affected_entities: list[str] = Field(default_factory=list)
-    candidate_actions: list[str] = Field(default_factory=list)
-    constraints: list[str] = Field(default_factory=list)
-    evidence_items: list[str] = Field(default_factory=list)
-    assumptions: list[str] = Field(default_factory=list)
-    counterarguments: list[str] = Field(default_factory=list)
-    confidence: UnitFloat = 0.0
-    expected_revisit_date: str | None = None
-    owner: str = "Unassigned"
-    audit_refs: list[str] = Field(default_factory=list)
-
-
-class BeliefState(BaseModel):
-    """Prior/posterior belief tracking for a specific topic over time.
-
-    Captures how the system's confidence in a particular regulatory topic,
-    regime, or obligation has evolved as new filings arrive.  This enables
-    the belief-updating engine described in Priority 3 of the Decision
-    Framework Iterations.
-    """
-
-    topic: str
-    domain: str
-    prior_confidence: UnitFloat
-    posterior_confidence: UnitFloat
-    delta_confidence: float = Field(ge=-1.0, le=1.0)
-    delta_drivers: list[str]
-    stability_score: UnitFloat
-    reversal_risk: UnitFloat
-    observation_count: int = Field(default=0, ge=0)
-    last_filing_id: str = ""
-    updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
-
-    @model_validator(mode="after")
-    def _check_delta_matches(self) -> "BeliefState":
-        expected = round(self.posterior_confidence - self.prior_confidence, 10)
-        if abs(self.delta_confidence - expected) > 1e-6:
-            raise ValueError(
-                f"delta_confidence ({self.delta_confidence}) must equal "
-                f"posterior - prior ({expected})"
-            )
-        return self
-
-
-class MonitorResult(BaseModel):
-    """Aggregated output from a complete filing analysis cycle."""
-
-    filing: RegulatoryFiling
-    impact: ImpactAssessment
-    decision: DecisionFrame
-    evidence_ledger: list[EvidenceLedgerEntry] = Field(default_factory=list)
-    belief_states: list[BeliefState] = Field(default_factory=list)
-    raw_analysis: str = ""
-
-
-@dataclass
-class DocumentChunk:
-    """A position-tagged verbatim text chunk from an ingested source document.
-
-    Always represents L2 content (original source text, never summarised).
-    L0/L1 tiers are generated *from* chunks by the VLM pipeline after ingestion.
-    """
-
-    chunk_id: str  # "{doc_id}:{section_path}:{chunk_index}"
-    doc_id: str
-    section_path: str  # e.g. "Section 3 > Subsection 2(b)"
-    text: str  # verbatim original text
-    line_start: int  # 1-indexed line number in the original source file
-    line_end: int
-    char_offset_start: int  # byte offset from start of source file
-    char_offset_end: int
-    page_number: int | None = None  # PDF page number; None for HTML/text sources
+__all__ = [
+    "BeliefState",
+    "ChangeType",
+    "DecisionFrame",
+    "DocumentChunk",
+    "DocumentNode",
+    "DocumentTree",
+    "ImpactAssessment",
+    "IndustrySector",
+    "Jurisdiction",
+    "MonitorResult",
+    "RegulatoryDomain",
+    "RegulatoryFiling",
+    "Severity",
+    "StateCode",
+    "UnitFloat",
+]

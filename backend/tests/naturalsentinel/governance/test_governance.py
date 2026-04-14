@@ -119,8 +119,16 @@ class TestModelCard(unittest.TestCase):
             os.unlink(fh_name)
 
     def test_model_card_json_asset_is_valid(self):
+        # Test moved into governance/ subdir — went from .../tests/naturalsentinel/
+        # to .../tests/naturalsentinel/governance/, so we need one more "..".
         asset_path = os.path.join(
-            os.path.dirname(__file__), "..", "..", "..", "assets", "model_card.json"
+            os.path.dirname(__file__),
+            "..",
+            "..",
+            "..",
+            "..",
+            "assets",
+            "model_card.json",
         )
         card = ModelCard.from_json(asset_path)
         self.assertEqual(card.name, "NaturalSentinel Regulatory Extraction Pipeline")

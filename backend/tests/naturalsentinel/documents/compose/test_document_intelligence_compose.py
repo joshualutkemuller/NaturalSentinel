@@ -25,7 +25,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select, text
 
-FIXTURES_DIR = Path(__file__).parent / "fixtures"
+FIXTURES_DIR = Path(__file__).parent.parent.parent / "fixtures"
 
 pytestmark = pytest.mark.slow
 

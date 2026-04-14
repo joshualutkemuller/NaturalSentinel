@@ -25,13 +25,22 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from app.naturalsentinel.documents.constants import (
+    DEFAULT_TOKEN_BUDGET,
+    DEPTH_TO_TIER,
+    RRF_K,
+    TIER_AVG_TOKENS,
+    WORDS_PER_TOKEN,
+    Tier,
+)
+
 logger = logging.getLogger(__name__)
 
-_DEFAULT_TOKEN_BUDGET = 6144
-_WORDS_PER_TOKEN = 0.75  # rough approximation: 1 token ≈ 0.75 words
-_L0_AVG_TOKENS = 80
-_L1_AVG_TOKENS = 800
-_L2_AVG_TOKENS = 3000
+_DEFAULT_TOKEN_BUDGET = DEFAULT_TOKEN_BUDGET
+_WORDS_PER_TOKEN = WORDS_PER_TOKEN
+_L0_AVG_TOKENS = TIER_AVG_TOKENS[Tier.ABSTRACT]
+_L1_AVG_TOKENS = TIER_AVG_TOKENS[Tier.OVERVIEW]
+_L2_AVG_TOKENS = TIER_AVG_TOKENS[Tier.DETAIL]
 
 
 # ---------------------------------------------------------------------------
@@ -66,7 +75,7 @@ def recall_context(
     Returns:
         Dict with keys: context_blocks, total_tokens, retrieval_trajectory.
     """
-    max_level = {"abstract": 0, "overview": 1, "detail": 2}.get(depth, 1)
+    max_level = int(DEPTH_TO_TIER.get(depth, Tier.OVERVIEW))
 
     # ── Path A: Qdrant kNN search ──────────────────────────────────────────
     qdrant_results: list[dict] = []
@@ -127,7 +136,7 @@ def recall_context(
 # Reciprocal Rank Fusion
 # ---------------------------------------------------------------------------
 
-_RRF_K = 60  # standard constant; higher = smoother blending
+_RRF_K = RRF_K  # re-exposed as module-private for internal callers
 
 
 def _reciprocal_rank_fusion(

@@ -43,6 +43,13 @@ from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from app.naturalsentinel.documents.constants import (
+    OV_FILENAMES,
+    OV_SESSIONS_ROOT,
+    QDRANT_NS_SESSIONS,
+    Tier,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -424,7 +431,7 @@ def _persist_state(state: ExecutionState, ov_client, session_db) -> None:
 
     if ov_client is not None:
         try:
-            progress_uri = f"viking://sessions/{state.session_id}/progress/{state.process_name}.json"
+            progress_uri = f"{OV_SESSIONS_ROOT}/{state.session_id}/progress/{state.process_name}.json"
             ov_client.write(progress_uri, state_json)
         except Exception as exc:
             logger.debug("OV state persist failed: %s", exc)
@@ -441,7 +448,7 @@ def _load_state(session_id: str, ov_client, session_db) -> ExecutionState | None
     if ov_client is not None:
         try:
             # List progress files for this session
-            progress_items = ov_client.ls(f"viking://sessions/{session_id}/progress/")
+            progress_items = ov_client.ls(f"{OV_SESSIONS_ROOT}/{session_id}/progress/")
             for item in progress_items or []:
                 uri = item if isinstance(item, str) else item.get("uri", "")
                 if uri.endswith(".json"):
@@ -606,7 +613,7 @@ def _commit_session_memory(
     # 1. OpenViking — write session summary file (supplemental to step JSON)
     if ov_client is not None:
         try:
-            summary_uri = f"viking://sessions/{state.session_id}/summary.md"
+            summary_uri = f"{OV_SESSIONS_ROOT}/{state.session_id}/summary.md"
             ov_client.write(
                 summary_uri, f"# Session {state.session_id}\n\n{summary_text}\n"
             )
@@ -663,7 +670,7 @@ def _commit_session_memory(
                     "completed_at": datetime.now(UTC).isoformat(),
                 },
             )
-            qdrant_client.upsert(collection_name="ns_sessions", points=[point])
+            qdrant_client.upsert(collection_name=QDRANT_NS_SESSIONS, points=[point])
         except Exception as exc:
             logger.debug("Qdrant session memory write failed: %s", exc)
 
@@ -707,7 +714,7 @@ def register_process(
             ov_client.mkdir(proc_uri)
             ov_client.write(f"{proc_uri}/definition.md", definition_md)
             ov_client.write(
-                f"{proc_uri}/.abstract.md",
+                f"{proc_uri}/{OV_FILENAMES[Tier.ABSTRACT]}",
                 f"{step_count}-step process: {defn.description}",
             )
         except Exception as exc:

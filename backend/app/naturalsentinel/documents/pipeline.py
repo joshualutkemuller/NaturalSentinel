@@ -27,6 +27,7 @@ from typing import Any
 # Re-exported below so legacy imports like
 # ``from app.naturalsentinel.documents.pipeline import build_openviking_hierarchy``
 # keep working until the next major release.
+from app.naturalsentinel.documents.constants import OV_DOCUMENT_ROOT
 from app.naturalsentinel.documents.openviking_service import build_openviking_hierarchy
 
 logger = logging.getLogger(__name__)
@@ -294,7 +295,7 @@ def ingest_document(
     )
 
     # ── Stage 4+5: OpenViking hierarchy ───────────────────────────────────
-    viking_uri = f"viking://documents/{doc_id}"
+    viking_uri = f"{OV_DOCUMENT_ROOT}/{doc_id}"
     if ov_client is not None:
         try:
             viking_uri = build_openviking_hierarchy(ov_client, tree)

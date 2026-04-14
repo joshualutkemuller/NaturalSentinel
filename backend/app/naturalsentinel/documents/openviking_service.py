@@ -19,6 +19,13 @@ from __future__ import annotations
 
 import logging
 
+from app.naturalsentinel.documents.constants import (
+    OV_DOCUMENT_ROOT,
+    OV_FILENAMES,
+    OV_META_FILE,
+    Tier,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +44,7 @@ def build_openviking_hierarchy(ov_client, tree) -> str:
 
     Returns the root viking:// URI.
     """
-    root_uri = f"viking://documents/{tree.doc_id}"
+    root_uri = f"{OV_DOCUMENT_ROOT}/{tree.doc_id}"
 
     # Create root directory
     ov_mkdir(ov_client, root_uri)
@@ -55,7 +62,7 @@ def build_openviking_hierarchy(ov_client, tree) -> str:
         f'"file_name": "{esc_json_string(tree.file_name)}", '
         f'"section_count": {tree.section_count()}}}'
     )
-    ov_write(ov_client, f"{root_uri}/meta.json", meta_content)
+    ov_write(ov_client, f"{root_uri}/{OV_META_FILE}", meta_content)
 
     # Write all nodes recursively
     for node in tree.root_nodes:
@@ -121,19 +128,18 @@ def ov_write_tiered(
     overview: str,
     full_text: str | None,
 ) -> None:
-    """Write ``.abstract.md``, ``.overview.md``, and optionally ``content.md``.
+    """Write the per-tier files for an OV node.
 
-    Skips tiers that have no content. The filename conventions
-    (``.abstract.md``, ``.overview.md``, ``content.md``) are fixed here
-    for now; Phase P1.1 will lift them into
-    ``documents/constants.OV_FILENAMES``.
+    Filenames come from ``constants.OV_FILENAMES`` keyed by
+    :class:`Tier`, so the convention lives in exactly one place.
+    Tiers with no content are skipped.
     """
     if abstract:
-        ov_write(ov_client, f"{uri}/.abstract.md", abstract)
+        ov_write(ov_client, f"{uri}/{OV_FILENAMES[Tier.ABSTRACT]}", abstract)
     if overview:
-        ov_write(ov_client, f"{uri}/.overview.md", overview)
+        ov_write(ov_client, f"{uri}/{OV_FILENAMES[Tier.OVERVIEW]}", overview)
     if full_text:
-        ov_write(ov_client, f"{uri}/content.md", full_text)
+        ov_write(ov_client, f"{uri}/{OV_FILENAMES[Tier.DETAIL]}", full_text)
 
 
 # ---------------------------------------------------------------------------

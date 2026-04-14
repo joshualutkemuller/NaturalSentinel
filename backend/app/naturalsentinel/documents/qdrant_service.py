@@ -18,16 +18,22 @@ import os
 import uuid
 from typing import Any
 
+from app.naturalsentinel.documents.constants import (
+    QDRANT_BATCH_SIZE,
+    QDRANT_EMBEDDING_DIM,
+    QDRANT_NS_DOCUMENTS,
+    QDRANT_NS_SESSIONS,
+    QDRANT_NS_STATE_FILINGS,
+)
+
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-_EMBEDDING_DIM = 3072
-_NS_DOCUMENTS = "ns_documents"
-_NS_STATE_FILINGS = "ns_state_filings"
-_NS_SESSIONS = "ns_sessions"
+# Legacy module-level aliases (kept so existing internal references
+# below keep compiling; new code should import from constants directly).
+_EMBEDDING_DIM = QDRANT_EMBEDDING_DIM
+_NS_DOCUMENTS = QDRANT_NS_DOCUMENTS
+_NS_STATE_FILINGS = QDRANT_NS_STATE_FILINGS
+_NS_SESSIONS = QDRANT_NS_SESSIONS
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +249,7 @@ def upsert_document_sections(
         return 0
 
     # Batch upsert in chunks of 100
-    batch_size = 100
+    batch_size = QDRANT_BATCH_SIZE
     total = 0
     for i in range(0, len(points), batch_size):
         batch = points[i : i + batch_size]

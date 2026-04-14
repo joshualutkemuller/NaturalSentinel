@@ -266,7 +266,7 @@ class TestPgProcessTables:
     """register_process and follow_process write to real PG process tables."""
 
     def test_register_process_writes_pg_definition(self, db: Session):
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
         from app.naturalsentinel.documents.process_engine import register_process
@@ -299,10 +299,10 @@ class TestPgProcessTables:
             db.commit()
 
     def test_follow_process_writes_pg_execution(self, db: Session):
-        from app.naturalsentinel.documents import process_engine as pe
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
+        from app.naturalsentinel.documents import process_engine as pe
         from app.naturalsentinel.memory.pg_models import PgProcessExecution
 
         ov = _FakeOVClient()

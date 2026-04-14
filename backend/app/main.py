@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from sqlmodel import Session
 
         from app.core.db import engine
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             load_builtin_processes,
         )
         from app.naturalsentinel.mcp.openviking import _get_ov_client

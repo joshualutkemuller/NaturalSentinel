@@ -762,7 +762,7 @@ class TestProcessEngine(unittest.TestCase):
         self.doc_id = result["doc_id"]
 
     def _get_compliance_gap_md(self) -> str:
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
 
@@ -781,7 +781,7 @@ class TestProcessEngine(unittest.TestCase):
         self.assertIn("legal", defn.doc_types or ["compliance"])
 
     def test_parse_builtin_contract_review(self):
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
         from app.naturalsentinel.documents.process_engine import (
@@ -800,7 +800,7 @@ class TestProcessEngine(unittest.TestCase):
         self.assertGreater(len(step1.retrieval_query), 5)
 
     def test_parse_builtin_medical_records_review(self):
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
         from app.naturalsentinel.documents.process_engine import (
@@ -813,7 +813,7 @@ class TestProcessEngine(unittest.TestCase):
         self.assertGreaterEqual(defn.step_count(), 6)
 
     def test_all_builtin_process_names_have_files(self):
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             BUILTIN_PROCESS_NAMES,
             get_builtin_definition,
         )
@@ -1063,10 +1063,10 @@ class TestSessionMemoryLifecycle(unittest.TestCase):
 
     def test_complete_writes_ov_summary(self):
         """Process completion writes a session summary to OV."""
-        from app.naturalsentinel.documents import process_engine as pe
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
+        from app.naturalsentinel.documents import process_engine as pe
 
         defn = pe.parse_process_definition(
             "compliance_gap_analysis", get_builtin_definition("compliance_gap_analysis")
@@ -1104,10 +1104,10 @@ class TestSessionMemoryLifecycle(unittest.TestCase):
 
     def test_complete_writes_qdrant_session_point(self):
         """Process completion upserts an embedding into ns_sessions."""
-        from app.naturalsentinel.documents import process_engine as pe
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
+        from app.naturalsentinel.documents import process_engine as pe
         from app.naturalsentinel.documents.qdrant_service import ensure_collections
 
         ensure_collections(self.qdrant)
@@ -1152,10 +1152,10 @@ class TestSessionMemoryLifecycle(unittest.TestCase):
 
     def test_complete_writes_pg_memory_row(self):
         """Process completion adds an EPISODIC memory row to the fake session."""
-        from app.naturalsentinel.documents import process_engine as pe
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
+        from app.naturalsentinel.documents import process_engine as pe
 
         defn = pe.parse_process_definition(
             "compliance_gap_analysis", get_builtin_definition("compliance_gap_analysis")
@@ -1399,7 +1399,7 @@ class TestEndToEndPRDFlow(unittest.TestCase):
         self.assertGreaterEqual(retrieval_result["total_tokens"], 0)
 
         # ── 3. REGISTER PROCESS ──────────────────────────────────────────────
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
         from app.naturalsentinel.documents.process_engine import (
@@ -1562,7 +1562,7 @@ class TestPostgresDocumentLayer(unittest.TestCase):
         )
 
     def test_pg_process_definition_written_on_register(self):
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
         from app.naturalsentinel.documents.process_engine import register_process
@@ -1583,10 +1583,10 @@ class TestPostgresDocumentLayer(unittest.TestCase):
         self.assertGreater(defs[0].step_count, 0)
 
     def test_pg_process_execution_written_on_follow_start(self):
-        from app.naturalsentinel.documents import process_engine as pe
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
+        from app.naturalsentinel.documents import process_engine as pe
         from app.naturalsentinel.memory.pg_models import PgProcessExecution
 
         defn = pe.parse_process_definition(
@@ -1618,10 +1618,10 @@ class TestPostgresDocumentLayer(unittest.TestCase):
         self.assertGreater(ex.total_steps, 0)
 
     def test_pg_process_execution_updated_on_advance(self):
-        from app.naturalsentinel.documents import process_engine as pe
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
+        from app.naturalsentinel.documents import process_engine as pe
         from app.naturalsentinel.memory.pg_models import PgProcessExecution
 
         defn = pe.parse_process_definition(
@@ -1884,10 +1884,10 @@ class TestSessionTripleWriteConsistency(unittest.TestCase):
     """After process completion the same session_id appears in OV, Qdrant, and PG."""
 
     def test_complete_all_three_stores_share_session_id(self):
-        from app.naturalsentinel.documents import process_engine as pe
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
+        from app.naturalsentinel.documents import process_engine as pe
         from app.naturalsentinel.documents.qdrant_service import ensure_collections
         from app.naturalsentinel.memory.pg_models import PgMemory
 
@@ -1966,10 +1966,10 @@ class TestSessionTripleWriteConsistency(unittest.TestCase):
 
     def test_complete_qdrant_point_payload_fields(self):
         """ns_sessions point has expected payload shape."""
-        from app.naturalsentinel.documents import process_engine as pe
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
+        from app.naturalsentinel.documents import process_engine as pe
         from app.naturalsentinel.documents.qdrant_service import ensure_collections
 
         ov = FakeOVClient()
@@ -2043,10 +2043,10 @@ class TestProcessStateResume(unittest.TestCase):
         self.doc_id = result["doc_id"]
 
     def _defn(self):
-        from app.naturalsentinel.documents import process_engine as pe
-        from app.naturalsentinel.documents.builtin_processes import (
+        from app.naturalsentinel.data.processes import (
             get_builtin_definition,
         )
+        from app.naturalsentinel.documents import process_engine as pe
 
         return pe.parse_process_definition(
             "compliance_gap_analysis", get_builtin_definition("compliance_gap_analysis")

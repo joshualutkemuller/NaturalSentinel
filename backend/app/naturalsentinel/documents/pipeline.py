@@ -373,13 +373,18 @@ def _fetch_url(url: str) -> tuple[bytes, str]:
 def _persist_pg_document(
     *, session, doc_id: str, tree, viking_uri: str, meta: dict
 ) -> None:
-    """Persist a PgDocument record to PostgreSQL."""
+    """Persist a PgDocument record to PostgreSQL.
+
+    Populates source_url / domain / jurisdiction as first-class columns
+    (Phase P0.4) in addition to the metadata_json blob — the columns
+    are the canonical query path, the blob is redundant alignment with
+    Qdrant / OV payloads.
+    """
     from app.naturalsentinel.memory.pg_models import PgDocument
 
     now = datetime.now(UTC)
     structure = {"nodes": [n.uri_path for n in tree.root_nodes]}
 
-    # Embed source_url in metadata_json so it's queryable from PG without a schema column
     persisted_meta = dict(meta)
     persisted_meta["source_url"] = tree.source_url
 
@@ -392,6 +397,9 @@ def _persist_pg_document(
         viking_uri=viking_uri,
         section_count=tree.section_count(),
         status="ready",
+        source_url=tree.source_url or "",
+        domain=meta.get("domain"),
+        jurisdiction=meta.get("jurisdiction", "federal"),
         metadata_json=persisted_meta,
         structure_json=structure,
         created_at=now,

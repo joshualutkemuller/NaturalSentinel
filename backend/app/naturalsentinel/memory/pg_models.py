@@ -228,6 +228,15 @@ class PgDocument(SQLModel, table=True):
     viking_uri: str = Field(default="", nullable=False, index=True)
     section_count: int = Field(default=0, nullable=False)
     status: str = Field(default="processing", nullable=False, index=True)
+    # Source provenance — first-class queryable columns rather than
+    # metadata_json blob fields. Storing source_url inside metadata_json
+    # made "find all docs from sec.gov" a JSON-extract scan with no
+    # index. These columns are populated alongside the JSONB blob for
+    # redundancy; the blob is kept so Qdrant payloads and OV metadata
+    # stay aligned with PG.
+    source_url: str = Field(default="", nullable=False, index=True)
+    domain: str | None = Field(default=None, index=True)
+    jurisdiction: str = Field(default="federal", nullable=False, index=True)
     metadata_json: Any = Field(default={}, sa_column=sa.Column(sa.JSON, nullable=False))
     structure_json: Any = Field(
         default={}, sa_column=sa.Column(sa.JSON, nullable=False)

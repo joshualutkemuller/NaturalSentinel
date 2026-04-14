@@ -774,17 +774,42 @@ class TestSourceProvenanceCompose:
         app.dependency_overrides.pop(get_qdrant_client, None)
 
     def test_pg_row_stores_correct_source_url(self):
-        """ns_documents row must persist source_url in metadata_json."""
+        """ns_documents row must persist source_url as both a first-class
+        column (Phase P0.4) and inside metadata_json (for Qdrant/OV
+        alignment redundancy)."""
         from app.naturalsentinel.memory.pg_models import PgDocument
 
         row = self._db.exec(
             select(PgDocument).where(PgDocument.doc_id == self._doc_id)
         ).first()
         assert row is not None, f"No ns_documents row found for doc_id={self._doc_id}"
+
+        # First-class column — the canonical, indexed provenance field
+        assert row.source_url == self._SOURCE_URL, (
+            f"PG source_url column '{row.source_url}' does not match ingest URL '{self._SOURCE_URL}'"
+        )
+
+        # Blob redundancy — keep until Qdrant/OV payloads migrate to the column
         persisted_url = (row.metadata_json or {}).get("source_url", "")
         assert persisted_url == self._SOURCE_URL, (
             f"PG metadata_json.source_url '{persisted_url}' does not match ingest URL '{self._SOURCE_URL}'"
         )
+
+    def test_pg_row_is_queryable_by_source_url_column(self):
+        """Phase P0.4: querying by source_url column must return the
+        same row as looking up by doc_id. This is the whole point of
+        promoting provenance out of JSONB — a B-tree index hit, not a
+        JSON-extract scan.
+        """
+        from app.naturalsentinel.memory.pg_models import PgDocument
+
+        row = self._db.exec(
+            select(PgDocument).where(PgDocument.source_url == self._SOURCE_URL)
+        ).first()
+        assert row is not None, (
+            f"No ns_documents row found for source_url={self._SOURCE_URL}"
+        )
+        assert row.doc_id == self._doc_id
 
     def test_recall_blocks_doc_id_links_to_pg_source_url(self):
         """recall_context blocks carry doc_id; that doc_id must resolve to the original source_url in PG."""

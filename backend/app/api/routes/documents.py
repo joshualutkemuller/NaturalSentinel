@@ -403,8 +403,11 @@ def _upsert_pg_document(*, session: Any, result: dict, user_id: str) -> None:
     now = datetime.now(UTC)
 
     persisted_meta = dict(result.get("metadata") or {})
-    if result.get("source_url"):
-        persisted_meta["source_url"] = result["source_url"]
+    effective_source_url = result.get("source_url", "") or ""
+    if effective_source_url:
+        persisted_meta["source_url"] = effective_source_url
+    effective_domain = persisted_meta.get("domain")
+    effective_jurisdiction = persisted_meta.get("jurisdiction", "federal")
 
     if existing:
         existing.title = result.get("title", existing.title)
@@ -412,6 +415,9 @@ def _upsert_pg_document(*, session: Any, result: dict, user_id: str) -> None:
         existing.section_count = result.get("section_count", existing.section_count)
         existing.status = result.get("status", existing.status)
         existing.viking_uri = result.get("uri", existing.viking_uri)
+        existing.source_url = effective_source_url or existing.source_url
+        existing.domain = effective_domain or existing.domain
+        existing.jurisdiction = effective_jurisdiction or existing.jurisdiction
         existing.metadata_json = persisted_meta
         existing.structure_json = result.get("structure_summary", {})
         existing.updated_at = now
@@ -426,6 +432,9 @@ def _upsert_pg_document(*, session: Any, result: dict, user_id: str) -> None:
             viking_uri=result.get("uri", ""),
             section_count=result.get("section_count", 0),
             status=result.get("status", "ready"),
+            source_url=effective_source_url,
+            domain=effective_domain,
+            jurisdiction=effective_jurisdiction,
             metadata_json=persisted_meta,
             structure_json=result.get("structure_summary", {}),
             created_at=now,

@@ -1,9 +1,17 @@
-"""Five-stage data ingestion pipeline for regulatory artifact processing.
+"""Five-stage prompt ETL for regulatory artifact processing.
 
 Treats prompt engineering as a structured ETL pipeline rather than monolithic
 single-shot prompting.  Each stage is independently testable, cacheable, and
 composable — analogous to a data ingestion architecture (classify → decompose
 → extract → validate → ground) rather than a single "mega-prompt".
+
+**Naming note:** This package was renamed from ``pipeline/`` to
+``prompt_pipeline/`` in Phase R to remove the name collision with
+``documents/pipeline.py`` (the document ingest pipeline). The two are
+completely unrelated — this one is a prompt construction helper, the
+other is the OpenViking+Qdrant+PG ingest orchestration. A deprecation
+shim at the old ``pipeline/`` path is NOT provided because zero
+external callers were found during the rename.
 
 Stages
 ------
@@ -15,7 +23,7 @@ Stages
 
 Usage
 -----
-    from app.naturalsentinel.pipeline import FilingPipeline
+    from app.naturalsentinel.prompt_pipeline import FilingPipeline
 
     pipeline = FilingPipeline(llm_provider, run_grounding=True)
     result = pipeline.run(filing_dict)
@@ -26,7 +34,7 @@ Usage
         print(g.field, "→", g.source_span)
 """
 
-from app.naturalsentinel.pipeline.stages import (
+from app.naturalsentinel.prompt_pipeline.stages import (
     EXTRACTION_SCHEMAS,
     ClassificationResult,
     ClassificationStage,

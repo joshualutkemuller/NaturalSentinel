@@ -606,7 +606,7 @@ class FilingPipeline:
 
     Usage::
 
-        from app.naturalsentinel.pipeline import FilingPipeline
+        from app.naturalsentinel.prompt_pipeline import FilingPipeline
         from app.naturalsentinel.providers.anthropic import AnthropicProvider
 
         llm = AnthropicProvider(model="claude-opus-4-6")

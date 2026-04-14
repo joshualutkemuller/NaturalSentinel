@@ -23,7 +23,15 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
+# OV write helpers live in openviking_service (extracted in Phase R).
+# Re-exported below so legacy imports like
+# ``from app.naturalsentinel.documents.pipeline import build_openviking_hierarchy``
+# keep working until the next major release.
+from app.naturalsentinel.documents.openviking_service import build_openviking_hierarchy
+
 logger = logging.getLogger(__name__)
+
+__all__ = ["build_openviking_hierarchy", "ingest_document"]
 
 
 # ---------------------------------------------------------------------------
@@ -149,98 +157,10 @@ def build_document_tree(
 
 
 # ---------------------------------------------------------------------------
-# Stage 4 + 5: OpenViking hierarchy builder + L0/L1/L2 writer
+# Stage 4 + 5: OpenViking hierarchy
 # ---------------------------------------------------------------------------
-
-
-def build_openviking_hierarchy(ov_client, tree) -> str:
-    """Create the OpenViking directory structure for a document.
-
-    Creates the root directory ``viking://documents/{doc_id}/`` and one
-    subdirectory per node. Writes L2 (full text) directly; L0/L1 summaries
-    are written from the pre-generated ``abstract`` / ``overview`` fields on
-    each DocumentNode.
-
-    Returns the root viking:// URI.
-    """
-    root_uri = f"viking://documents/{tree.doc_id}"
-
-    # Create root directory
-    _ov_mkdir(ov_client, root_uri)
-
-    # Write document-level L0/L1
-    doc_abstract = _first_sentence(tree.raw_text)
-    doc_overview = tree.raw_text[:2000].strip()
-    _ov_write_tiered(ov_client, root_uri, doc_abstract, doc_overview, None)
-
-    # Write meta.json
-    meta_content = (
-        f'{{"doc_id": "{tree.doc_id}", "title": "{_esc(tree.title)}", '
-        f'"doc_type": "{tree.doc_type}", "source_url": "{_esc(tree.source_url)}", '
-        f'"file_name": "{_esc(tree.file_name)}", "section_count": {tree.section_count()}}}'
-    )
-    _ov_write(ov_client, f"{root_uri}/meta.json", meta_content)
-
-    # Write all nodes recursively
-    for node in tree.root_nodes:
-        _write_node(ov_client, root_uri, node)
-
-    return root_uri
-
-
-def _write_node(ov_client, parent_uri: str, node) -> None:
-    """Recursively write a DocumentNode and its children to OpenViking."""
-    node_uri = f"{parent_uri}/{node.uri_path}"
-    _ov_mkdir(ov_client, node_uri)
-    _ov_write_tiered(ov_client, node_uri, node.abstract, node.overview, node.text)
-
-    # Write cross-references
-    if node.cross_references and hasattr(ov_client, "link"):
-        try:
-            ov_client.link(node_uri, [f"xref:{r}" for r in node.cross_references[:5]])
-        except Exception:
-            pass
-
-    for child in node.children:
-        _write_node(ov_client, node_uri, child)
-
-
-def _ov_mkdir(ov_client, uri: str) -> None:
-    try:
-        ov_client.mkdir(uri)
-    except Exception as exc:
-        logger.debug("mkdir %s: %s", uri, exc)
-
-
-def _ov_write(ov_client, uri: str, content: str) -> None:
-    try:
-        ov_client.write(uri, content)
-    except Exception as exc:
-        logger.debug("write %s: %s", uri, exc)
-
-
-def _ov_write_tiered(
-    ov_client, uri: str, abstract: str, overview: str, full_text: str | None
-) -> None:
-    """Write .abstract.md, .overview.md, and optionally the full text."""
-    if abstract:
-        _ov_write(ov_client, f"{uri}/.abstract.md", abstract)
-    if overview:
-        _ov_write(ov_client, f"{uri}/.overview.md", overview)
-    if full_text:
-        _ov_write(ov_client, f"{uri}/content.md", full_text)
-
-
-def _first_sentence(text: str) -> str:
-    for sep in (".", "!", "?"):
-        pos = text.find(sep)
-        if 10 < pos < 300:
-            return text[: pos + 1].strip()
-    return text[:300].strip()
-
-
-def _esc(s: str) -> str:
-    return s.replace('"', '\\"').replace("\n", " ")[:200]
+# See openviking_service.build_openviking_hierarchy — imported at the top
+# of this module and re-exported for legacy callers.
 
 
 # ---------------------------------------------------------------------------

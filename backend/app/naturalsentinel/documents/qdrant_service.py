@@ -39,6 +39,11 @@ def ensure_collections(client) -> None:
     """Create required collections if they don't already exist.
 
     Called once at server startup. Safe to call multiple times.
+
+    Top-level ``ImportError`` (qdrant-client not installed at all) is
+    tolerated — the rest of the app keeps working without vector
+    search. Any other import failure (renamed/removed classes) bubbles
+    up so we crash boot instead of silently losing functionality.
     """
     try:
         from qdrant_client.http.models import Distance, VectorParams
@@ -60,6 +65,8 @@ def ensure_collections(client) -> None:
             )
             logger.info("Created Qdrant collection: %s", collection_name)
         except Exception as exc:
+            # Transient network / RPC failures — log and keep going so
+            # the other collections still get created.
             logger.warning("Could not create collection %s: %s", collection_name, exc)
 
 
@@ -136,12 +143,16 @@ def upsert_document_sections(
         char_offset_end, page_number (optional), word_count
 
     Returns the number of points upserted.
+
+    Tolerates qdrant-client missing entirely (returns 0 with a warning)
+    but re-raises any structural import error from inside the package.
     """
     try:
-        from qdrant_client.http.models import PointStruct
+        import qdrant_client  # noqa: F401  — availability probe
     except ImportError:
         logger.warning("qdrant-client not installed; skipping section upsert")
         return 0
+    from qdrant_client.http.models import PointStruct
 
     points: list[Any] = []
 
@@ -258,11 +269,15 @@ def upsert_state_filing(client, filing_dict: dict) -> bool:
     filing_dict must contain: filing_id, title, state_code, sector,
     agency, jurisdiction, source_url, published_date, change_type,
     raw_text (for embedding).
+
+    Tolerates ``qdrant-client`` not being installed (returns False). A
+    missing ``PointStruct`` class is a structural error and bubbles up.
     """
     try:
-        from qdrant_client.http.models import PointStruct
+        import qdrant_client  # noqa: F401  — probe only
     except ImportError:
         return False
+    from qdrant_client.http.models import PointStruct
 
     filing_id = filing_dict.get("filing_id", "")
     text = filing_dict.get("raw_text") or filing_dict.get("title", "")
@@ -349,10 +364,13 @@ def search_documents(
         level, score, doc_id, doc_type, title, abstract, source, payload.
     """
     try:
-        import qdrant_client.http.models  # noqa: F401  — availability probe
+        import qdrant_client  # noqa: F401  — availability probe
     except ImportError:
         logger.warning("qdrant-client not installed; returning empty search results")
         return []
+    # Any import failure *inside* qdrant_client.http.models (a class
+    # rename, a broken install) is a structural error and must bubble.
+    import qdrant_client.http.models  # noqa: F401
 
     effective_collections = collections or [_NS_DOCUMENTS]
     query_vector = embed_text(query)
@@ -388,16 +406,24 @@ def search_documents(
 
 
 def _build_filter(doc_ids: list[str] | None, max_level: int) -> Any:
-    """Build a Qdrant filter for doc_ids and level constraints."""
-    try:
-        from qdrant_client.http.models import (
-            FieldCondition,
-            Filter,
-            MatchAny,
-            Range,
-        )
-    except ImportError:
-        return None
+    """Build a Qdrant filter for doc_ids and level constraints.
+
+    Raises:
+        ImportError: If qdrant_client is installed but a required class
+            has been renamed or removed. This used to be swallowed — the
+            ``Must`` class was dropped in qdrant-client ≥ 1.8 and the
+            silent ``except ImportError: return None`` shipped every
+            Qdrant search run *unfiltered* in production, breaking doc
+            isolation. Fail loud instead; the caller
+            (``search_documents``) already short-circuits when the
+            package itself is absent.
+    """
+    from qdrant_client.http.models import (
+        FieldCondition,
+        Filter,
+        MatchAny,
+        Range,
+    )
 
     conditions = []
 

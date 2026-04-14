@@ -9,6 +9,21 @@ as JSON files in this directory:
 Moved out of ``fetchers/sample_data.py`` in Phase R extras D so that
 regulatory / business ops can refresh fixtures without touching Python
 code.
+
+Fixture freshness policy (Phase P0.5)
+-------------------------------------
+The majority of entries use dates within the last 12 months so the
+``since_days=365`` fetcher tests exercise a realistic window.
+Downstream tests **do not** assert ``len(results) == len(fixtures)``
+— they use ``<=`` bounds so aging a fixture out of the window is not
+itself a failure.
+
+**Do NOT delete** ``SEC-2023-0726-CYB``. It is the real SEC
+Cybersecurity Risk Management Final Rule (Release Nos. 33-11216,
+34-97989) and is referenced as load-bearing historical content by
+the source-provenance test suite in
+``tests/naturalsentinel/documents/test_document_intelligence.py``.
+Fresh fixtures are added alongside it, not in place of it.
 """
 
 from __future__ import annotations

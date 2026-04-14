@@ -9,6 +9,34 @@ class TestSampleData:
     def test_sample_filings_not_empty(self):
         assert len(SAMPLE_FILINGS) >= 6
 
+    def test_sample_filings_have_recent_entries(self):
+        """Fixture-rot guard (Phase P0.5).
+
+        The ``since_days=365`` fetcher tests silently degrade if the
+        whole fixture set ages out of the window. This test fails
+        loudly if *no* sample entry falls within the last 400 days —
+        i.e. the fixtures are so stale that the filter tests no longer
+        exercise real code paths. The 400-day window gives some slack
+        around the 365-day tests without demanding weekly refreshes.
+
+        Historical anchors like ``SEC-2023-0726-CYB`` (the real SEC
+        cybersecurity rule) are kept intentionally; see
+        ``data/samples/__init__.py`` for the fixture policy.
+        """
+        from datetime import UTC, datetime, timedelta
+
+        cutoff = datetime.now(UTC).date() - timedelta(days=400)
+        recent = [
+            f
+            for f in SAMPLE_FILINGS
+            if datetime.strptime(f["published_date"], "%Y-%m-%d").date() >= cutoff
+        ]
+        assert recent, (
+            "Every SAMPLE_FILINGS entry is older than 400 days; the "
+            "since_days=365 fetcher tests are not exercising real "
+            "filter code paths. Refresh data/samples/filings.json."
+        )
+
     def test_all_filings_have_required_fields(self):
         required = {
             "id",

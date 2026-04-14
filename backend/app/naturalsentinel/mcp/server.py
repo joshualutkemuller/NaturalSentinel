@@ -1032,6 +1032,7 @@ class StandaloneServer:
         self.runtime = _get_runtime()
         self.tools = {
             "scan_regulatory_filings": self._scan,
+            "analyze_filing_text": self._analyze_filing_text,
             "recall_memory": self._recall,
             "provide_feedback": self._feedback,
             "get_entity_relations": self._relations,
@@ -1094,6 +1095,42 @@ class StandaloneServer:
             "filings_analyzed": len(results),
             "results": results,
         }
+
+    def _analyze_filing_text(self, args: dict) -> dict:
+        import hashlib as _hashlib
+
+        fid = f"CUSTOM-{_hashlib.sha256(args['text'][:100].encode()).hexdigest()[:8]}"
+        filing = RegulatoryFiling(
+            id=fid,
+            title=args["title"],
+            domain=RegulatoryDomain(args["domain"]),
+            source_url="user-provided",
+            published_date=datetime.now(UTC).strftime("%Y-%m-%d"),
+            raw_text=args["text"],
+        )
+        filing_data = json.loads(json.dumps(filing.__dict__, default=enum_serializer))
+        context_result = self.runtime.execute_skill(
+            "build_context",
+            {"domain": filing.domain.value, "filing_text": filing.raw_text},
+        )
+        result = self.runtime.execute_skill(
+            "analyze_filing",
+            {
+                "filing": filing_data,
+                "memory_context": context_result.data if context_result.success else "",
+            },
+        )
+        if not result.success:
+            raise RuntimeError(result.error)
+        self.runtime.execute_skill(
+            "store_memory",
+            {"filing_id": fid, "filing": filing_data, "impact": result.data},
+        )
+        return json.loads(
+            json.dumps(
+                {"filing": filing_data, "impact": result.data}, default=enum_serializer
+            )
+        )
 
     def _recall(self, args: dict) -> list:
         result = self.runtime.execute_skill("recall_memory", args)

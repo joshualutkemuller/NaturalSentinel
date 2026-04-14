@@ -4,7 +4,16 @@ from typing import Any
 from sqlmodel import Session, select
 
 from app.core.security import get_password_hash, verify_password
-from app.models import Item, ItemCreate, User, UserCreate, UserUpdate
+from app.models import (
+    Item,
+    ItemCreate,
+    SectorWatch,
+    SectorWatchCreate,
+    SectorWatchUpdate,
+    User,
+    UserCreate,
+    UserUpdate,
+)
 
 
 def create_user(*, session: Session, user_create: UserCreate) -> User:
@@ -66,3 +75,50 @@ def create_item(*, session: Session, item_in: ItemCreate, owner_id: uuid.UUID) -
     session.commit()
     session.refresh(db_item)
     return db_item
+
+
+# ---------------------------------------------------------------------------
+# SectorWatch CRUD
+# ---------------------------------------------------------------------------
+
+
+def create_sector_watch(
+    *, session: Session, watch_in: SectorWatchCreate, owner_id: uuid.UUID
+) -> SectorWatch:
+    db_obj = SectorWatch.model_validate(watch_in, update={"owner_id": owner_id})
+    session.add(db_obj)
+    session.commit()
+    session.refresh(db_obj)
+    return db_obj
+
+
+def get_sector_watches_by_owner(
+    *, session: Session, owner_id: uuid.UUID
+) -> list[SectorWatch]:
+    statement = select(SectorWatch).where(SectorWatch.owner_id == owner_id)
+    return list(session.exec(statement).all())
+
+
+def get_sector_watch(
+    *, session: Session, watch_id: uuid.UUID, owner_id: uuid.UUID
+) -> SectorWatch | None:
+    statement = select(SectorWatch).where(
+        SectorWatch.id == watch_id, SectorWatch.owner_id == owner_id
+    )
+    return session.exec(statement).first()
+
+
+def update_sector_watch(
+    *, session: Session, db_obj: SectorWatch, update_in: SectorWatchUpdate
+) -> SectorWatch:
+    update_data = update_in.model_dump(exclude_unset=True)
+    db_obj.sqlmodel_update(update_data)
+    session.add(db_obj)
+    session.commit()
+    session.refresh(db_obj)
+    return db_obj
+
+
+def delete_sector_watch(*, session: Session, db_obj: SectorWatch) -> None:
+    session.delete(db_obj)
+    session.commit()

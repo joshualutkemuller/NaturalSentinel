@@ -338,6 +338,66 @@ SAMPLE_FILINGS: list[dict] = [
             "and supply chains for defense and consumer electronics sectors."
         ),
     },
+    # ── Real regulatory document (source: federalregister.gov) ──────────────
+    {
+        # Release No. 33-11216 — adopted July 26, 2023; effective September 5, 2023.
+        # Source: https://www.federalregister.gov/documents/2023/08/04/2023-15927/
+        #         cybersecurity-risk-management-strategy-governance-and-incident-disclosure
+        "id": "SEC-2023-0726-CYB",
+        "title": (
+            "Cybersecurity Risk Management, Strategy, Governance, and Incident Disclosure"
+            " — Final Rule (Release Nos. 33-11216, 34-97989)"
+        ),
+        "domain": "sec",
+        "source_url": (
+            "https://www.federalregister.gov/documents/2023/08/04/2023-15927/"
+            "cybersecurity-risk-management-strategy-governance-and-incident-disclosure"
+        ),
+        "published_date": "2023-08-04",
+        "change_type": "final_rule",
+        "raw_text": (
+            "The Securities and Exchange Commission is adopting rules to enhance and "
+            "standardize disclosures regarding cybersecurity risk management, strategy, "
+            "governance, and incidents by public companies that are subject to the reporting "
+            "requirements of the Securities Exchange Act of 1934. The Commission is adopting "
+            "amendments to Form 8-K to require registrants to disclose material cybersecurity "
+            "incidents within four business days of determining that a cybersecurity incident "
+            "is material. The Commission is also adopting amendments to Regulation S-K to "
+            "require registrants to provide periodic disclosures about their cybersecurity risk "
+            "management, strategy, and governance in annual reports on Form 10-K. "
+            "ITEM 1.05 OF FORM 8-K — MATERIAL CYBERSECURITY INCIDENTS. "
+            "A registrant shall disclose any cybersecurity incident that the registrant "
+            "determines to be material and shall describe the material aspects of the nature, "
+            "scope, and timing of the incident, and the material impact or reasonably likely "
+            "material impact on the registrant. Such disclosure shall be made within four "
+            "business days after the registrant determines that a cybersecurity incident it "
+            "has experienced is material. "
+            "§ 229.106 CYBERSECURITY RISK MANAGEMENT, STRATEGY, GOVERNANCE, AND INCIDENTS. "
+            "(a) Cybersecurity risk management. Describe the registrant's processes, if any, "
+            "for assessing, identifying, and managing material risks from cybersecurity threats "
+            "in sufficient detail for a reasonable investor to understand those processes. "
+            "(b) Management's role. Describe management's role in assessing and managing the "
+            "registrant's material risks from cybersecurity threats. "
+            "(c) Board oversight. Describe the board of directors' oversight of risks from "
+            "cybersecurity threats. If any board committee or subcommittee is responsible for "
+            "oversight of cybersecurity risks, identify any such committee or subcommittee and "
+            "describe the processes by which the board or such committee is informed about such "
+            "risks. "
+            "COMPLIANCE DATES. Large accelerated filers: annual reports for fiscal years ending "
+            "on or after December 15, 2023. All other registrants: annual reports for fiscal "
+            "years ending on or after December 15, 2024. Form 8-K and 6-K disclosures: "
+            "December 18, 2023 for large accelerated filers; June 15, 2024 for all others. "
+            "Smaller reporting companies: Form 8-K disclosure obligations begin June 15, 2024. "
+            "DEFINITIONS. The term 'cybersecurity incident' means an unauthorized occurrence, "
+            "or a series of related unauthorized occurrences, on or conducted through a "
+            "registrant's information systems that jeopardizes the confidentiality, integrity, "
+            "or availability of a registrant's information systems or any information residing "
+            "therein. The term 'cybersecurity threat' means any potential unauthorized "
+            "occurrence on or conducted through a registrant's information systems that may "
+            "result in adverse effects on the confidentiality, integrity, or availability of "
+            "a registrant's information systems or any information residing therein."
+        ),
+    },
 ]
 
 MOCK_ANALYSES: dict[str, dict] = {
@@ -816,5 +876,48 @@ MOCK_ANALYSES: dict[str, dict] = {
         ],
         "risk_summary": "Immediate 30-day action window before April 15 effective date. Semiconductor fabrication costs could increase 15-25%.",
         "confidence": 0.94,
+    },
+    # Real document: SEC Release 33-11216 (July 2023)
+    "SEC-2023-0726-CYB": {
+        "summary": (
+            "SEC final rule mandates 4-business-day Form 8-K disclosure of material "
+            "cybersecurity incidents and annual 10-K disclosures of cybersecurity risk "
+            "management processes, board oversight, and management's role. Large accelerated "
+            "filers effective December 15, 2023; all others June 15, 2024."
+        ),
+        "change_type": "final_rule",
+        "severity": "high",
+        "affected_business_lines": [
+            "Information Security / CISO",
+            "Legal / General Counsel",
+            "Investor Relations",
+            "Risk Management",
+            "Board / Governance",
+            "Public Disclosure / SEC Reporting",
+        ],
+        "affected_regulations": [
+            "Securities Exchange Act of 1934",
+            "Regulation S-K § 229.106",
+            "Form 8-K Item 1.05",
+            "Form 10-K Item 1C",
+            "Form 6-K / Form 20-F (foreign private issuers)",
+            "SEC Release No. 33-11216 / 34-97989",
+        ],
+        "compliance_deadline": "2023-12-15",
+        "action_items": [
+            "[CISO] Establish internal escalation and materiality-determination protocol with 4-business-day Form 8-K trigger",
+            "[Legal] Draft template 8-K Item 1.05 disclosure language and review committee charter",
+            "[IR] Coordinate with Legal on timing and content of cybersecurity incident public disclosures",
+            "[Risk] Develop board-level cybersecurity risk dashboard and briefing cadence (per Item 106(c))",
+            "[SEC Reporting] Add Item 1C cybersecurity risk management section to 10-K template",
+            "[Governance] Update board committee charters to formalize cybersecurity oversight responsibility",
+            "[IT] Ensure incident detection and classification systems can support 4-day disclosure window",
+        ],
+        "risk_summary": (
+            "Non-compliance exposes registrants to SEC enforcement, comment letters, and "
+            "private litigation. The 4-business-day clock starts at materiality determination, "
+            "not incident discovery — internal triage processes are the critical path."
+        ),
+        "confidence": 0.97,
     },
 }

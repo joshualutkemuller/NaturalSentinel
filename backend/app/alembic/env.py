@@ -20,6 +20,7 @@ fileConfig(config.config_file_name)
 # target_metadata = None
 
 from app.models import SQLModel  # noqa
+from app.models import SectorWatch  # noqa: F401 — registers SectorWatch in SQLModel.metadata
 from app.core.config import settings  # noqa
 import app.naturalsentinel.memory.pg_models  # noqa: F401 — registers NS tables in SQLModel.metadata
 

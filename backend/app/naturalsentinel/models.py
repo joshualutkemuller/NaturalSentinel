@@ -1,5 +1,6 @@
 """Domain types shared across the entire naturalsentinel package."""
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Annotated
@@ -27,6 +28,76 @@ class RegulatoryDomain(Enum):
     CFTC = "cftc"  # Commodity Futures Trading Commission
     FDIC = "fdic"  # Federal Deposit Insurance Corporation
     BASEL = "basel"  # Basel Committee on Banking Supervision
+
+
+class Jurisdiction(Enum):
+    FEDERAL = "federal"
+    STATE = "state"
+
+
+class StateCode(Enum):
+    AL = "AL"
+    AK = "AK"
+    AZ = "AZ"
+    AR = "AR"
+    CA = "CA"
+    CO = "CO"
+    CT = "CT"
+    DE = "DE"
+    FL = "FL"
+    GA = "GA"
+    HI = "HI"
+    ID = "ID"
+    IL = "IL"
+    IN = "IN"
+    IA = "IA"
+    KS = "KS"
+    KY = "KY"
+    LA = "LA"
+    ME = "ME"
+    MD = "MD"
+    MA = "MA"
+    MI = "MI"
+    MN = "MN"
+    MS = "MS"
+    MO = "MO"
+    MT = "MT"
+    NE = "NE"
+    NV = "NV"
+    NH = "NH"
+    NJ = "NJ"
+    NM = "NM"
+    NY = "NY"
+    NC = "NC"
+    ND = "ND"
+    OH = "OH"
+    OK = "OK"
+    OR = "OR"
+    PA = "PA"
+    RI = "RI"
+    SC = "SC"
+    SD = "SD"
+    TN = "TN"
+    TX = "TX"
+    UT = "UT"
+    VT = "VT"
+    VA = "VA"
+    WA = "WA"
+    WV = "WV"
+    WI = "WI"
+    WY = "WY"
+    DC = "DC"
+
+
+class IndustrySector(Enum):
+    FINANCIAL_SERVICES = "financial_services"
+    HEALTHCARE = "healthcare"
+    INSURANCE = "insurance"
+    ENERGY_UTILITIES = "energy_utilities"
+    REAL_ESTATE = "real_estate"
+    TECHNOLOGY = "technology"
+    MANUFACTURING = "manufacturing"
+    TRANSPORTATION = "transportation"
 
 
 class Severity(Enum):
@@ -72,6 +143,10 @@ class RegulatoryFiling(BaseModel):
     change_type: ChangeType = ChangeType.NOTICE
     summary: str = ""
     fetched_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    # Jurisdiction fields — populated for state filings, defaults for federal
+    jurisdiction: Jurisdiction = Jurisdiction.FEDERAL
+    state_code: StateCode | None = None
+    industry_sectors: list[str] = Field(default_factory=list)
 
 
 class ImpactAssessment(BaseModel):
@@ -153,3 +228,22 @@ class MonitorResult(BaseModel):
     evidence_ledger: list[EvidenceLedgerEntry] = Field(default_factory=list)
     belief_states: list[BeliefState] = Field(default_factory=list)
     raw_analysis: str = ""
+
+
+@dataclass
+class DocumentChunk:
+    """A position-tagged verbatim text chunk from an ingested source document.
+
+    Always represents L2 content (original source text, never summarised).
+    L0/L1 tiers are generated *from* chunks by the VLM pipeline after ingestion.
+    """
+
+    chunk_id: str  # "{doc_id}:{section_path}:{chunk_index}"
+    doc_id: str
+    section_path: str  # e.g. "Section 3 > Subsection 2(b)"
+    text: str  # verbatim original text
+    line_start: int  # 1-indexed line number in the original source file
+    line_end: int
+    char_offset_start: int  # byte offset from start of source file
+    char_offset_end: int
+    page_number: int | None = None  # PDF page number; None for HTML/text sources

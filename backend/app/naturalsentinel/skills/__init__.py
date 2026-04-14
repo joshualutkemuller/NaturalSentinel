@@ -82,6 +82,10 @@ from app.naturalsentinel.skills.dedup import DetectDuplicatesSkill
 from app.naturalsentinel.skills.export_report import ExportReportSkill
 from app.naturalsentinel.skills.feedback import RecordFeedbackSkill
 from app.naturalsentinel.skills.fetch import FetchFilingsSkill
+from app.naturalsentinel.skills.follow_process import FollowProcessSkill
+
+# Document Intelligence skills
+from app.naturalsentinel.skills.ingest_document import IngestDocumentSkill
 from app.naturalsentinel.skills.leveraged_lending import LeveragedLendingSkill
 from app.naturalsentinel.skills.liquidity_ratio import LiquidityRatioSkill
 from app.naturalsentinel.skills.memory_recall import RecallMemorySkill
@@ -94,6 +98,7 @@ from app.naturalsentinel.skills.optimization_constraint import (
 
 # Platform / digital regulatory skills
 from app.naturalsentinel.skills.platform_antitrust import PlatformAntitrustSkill
+from app.naturalsentinel.skills.recall_context import RecallContextSkill
 from app.naturalsentinel.skills.regime_detection import RegimeDetectionSkill
 from app.naturalsentinel.skills.regulatory_reporting import RegulatoryReportingSkill
 from app.naturalsentinel.skills.run_evaluation import RunEvaluationSkill
@@ -147,6 +152,10 @@ ALL_SKILLS = [
     DataResidencySkill(),
     TechMergerReviewSkill(),
     AlgorithmicAccountabilitySkill(),
+    # Document Intelligence
+    IngestDocumentSkill(),
+    RecallContextSkill(),
+    FollowProcessSkill(),
 ]
 
 __all__ = [

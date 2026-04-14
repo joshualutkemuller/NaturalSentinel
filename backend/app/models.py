@@ -1,6 +1,8 @@
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
+import sqlalchemy as sa
 from pydantic import EmailStr
 from sqlalchemy import DateTime
 from sqlmodel import Field, Relationship, SQLModel
@@ -127,3 +129,58 @@ class TokenPayload(SQLModel):
 class NewPassword(SQLModel):
     token: str
     new_password: str = Field(min_length=8, max_length=128)
+
+
+# ---------------------------------------------------------------------------
+# SectorWatch — customer regulatory monitoring preferences
+# ---------------------------------------------------------------------------
+
+
+class SectorWatchBase(SQLModel):
+    industry_sectors: Any = Field(
+        default=[],
+        sa_column=sa.Column(sa.JSON, nullable=False),
+    )
+    state_codes: Any = Field(
+        default=[],
+        sa_column=sa.Column(sa.JSON, nullable=False),
+    )
+    active: bool = True
+
+
+class SectorWatchCreate(SectorWatchBase):
+    pass
+
+
+class SectorWatchUpdate(SQLModel):
+    industry_sectors: list[str] | None = None
+    state_codes: list[str] | None = None
+    active: bool | None = None
+
+
+class SectorWatch(SectorWatchBase, table=True):
+    __tablename__ = "sector_watch"
+
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
+    owner_id: uuid.UUID = Field(
+        foreign_key="user.id", nullable=False, ondelete="CASCADE", index=True
+    )
+    created_at: datetime = Field(
+        default_factory=get_datetime_utc,
+        sa_type=DateTime(timezone=True),  # type: ignore
+    )
+    owner: "User" = Relationship()
+
+
+class SectorWatchPublic(SQLModel):
+    id: uuid.UUID
+    owner_id: uuid.UUID
+    industry_sectors: list[str]
+    state_codes: list[str]
+    active: bool
+    created_at: datetime
+
+
+class SectorWatchesPublic(SQLModel):
+    data: list[SectorWatchPublic]
+    count: int

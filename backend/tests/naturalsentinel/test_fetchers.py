@@ -35,8 +35,13 @@ class TestSampleData:
 
 class TestFetchFilings:
     def test_fetch_all(self):
+        # since_days=365 filters out any sample fixtures older than the window.
+        # Assert: returned subset is non-empty and a subset of SAMPLE_FILINGS.
         results = fetch_filings(since_days=365)
-        assert len(results) == len(SAMPLE_FILINGS)
+        assert len(results) > 0
+        assert len(results) <= len(SAMPLE_FILINGS)
+        sample_ids = {f["id"] for f in SAMPLE_FILINGS}
+        assert {r.id for r in results}.issubset(sample_ids)
 
     def test_fetch_by_domain(self):
         sec_only = fetch_filings(domains=[RegulatoryDomain.SEC], since_days=365)

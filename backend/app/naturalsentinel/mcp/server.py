@@ -35,7 +35,7 @@ import json
 import logging
 import os
 import sys
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -282,7 +282,10 @@ def create_mcp_server() -> "Server":
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "Natural-language search query"},
+                        "query": {
+                            "type": "string",
+                            "description": "Natural-language search query",
+                        },
                         "target_uri": {
                             "type": "string",
                             "description": "Restrict search to this viking:// URI subtree (optional)",
@@ -303,7 +306,10 @@ def create_mcp_server() -> "Server":
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "uri": {"type": "string", "description": "viking:// URI of the resource"},
+                        "uri": {
+                            "type": "string",
+                            "description": "viking:// URI of the resource",
+                        },
                     },
                     "required": ["uri"],
                 },
@@ -328,7 +334,10 @@ def create_mcp_server() -> "Server":
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "path": {"type": "string", "description": "URL or local file path to ingest"},
+                        "path": {
+                            "type": "string",
+                            "description": "URL or local file path to ingest",
+                        },
                         "wait": {
                             "type": "boolean",
                             "description": "Block until processing is complete (default: true)",
@@ -344,7 +353,10 @@ def create_mcp_server() -> "Server":
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "uri": {"type": "string", "description": "viking:// URI subtree to search"},
+                        "uri": {
+                            "type": "string",
+                            "description": "viking:// URI subtree to search",
+                        },
                         "pattern": {"type": "string", "description": "Regex pattern"},
                         "case_insensitive": {"type": "boolean", "default": False},
                     },
@@ -357,8 +369,15 @@ def create_mcp_server() -> "Server":
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "pattern": {"type": "string", "description": "Glob pattern e.g. **/*.md"},
-                        "uri": {"type": "string", "description": "Root URI (default: viking://)", "default": "viking://"},
+                        "pattern": {
+                            "type": "string",
+                            "description": "Glob pattern e.g. **/*.md",
+                        },
+                        "uri": {
+                            "type": "string",
+                            "description": "Root URI (default: viking://)",
+                            "default": "viking://",
+                        },
                     },
                     "required": ["pattern"],
                 },
@@ -369,9 +388,100 @@ def create_mcp_server() -> "Server":
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "session_id": {"type": "string", "description": "OpenViking session ID to commit"},
+                        "session_id": {
+                            "type": "string",
+                            "description": "OpenViking session ID to commit",
+                        },
                     },
                     "required": ["session_id"],
+                },
+            ),
+            # ── State-level monitoring tools ────────────────────────────────
+            Tool(
+                name="scan_state_filings",
+                description=(
+                    "Scan US state-level regulatory filings filtered by industry sector "
+                    "and/or state. Sources: Open States (legislative bills), state agency "
+                    "RSS feeds, NASAA (securities), NAIC (insurance), CSBS (banking). "
+                    "Returns filings grouped by state → sector."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "state_codes": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": (
+                                'Two-letter state codes to include, e.g. ["CA", "NY"]. '
+                                'Pass ["all"] or omit to scan all registered states.'
+                            ),
+                        },
+                        "sectors": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "enum": [
+                                    "financial_services",
+                                    "healthcare",
+                                    "insurance",
+                                    "energy_utilities",
+                                    "real_estate",
+                                    "technology",
+                                    "manufacturing",
+                                    "transportation",
+                                ],
+                            },
+                            "description": "Industry sectors to filter by. Omit for all sectors.",
+                        },
+                        "since_days": {
+                            "type": "integer",
+                            "description": "Look-back window in days (default: 7)",
+                            "default": 7,
+                        },
+                        "include_federal": {
+                            "type": "boolean",
+                            "description": "Also include matching federal filings (default: false)",
+                            "default": False,
+                        },
+                    },
+                },
+            ),
+            Tool(
+                name="get_sector_regulatory_calendar",
+                description=(
+                    "Return upcoming compliance deadlines and effective dates extracted "
+                    "from ingested state (and optionally federal) filings for a given "
+                    "sector. Queries stored filings in memory sorted by date."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "sector": {
+                            "type": "string",
+                            "enum": [
+                                "financial_services",
+                                "healthcare",
+                                "insurance",
+                                "energy_utilities",
+                                "real_estate",
+                                "technology",
+                                "manufacturing",
+                                "transportation",
+                            ],
+                            "description": "Industry sector to query",
+                        },
+                        "state_codes": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Limit to these states. Omit for all.",
+                        },
+                        "months_ahead": {
+                            "type": "integer",
+                            "description": "How many months forward to look (default: 3)",
+                            "default": 3,
+                        },
+                    },
+                    "required": ["sector"],
                 },
             ),
         ]
@@ -518,6 +628,141 @@ def create_mcp_server() -> "Server":
         elif name == "openviking_memory_commit":
             result = ov_bridge.ov_commit_session(args["session_id"])
             return json.dumps(result, indent=2, default=str)
+
+        elif name == "scan_state_filings":
+            from app.naturalsentinel.fetchers.base import fetch_filings
+            from app.naturalsentinel.models import (
+                IndustrySector,
+                Jurisdiction,
+                StateCode,
+            )
+
+            raw_states = args.get("state_codes") or []
+            if raw_states == ["all"]:
+                raw_states = []
+            state_codes = []
+            for sc in raw_states:
+                try:
+                    state_codes.append(StateCode(sc))
+                except ValueError:
+                    pass
+
+            raw_sectors = args.get("sectors") or []
+            sectors = []
+            for s in raw_sectors:
+                try:
+                    sectors.append(IndustrySector(s))
+                except ValueError:
+                    pass
+
+            since_days = int(args.get("since_days", 7))
+            include_federal = bool(args.get("include_federal", False))
+            jurisdiction = None if include_federal else Jurisdiction.STATE
+
+            filings = fetch_filings(
+                sectors=sectors or None,
+                state_codes=state_codes or None,
+                jurisdiction=jurisdiction,
+                since_days=since_days,
+                live=True,
+                fetch_full_text=False,
+            )
+
+            # Group by state → sector
+            grouped: dict[str, dict[str, list[dict]]] = {}
+            for f in filings:
+                key = f.state_code.value if f.state_code else f.jurisdiction.value
+                for sector in f.industry_sectors or [f.domain.value]:
+                    grouped.setdefault(key, {}).setdefault(sector, []).append(
+                        {
+                            "id": f.id,
+                            "title": f.title,
+                            "domain": f.domain.value,
+                            "source_url": f.source_url,
+                            "published_date": f.published_date,
+                            "change_type": f.change_type.value,
+                            "jurisdiction": f.jurisdiction.value,
+                        }
+                    )
+
+            return json.dumps(
+                {
+                    "total": len(filings),
+                    "since_days": since_days,
+                    "grouped": grouped,
+                },
+                indent=2,
+                default=str,
+            )
+
+        elif name == "get_sector_regulatory_calendar":
+            sector = args.get("sector", "")
+            state_filter = set(args.get("state_codes") or [])
+            months_ahead = int(args.get("months_ahead", 3))
+
+            # Fetch recent + upcoming filings from live sources for the sector
+            from app.naturalsentinel.fetchers.base import fetch_filings
+            from app.naturalsentinel.models import (
+                IndustrySector,
+                Jurisdiction,
+                StateCode,
+            )
+
+            try:
+                sector_enum = IndustrySector(sector)
+            except ValueError:
+                return json.dumps({"error": f"Unknown sector: {sector}"})
+
+            state_codes = []
+            for sc in state_filter:
+                try:
+                    state_codes.append(StateCode(sc))
+                except ValueError:
+                    pass
+
+            # Use a wider look-back to capture recently published effective dates
+            since_days = months_ahead * 31
+            filings = fetch_filings(
+                sectors=[sector_enum],
+                state_codes=state_codes or None,
+                jurisdiction=Jurisdiction.STATE,
+                since_days=since_days,
+                live=True,
+                fetch_full_text=False,
+            )
+
+            horizon = datetime.now(UTC) + timedelta(days=months_ahead * 31)
+            today_str = datetime.now(UTC).strftime("%Y-%m-%d")
+            horizon_str = horizon.strftime("%Y-%m-%d")
+
+            # Extract filings with known dates and sort chronologically
+            calendar_entries = []
+            for f in filings:
+                if f.published_date >= today_str:
+                    calendar_entries.append(
+                        {
+                            "date": f.published_date,
+                            "title": f.title,
+                            "state": f.state_code.value if f.state_code else "federal",
+                            "change_type": f.change_type.value,
+                            "source_url": f.source_url,
+                            "sectors": f.industry_sectors,
+                        }
+                    )
+
+            calendar_entries.sort(key=lambda x: x["date"])
+
+            return json.dumps(
+                {
+                    "sector": sector,
+                    "state_filter": list(state_filter) or "all",
+                    "horizon": horizon_str,
+                    "total": len(calendar_entries),
+                    "calendar": calendar_entries,
+                },
+                indent=2,
+                default=str,
+            )
 
         else:
             return json.dumps({"error": f"Unknown tool: {name}"})
@@ -799,6 +1044,9 @@ class StandaloneServer:
             "openviking_grep": self._ov_grep,
             "openviking_glob": self._ov_glob,
             "openviking_memory_commit": self._ov_memory_commit,
+            # State-level monitoring
+            "scan_state_filings": self._scan_state_filings,
+            "get_sector_regulatory_calendar": self._get_sector_regulatory_calendar,
         }
 
     def handle_request(self, request: dict) -> dict:
@@ -891,10 +1139,94 @@ class StandaloneServer:
         )
 
     def _ov_glob(self, args: dict) -> dict:
-        return ov_bridge.ov_glob(pattern=args["pattern"], uri=args.get("uri", "viking://"))
+        return ov_bridge.ov_glob(
+            pattern=args["pattern"], uri=args.get("uri", "viking://")
+        )
 
     def _ov_memory_commit(self, args: dict) -> dict:
         return ov_bridge.ov_commit_session(args["session_id"])
+
+    def _scan_state_filings(self, args: dict) -> dict:
+        from app.naturalsentinel.fetchers.base import fetch_filings
+        from app.naturalsentinel.models import IndustrySector, Jurisdiction, StateCode
+
+        raw_states = args.get("state_codes") or []
+        if raw_states == ["all"]:
+            raw_states = []
+        state_codes = [
+            StateCode(sc) for sc in raw_states if sc in [e.value for e in StateCode]
+        ]
+        raw_sectors = args.get("sectors") or []
+        sectors = [
+            IndustrySector(s)
+            for s in raw_sectors
+            if s in [e.value for e in IndustrySector]
+        ]
+        since_days = int(args.get("since_days", 7))
+        include_federal = bool(args.get("include_federal", False))
+        jurisdiction = None if include_federal else Jurisdiction.STATE
+
+        filings = fetch_filings(
+            sectors=sectors or None,
+            state_codes=state_codes or None,
+            jurisdiction=jurisdiction,
+            since_days=since_days,
+            live=True,
+            fetch_full_text=False,
+        )
+        grouped: dict[str, dict[str, list]] = {}
+        for f in filings:
+            key = f.state_code.value if f.state_code else f.jurisdiction.value
+            for sector in f.industry_sectors or [f.domain.value]:
+                grouped.setdefault(key, {}).setdefault(sector, []).append(
+                    {
+                        "id": f.id,
+                        "title": f.title,
+                        "published_date": f.published_date,
+                        "change_type": f.change_type.value,
+                    }
+                )
+        return {"total": len(filings), "grouped": grouped}
+
+    def _get_sector_regulatory_calendar(self, args: dict) -> dict:
+
+        from app.naturalsentinel.fetchers.base import fetch_filings
+        from app.naturalsentinel.models import IndustrySector, Jurisdiction, StateCode
+
+        sector = args.get("sector", "")
+        try:
+            sector_enum = IndustrySector(sector)
+        except ValueError:
+            return {"error": f"Unknown sector: {sector}"}
+        state_filter = args.get("state_codes") or []
+        state_codes = [
+            StateCode(sc) for sc in state_filter if sc in [e.value for e in StateCode]
+        ]
+        months_ahead = int(args.get("months_ahead", 3))
+        filings = fetch_filings(
+            sectors=[sector_enum],
+            state_codes=state_codes or None,
+            jurisdiction=Jurisdiction.STATE,
+            since_days=months_ahead * 31,
+            live=True,
+            fetch_full_text=False,
+        )
+        today_str = datetime.now(UTC).strftime("%Y-%m-%d")
+        entries = sorted(
+            [
+                {
+                    "date": f.published_date,
+                    "title": f.title,
+                    "state": f.state_code.value if f.state_code else "federal",
+                    "change_type": f.change_type.value,
+                    "source_url": f.source_url,
+                }
+                for f in filings
+                if f.published_date >= today_str
+            ],
+            key=lambda x: x["date"],
+        )
+        return {"sector": sector, "total": len(entries), "calendar": entries}
 
     def _read_resource(self, uri: str) -> Any:
         if uri == "naturalsentinel://memory/stats":

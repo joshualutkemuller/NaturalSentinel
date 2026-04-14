@@ -663,7 +663,8 @@ class TestFetchFilingsLive(unittest.TestCase):
 
     def test_sample_mode_still_works(self):
         """Default mode (live=False) must still work exactly as before."""
-        results = fetch_filings(live=False)
+        # Use a wide window so sample fixtures that age past the default 7-day cutoff are still returned.
+        results = fetch_filings(live=False, since_days=365)
         self.assertIsInstance(results, list)
         self.assertGreater(len(results), 0)
         for f in results:

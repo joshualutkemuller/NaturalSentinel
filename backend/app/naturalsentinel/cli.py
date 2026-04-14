@@ -273,6 +273,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main():
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(message)s")
+
+    # Fail fast if mapping dicts have typos or missing enum entries
+    from app.naturalsentinel.fetchers.config_validators import validate_mappings
+
+    validate_mappings()
+
     parser = build_parser()
     args = parser.parse_args()
 

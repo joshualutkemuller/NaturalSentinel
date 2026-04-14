@@ -16,6 +16,13 @@ def custom_generate_unique_id(route: APIRoute) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    # Fail fast if sector/domain/state mappings are inconsistent with the
+    # source enums. A typo in any mapping silently filters content out of
+    # scans; we'd rather crash boot than ship broken filtering.
+    from app.naturalsentinel.fetchers.config_validators import validate_mappings
+
+    validate_mappings()
+
     # Initialize MCP server in-process on startup
     try:
         from app.naturalsentinel.mcp.server import create_mcp_app

@@ -2,112 +2,114 @@
 Built-in skill library for NaturalSentinel.
 
 Each skill is a self-contained capability with declared permissions,
-input/output schemas, and dependency graphs.
+input/output schemas, and dependency graphs. Phase R grouped the 40
+skill modules into 7 topical subpackages for navigability:
 
-Core Skills:
-    fetch_filings       — Retrieve regulatory filings from sources
-    analyze_filing      — LLM-powered impact analysis of a single filing
-    recall_memory       — Semantic search across persistent memory
-    store_memory        — Persist analysis results to memory
-    record_feedback     — Record human corrections as precedent memory
-    build_context       — Assemble memory context for LLM prompts
-    detect_duplicates   — Check filings against seen-state
-    generate_briefing   — Produce executive-level regulatory briefing
-    scan_cycle          — Full orchestrated scan (composes other skills)
-    track_belief        — Prior/posterior belief tracking per topic (Priority 3)
-    run_evaluation      — Quantitative extraction accuracy, calibration, and drift
+    core/             — orchestration / framework (scan_cycle, fetch,
+                        dedup, analyze, briefing, alert, context,
+                        feedback, memory_store, memory_recall)
+    documents/        — document intelligence (ingest_document,
+                        recall_context, follow_process)
+    financial/        — financial-services domain (leveraged_lending,
+                        liquidity_ratio, capital_impact, stress_testing,
+                        counterparty_risk, securities_financing,
+                        merger_review, agency_mortgage,
+                        regulatory_reporting)
+    governance/       — AI / model risk (ai_regulatory,
+                        algorithmic_accountability,
+                        model_risk_assessment, belief_tracker,
+                        content_moderation)
+    privacy_security/ — privacy + security (cybersecurity_compliance,
+                        data_privacy, data_residency)
+    operations/       — cross-domain monitoring (deadline, trends,
+                        cross_domain, regime_detection,
+                        platform_antitrust, optimization_constraint,
+                        spectrum_licensing, telecom_infrastructure)
+    reporting/        — reporting and evaluation (export_report,
+                        run_evaluation)
 
-Intelligence Skills:
-    alert_threshold          — Flag analyses breaching severity thresholds
-    compliance_deadline      — Extract and prioritise compliance deadlines
-    trend_analysis           — Detect regulatory escalation patterns over time
-    cross_domain_correlation — Find business-line overlaps across agencies
-    export_report            — Render compliance reports (markdown/json/csv)
-    regime_detection         — Identify active macro-prudential regulatory regimes
-
-Specialist / Desk Skills:
-    capital_impact              — RWA, SLR, leverage ratio, and output floor analysis
-    model_risk_assessment       — SR 11-7 re-validation and governance obligations
-    securities_financing_analysis — Repo, sec lending, haircut, SFTR impacts
-    liquidity_ratio_analysis    — LCR, NSFR, HQLA classification changes
-    agency_mortgage_analysis    — FHFA/GSE conforming limits, g-fees, CRT, TBA
-    counterparty_risk_analysis  — SA-CCR, SIMM/UMR, CVA capital, EAD impacts
-    regulatory_reporting_analysis — New/changed reporting obligations and pipeline impacts
-    optimization_constraint     — Translate reg changes into optimizer constraint notation
-    leveraged_lending_assessment — Leverage thresholds, covenants, CLO risk retention
-    stress_testing_signal       — CCAR/DFAST scenario variables mapped to desk P&L
-
-Platform / Digital Regulatory Skills:
-    platform_antitrust_impact   — DMA/DSA gatekeeper obligations, FTC/DOJ enforcement signals
-    data_privacy_obligation     — GDPR, CCPA, and state privacy law obligation mapping
-    ai_regulatory_impact        — EU AI Act risk tiers, conformity assessment, FTC AI guidance
-    spectrum_licensing_change   — FCC spectrum rulemaking, auction, and build-out obligations
-    content_moderation_liability — Section 230, DSA VLOP, NTD, and algorithmic amplification
-
-Technology / Telecom Security Skills:
-    cybersecurity_compliance      — CISA KEV, SEC 8-K disclosure, FCC cyber rules, EO 14028
-    telecom_infrastructure_security — FCC network security, NTIA broadband, USF, roaming obligations
-    data_residency_obligation     — Cross-border data transfer, localisation mandates, SCCs
-    tech_merger_review            — FTC/DOJ tech M&A, HSR thresholds, divestiture conditions
-    algorithmic_accountability    — EU AI Act, FTC algorithmic scrutiny, bias audit requirements
+``ALL_SKILLS`` re-exports every instance so existing callers keep
+working. In Phase P2.2 this hand-maintained list will be replaced by a
+``@register_skill`` decorator-driven auto-discovery mechanism.
 """
 
-from app.naturalsentinel.skills.agency_mortgage import AgencyMortgageSkill
-from app.naturalsentinel.skills.ai_regulatory import AIRegulatorySkill
+# ── core / orchestration ───────────────────────────────────────────────
+from app.naturalsentinel.skills.core.alert import AlertThresholdSkill
+from app.naturalsentinel.skills.core.analyze import AnalyzeFilingSkill
+from app.naturalsentinel.skills.core.briefing import GenerateBriefingSkill
+from app.naturalsentinel.skills.core.context import BuildContextSkill
+from app.naturalsentinel.skills.core.dedup import DetectDuplicatesSkill
+from app.naturalsentinel.skills.core.feedback import RecordFeedbackSkill
+from app.naturalsentinel.skills.core.fetch import FetchFilingsSkill
+from app.naturalsentinel.skills.core.memory_recall import RecallMemorySkill
+from app.naturalsentinel.skills.core.memory_store import StoreMemorySkill
+from app.naturalsentinel.skills.core.scan_cycle import ScanCycleSkill
 
-# Intelligence / analytics skills
-from app.naturalsentinel.skills.alert import AlertThresholdSkill
-from app.naturalsentinel.skills.algorithmic_accountability import (
+# ── documents / document intelligence ──────────────────────────────────
+from app.naturalsentinel.skills.documents.follow_process import FollowProcessSkill
+from app.naturalsentinel.skills.documents.ingest_document import IngestDocumentSkill
+from app.naturalsentinel.skills.documents.recall_context import RecallContextSkill
+
+# ── financial / portfolio-level skills ─────────────────────────────────
+from app.naturalsentinel.skills.financial.agency_mortgage import AgencyMortgageSkill
+from app.naturalsentinel.skills.financial.capital_impact import CapitalImpactSkill
+from app.naturalsentinel.skills.financial.counterparty_risk import CounterpartyRiskSkill
+from app.naturalsentinel.skills.financial.leveraged_lending import LeveragedLendingSkill
+from app.naturalsentinel.skills.financial.liquidity_ratio import LiquidityRatioSkill
+from app.naturalsentinel.skills.financial.merger_review import TechMergerReviewSkill
+from app.naturalsentinel.skills.financial.regulatory_reporting import (
+    RegulatoryReportingSkill,
+)
+from app.naturalsentinel.skills.financial.securities_financing import (
+    SecuritiesFinancingSkill,
+)
+from app.naturalsentinel.skills.financial.stress_testing import StressTestingSignalSkill
+
+# ── governance / AI / model risk ───────────────────────────────────────
+from app.naturalsentinel.skills.governance.ai_regulatory import AIRegulatorySkill
+from app.naturalsentinel.skills.governance.algorithmic_accountability import (
     AlgorithmicAccountabilitySkill,
 )
-from app.naturalsentinel.skills.analyze import AnalyzeFilingSkill
-from app.naturalsentinel.skills.belief_tracker import BeliefTrackerSkill
-from app.naturalsentinel.skills.briefing import GenerateBriefingSkill
-
-# Specialist / desk skills
-from app.naturalsentinel.skills.capital_impact import CapitalImpactSkill
-from app.naturalsentinel.skills.content_moderation import ContentModerationSkill
-from app.naturalsentinel.skills.context import BuildContextSkill
-from app.naturalsentinel.skills.counterparty_risk import CounterpartyRiskSkill
-from app.naturalsentinel.skills.cross_domain import CrossDomainCorrelationSkill
-
-# Technology / telecom security skills
-from app.naturalsentinel.skills.cybersecurity_compliance import (
-    CybersecurityComplianceSkill,
+from app.naturalsentinel.skills.governance.belief_tracker import BeliefTrackerSkill
+from app.naturalsentinel.skills.governance.content_moderation import (
+    ContentModerationSkill,
 )
-from app.naturalsentinel.skills.data_privacy import DataPrivacySkill
-from app.naturalsentinel.skills.data_residency import DataResidencySkill
-from app.naturalsentinel.skills.deadline import ComplianceDeadlineSkill
-from app.naturalsentinel.skills.dedup import DetectDuplicatesSkill
-from app.naturalsentinel.skills.export_report import ExportReportSkill
-from app.naturalsentinel.skills.feedback import RecordFeedbackSkill
-from app.naturalsentinel.skills.fetch import FetchFilingsSkill
-from app.naturalsentinel.skills.follow_process import FollowProcessSkill
+from app.naturalsentinel.skills.governance.model_risk_assessment import (
+    ModelRiskAssessmentSkill,
+)
 
-# Document Intelligence skills
-from app.naturalsentinel.skills.ingest_document import IngestDocumentSkill
-from app.naturalsentinel.skills.leveraged_lending import LeveragedLendingSkill
-from app.naturalsentinel.skills.liquidity_ratio import LiquidityRatioSkill
-from app.naturalsentinel.skills.memory_recall import RecallMemorySkill
-from app.naturalsentinel.skills.memory_store import StoreMemorySkill
-from app.naturalsentinel.skills.merger_review import TechMergerReviewSkill
-from app.naturalsentinel.skills.model_risk_assessment import ModelRiskAssessmentSkill
-from app.naturalsentinel.skills.optimization_constraint import (
+# ── operations / cross-domain monitoring ───────────────────────────────
+from app.naturalsentinel.skills.operations.cross_domain import (
+    CrossDomainCorrelationSkill,
+)
+from app.naturalsentinel.skills.operations.deadline import ComplianceDeadlineSkill
+from app.naturalsentinel.skills.operations.optimization_constraint import (
     OptimizationConstraintSkill,
 )
+from app.naturalsentinel.skills.operations.platform_antitrust import (
+    PlatformAntitrustSkill,
+)
+from app.naturalsentinel.skills.operations.regime_detection import RegimeDetectionSkill
+from app.naturalsentinel.skills.operations.spectrum_licensing import (
+    SpectrumLicensingSkill,
+)
+from app.naturalsentinel.skills.operations.telecom_infrastructure import (
+    TelecomInfrastructureSkill,
+)
+from app.naturalsentinel.skills.operations.trends import TrendAnalysisSkill
 
-# Platform / digital regulatory skills
-from app.naturalsentinel.skills.platform_antitrust import PlatformAntitrustSkill
-from app.naturalsentinel.skills.recall_context import RecallContextSkill
-from app.naturalsentinel.skills.regime_detection import RegimeDetectionSkill
-from app.naturalsentinel.skills.regulatory_reporting import RegulatoryReportingSkill
-from app.naturalsentinel.skills.run_evaluation import RunEvaluationSkill
-from app.naturalsentinel.skills.scan_cycle import ScanCycleSkill
-from app.naturalsentinel.skills.securities_financing import SecuritiesFinancingSkill
-from app.naturalsentinel.skills.spectrum_licensing import SpectrumLicensingSkill
-from app.naturalsentinel.skills.stress_testing import StressTestingSignalSkill
-from app.naturalsentinel.skills.telecom_infrastructure import TelecomInfrastructureSkill
-from app.naturalsentinel.skills.trends import TrendAnalysisSkill
+# ── privacy and security ───────────────────────────────────────────────
+from app.naturalsentinel.skills.privacy_security.cybersecurity_compliance import (
+    CybersecurityComplianceSkill,
+)
+from app.naturalsentinel.skills.privacy_security.data_privacy import DataPrivacySkill
+from app.naturalsentinel.skills.privacy_security.data_residency import (
+    DataResidencySkill,
+)
+
+# ── reporting and evaluation ───────────────────────────────────────────
+from app.naturalsentinel.skills.reporting.export_report import ExportReportSkill
+from app.naturalsentinel.skills.reporting.run_evaluation import RunEvaluationSkill
 
 ALL_SKILLS = [
     # Core pipeline
@@ -202,4 +204,8 @@ __all__ = [
     "DataResidencySkill",
     "TechMergerReviewSkill",
     "AlgorithmicAccountabilitySkill",
+    # Document Intelligence
+    "IngestDocumentSkill",
+    "RecallContextSkill",
+    "FollowProcessSkill",
 ]

@@ -27,7 +27,7 @@ from app.naturalsentinel.lineage.citation import (
 from app.naturalsentinel.lineage.provenance import ModelProvenance
 from app.naturalsentinel.lineage.trace import DecisionTrace
 from app.naturalsentinel.memory.store import MemoryStore
-from app.naturalsentinel.skills.analyze import AnalyzeFilingSkill
+from app.naturalsentinel.skills.core.analyze import AnalyzeFilingSkill
 
 
 def make_mem():

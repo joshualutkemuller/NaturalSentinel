@@ -38,7 +38,7 @@ from app.naturalsentinel.eval.scorer import (
     score_suite,
 )
 from app.naturalsentinel.memory.store import MemoryStore
-from app.naturalsentinel.skills.run_evaluation import RunEvaluationSkill
+from app.naturalsentinel.skills.reporting.run_evaluation import RunEvaluationSkill
 
 # ---------------------------------------------------------------------------
 # Helpers

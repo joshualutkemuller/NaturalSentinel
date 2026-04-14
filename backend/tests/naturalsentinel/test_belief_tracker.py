@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from app.naturalsentinel.memory.store import MemoryStore
 from app.naturalsentinel.models import BeliefState, MonitorResult
-from app.naturalsentinel.skills.belief_tracker import (
+from app.naturalsentinel.skills.governance.belief_tracker import (
     BeliefTrackerSkill,
     _compute_delta_drivers,
     _compute_reversal_risk,

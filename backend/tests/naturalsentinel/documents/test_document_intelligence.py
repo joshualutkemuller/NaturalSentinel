@@ -1301,7 +1301,7 @@ class TestStateLevelMonitoring(unittest.TestCase):
         import os
 
         os.environ.pop("OPEN_STATES_API_KEY", None)
-        from app.naturalsentinel.fetchers.live.open_states import (
+        from app.naturalsentinel.fetchers.live.state.open_states import (
             fetch as fetch_open_states,
         )
 
@@ -1317,7 +1317,7 @@ class TestStateLevelMonitoring(unittest.TestCase):
         from unittest.mock import patch
 
         with patch("feedparser.parse", return_value={"entries": []}):
-            from app.naturalsentinel.fetchers.live.csbs import fetch
+            from app.naturalsentinel.fetchers.live.state.csbs import fetch
 
             result = fetch(since_days=7)
         self.assertIsInstance(result, list)
@@ -1326,7 +1326,7 @@ class TestStateLevelMonitoring(unittest.TestCase):
         from unittest.mock import patch
 
         with patch("feedparser.parse", return_value={"entries": []}):
-            from app.naturalsentinel.fetchers.live.naic import fetch
+            from app.naturalsentinel.fetchers.live.state.naic import fetch
 
             result = fetch(since_days=7)
         self.assertIsInstance(result, list)
@@ -1335,7 +1335,7 @@ class TestStateLevelMonitoring(unittest.TestCase):
         from unittest.mock import patch
 
         with patch("feedparser.parse", return_value={"entries": []}):
-            from app.naturalsentinel.fetchers.live.nasaa import fetch
+            from app.naturalsentinel.fetchers.live.state.nasaa import fetch
 
             result = fetch(since_days=7)
         self.assertIsInstance(result, list)

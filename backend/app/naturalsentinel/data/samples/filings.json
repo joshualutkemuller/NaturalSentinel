@@ -1,0 +1,155 @@
+[
+  {
+    "id": "SEC-2026-0312-A",
+    "title": "Amendments to Regulation S-K: Climate-Related Disclosures",
+    "domain": "sec",
+    "source_url": "https://www.sec.gov/rules/proposed/2026/33-11275.htm",
+    "published_date": "2026-03-10",
+    "change_type": "final_rule",
+    "raw_text": "The Securities and Exchange Commission is adopting amendments to Regulation S-K and Regulation S-X to require registrants to provide certain climate-related information in their registration statements and annual reports. The final rules will require disclosure of material climate-related risks, greenhouse gas emissions (Scope 1, Scope 2, and for larger accelerated filers, Scope 3), transition plans, governance processes for climate oversight, and financial statement footnotes on climate impacts. Compliance is phased: Large Accelerated Filers must begin reporting in fiscal years beginning after December 15, 2026; Accelerated Filers after December 15, 2027; and Smaller Reporting Companies after December 15, 2028. Non-compliance may result in enforcement actions, comment letters, and potential delisting referrals."
+  },
+  {
+    "id": "CFPB-2026-0228-B",
+    "title": "Updated Supervisory Guidance on AI-Driven Credit Decisioning",
+    "domain": "cfpb",
+    "source_url": "https://www.consumerfinance.gov/rules-policy/notice-2026-02/",
+    "published_date": "2026-02-28",
+    "change_type": "guidance",
+    "raw_text": "The Consumer Financial Protection Bureau issues updated supervisory guidance clarifying that creditors using artificial intelligence or machine learning models in credit underwriting must provide specific and accurate adverse action notices under the Equal Credit Opportunity Act and Fair Credit Reporting Act. The Bureau expects that creditors will not rely on opaque or unexplainable model outputs. Creditors must demonstrate model validation, bias testing across protected classes, and ongoing monitoring with at least quarterly re-validation. Institutions with assets exceeding $10 billion are subject to immediate supervisory examination. Smaller institutions have 18 months to demonstrate compliance."
+  },
+  {
+    "id": "FED-2026-0305-C",
+    "title": "Enhanced Prudential Standards for Crypto-Asset Custody by Banking Organizations",
+    "domain": "fed",
+    "source_url": "https://www.federalreserve.gov/newsevents/pressreleases/bcreg20260305a.htm",
+    "published_date": "2026-03-05",
+    "change_type": "proposed_rule",
+    "raw_text": "The Board of Governors of the Federal Reserve System proposes enhanced prudential standards for state member banks and bank holding companies engaging in custody of crypto-assets. The proposed rule would require (1) segregation of customer crypto-assets from proprietary holdings, (2) capital charges reflecting the volatility of custodied assets using a modified Basel III framework, (3) quarterly stress testing of operational and cybersecurity resilience, and (4) board-level risk governance attestations. Comments are due within 90 days of Federal Register publication. The Board estimates compliance costs of $2-5 million for mid-size institutions."
+  },
+  {
+    "id": "FDA-2026-0301-D",
+    "title": "Draft Guidance on Predetermined Change Control Plans for AI/ML-Enabled Medical Devices",
+    "domain": "fda",
+    "source_url": "https://www.fda.gov/regulatory-information/search-fda-guidance-documents/2026-ai-ml-pccp",
+    "published_date": "2026-03-01",
+    "change_type": "guidance",
+    "raw_text": "The Food and Drug Administration issues draft guidance describing recommendations for Predetermined Change Control Plans (PCCPs) that manufacturers of AI/ML-enabled medical devices may include in premarket submissions. The PCCP framework allows manufacturers to describe planned modifications and the methodology for implementing those modifications without requiring new premarket submissions for each change. Manufacturers must specify (a) the description of planned modifications, (b) the modification protocol including validation and performance testing, and (c) the impact assessment methodology. This guidance applies to Software as a Medical Device (SaMD) classified as Class II or Class III. Comments are requested within 60 days."
+  },
+  {
+    "id": "EPA-2026-0215-E",
+    "title": "Revised National Ambient Air Quality Standards for Particulate Matter (PM2.5)",
+    "domain": "epa",
+    "source_url": "https://www.epa.gov/naaqs/pm-naaqs-2026-revision",
+    "published_date": "2026-02-15",
+    "change_type": "final_rule",
+    "raw_text": "The Environmental Protection Agency finalizes revisions to the National Ambient Air Quality Standards for fine particulate matter (PM2.5), lowering the annual standard from 9.0 micrograms per cubic meter to 8.0 micrograms per cubic meter. The 24-hour standard remains at 35 micrograms per cubic meter. States must submit revised State Implementation Plans within 24 months. Non-attainment areas will be redesignated, potentially affecting industrial permitting for manufacturing, power generation, and transportation sectors. The EPA estimates the rule will prevent 4,200 premature deaths annually. Affected industries should anticipate stricter Title V permit conditions and potential increases in emissions offset requirements."
+  },
+  {
+    "id": "FHFA-2026-0310-G",
+    "title": "2026 Conforming Loan Limit Adjustment and Updated Single-Family Selling Guide",
+    "domain": "fhfa",
+    "source_url": "https://www.fhfa.gov/SupervisionRegulation/Rules/Pages/2026-conforming-limits.aspx",
+    "published_date": "2026-03-10",
+    "change_type": "notice",
+    "raw_text": "The Federal Housing Finance Agency announces the 2026 conforming loan limits for Fannie Mae and Freddie Mac. The baseline conforming loan limit for one-unit properties is increased from $766,550 to $806,500, reflecting the 5.2% increase in average U.S. home values. High-cost area limits increase proportionally to $1,209,750. Additionally, the FHFA is updating the Selling Guide to revise acceptable collateral haircut schedules for Agency MBS pledged in securities lending transactions. The updated haircut matrix reflects current duration risk and prepayment volatility. Effective for all deliveries on or after May 1, 2026. GSE counterparties must update their collateral eligibility systems and re-price existing TBA forward commitments that fall near the new limit threshold. Credit Risk Transfer (CRT) program parameters remain unchanged for this cycle."
+  },
+  {
+    "id": "OCC-2026-0308-H",
+    "title": "Revised Interagency Guidance on Leveraged Lending Underwriting Standards",
+    "domain": "occ",
+    "source_url": "https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-12.html",
+    "published_date": "2026-03-08",
+    "change_type": "guidance",
+    "raw_text": "The Office of the Comptroller of the Currency, jointly with the Federal Reserve and FDIC, issues revised interagency guidance on leveraged lending underwriting standards. The guidance reduces the maximum total debt-to-EBITDA threshold considered reasonable from 6.0x to 5.5x for most industries, with sector-specific carve-outs for infrastructure and healthcare. The guidance also tightens definitions of leveraged lending to include all facilities where the borrower's total debt exceeds 4.0x EBITDA regardless of credit rating. Banks must maintain meaningful lender protections including financial maintenance covenants in at least 50% of new leveraged loan facilities. Institutions with leveraged loan portfolios exceeding 3x Tier 1 capital are subject to enhanced supervisory review. Compliance expected within 180 days of publication."
+  },
+  {
+    "id": "FINRA-2026-0305-I",
+    "title": "Amendments to FINRA Rule 4210: Margin Requirements for TBA and Specified Pool Transactions",
+    "domain": "finra",
+    "source_url": "https://www.finra.org/rules-guidance/notices/26-07",
+    "published_date": "2026-03-05",
+    "change_type": "final_rule",
+    "raw_text": "FINRA adopts amendments to Rule 4210 (Margin Requirements) to establish mandatory margin requirements for to-be-announced (TBA) transactions, specified pool transactions, and net interest margin (NIM) securities. Effective August 1, 2026, members must collect variation margin daily on TBA net positions exceeding $10 million notional, and initial margin on positions exceeding $50 million notional using the schedule-based or model-based approach. The final rule exempts transactions cleared through a registered clearing agency. Prime brokers providing financing for agency MBS must integrate these requirements into existing customer margin account calculations. Firms must update margin methodology documentation, stress testing scenarios, and customer agreement templates. The estimated industry-wide margin mobilization requirement is $12-18 billion."
+  },
+  {
+    "id": "CFTC-2026-0301-J",
+    "title": "Uncleared Margin Rules Phase 6 Implementation and SIMM Recalibration",
+    "domain": "cftc",
+    "source_url": "https://www.cftc.gov/PressRoom/PressReleases/2026-041",
+    "published_date": "2026-03-01",
+    "change_type": "final_rule",
+    "raw_text": "The Commodity Futures Trading Commission finalizes guidance on the Phase 6 implementation of Uncleared Margin Rules (UMR) and adopts the ISDA SIMM v2.7 recalibration effective September 1, 2026. The recalibration reflects updated historical stress periods including 2022-2023 rate volatility, increasing initial margin requirements for interest rate and credit derivatives by an estimated 8-15%. The CFTC also adopts amendments to 17 CFR Part 23 requiring covered swap entities to maintain an Aggregate Notional Amount (ANA) threshold documentation framework with quarterly recertification. Cross-currency swap delta sensitivities under the standardized schedule are revised. Entities near the $50 billion ANA threshold must implement daily ANA monitoring. The rule affects initial margin models, custodial arrangements with third-party segregation providers, and MVA hedging strategies."
+  },
+  {
+    "id": "FDIC-2026-0225-K",
+    "title": "Final Rule: Large Bank Surcharge and Revised Deposit Insurance Assessment Rates",
+    "domain": "fdic",
+    "source_url": "https://www.fdic.gov/news/press-releases/2026/pr26022.html",
+    "published_date": "2026-02-25",
+    "change_type": "final_rule",
+    "raw_text": "The Federal Deposit Insurance Corporation adopts a final rule imposing a special assessment surcharge on insured depository institutions with total assets exceeding $50 billion, to rebuild the Deposit Insurance Fund following 2023 bank failures. The surcharge is calculated at 13.4 basis points annually on uninsured deposits exceeding $5 billion. The assessment applies quarterly beginning Q2 2026. Simultaneously, the FDIC revises the deposit insurance assessment rate schedule under 12 CFR Part 327, increasing the initial base assessment rate range from 2.5-32 bps to 3.0-40 bps for large institutions. Brokered deposits will receive a 50% higher weighting in the assessment rate calculation. Institutions must update their deposit funding cost models and reassess the economics of brokered deposit programs. The FDIC estimates aggregate industry cost of $15.8 billion."
+  },
+  {
+    "id": "BASEL-2026-0315-L",
+    "title": "Basel IV: Output Floor Phase-In Schedule and Revised Credit RWA Methodology",
+    "domain": "basel",
+    "source_url": "https://www.bis.org/bcbs/publ/d572.htm",
+    "published_date": "2026-03-15",
+    "change_type": "final_rule",
+    "raw_text": "The Basel Committee on Banking Supervision confirms the phase-in schedule for the Basel IV output floor under the finalised Basel III reforms. The output floor requires that internal model RWA may not fall below 72.5% of standardised approach RWA, phasing in from 50% in 2025 to 72.5% by 2028. The Committee also publishes revised credit risk standardised approach (SA-CR) risk weights for repo-style transactions and securities financing transactions, lowering the applicable risk weight for investment-grade collateralised lending from 75% to 65% where robust daily margining is demonstrated. The revised SA-CCR framework for derivatives introduces updated supervisory factors for interest rate options. Banks using advanced IRBA models for secured lending must begin parallel runs comparing output floor results by Q3 2026. Capital optimisation desks should model the constraint binding scenarios under multiple output floor trajectories."
+  },
+  {
+    "id": "FED-2026-0312-M",
+    "title": "CCAR 2026: Supervisory Stress Test Scenarios and Exploratory Market Shock",
+    "domain": "fed",
+    "source_url": "https://www.federalreserve.gov/publications/2026-supervisory-scenarios.htm",
+    "published_date": "2026-03-12",
+    "change_type": "notice",
+    "raw_text": "The Federal Reserve releases the 2026 supervisory stress test scenarios under the Comprehensive Capital Analysis and Review (CCAR). The severely adverse scenario features: a 500 bps increase in the BBB corporate spread (vs 390 bps in 2025), 10-year Treasury yields declining to 0.75%, S&P 500 falling 55% peak-to-trough, unemployment rising to 10.0%, and a 35% decline in commercial real estate prices. An exploratory market shock component adds a simultaneous 200 bps parallel shift in the yield curve combined with acute liquidity stress in repo markets, with general collateral repo rates spiking 300 bps above fed funds for a 30-day window. The exploratory scenario specifically stresses securities financing books, prime brokerage, and leveraged lending portfolios. Firms must submit capital plans by April 5, 2026. Results will be published in June 2026."
+  },
+  {
+    "id": "FED-2026-0303-N",
+    "title": "Supervisory Guidance SR 11-7 Update: Model Risk Management for AI/ML and Optimization Models",
+    "domain": "fed",
+    "source_url": "https://www.federalreserve.gov/supervisionreg/srletters/sr2603.htm",
+    "published_date": "2026-03-03",
+    "change_type": "guidance",
+    "raw_text": "The Federal Reserve and OCC issue an update to Supervisory Guidance SR 11-7 to address model risk management expectations for artificial intelligence, machine learning, and optimization models used in financial decision-making. The guidance clarifies that all quantitative models used in capital allocation, portfolio optimization, pricing, and risk management are subject to SR 11-7 regardless of whether they use traditional statistical or AI/ML methodologies. Key additions include: (1) optimizer models used for balance sheet management and capital allocation require Tier 1 validation with annual full re-validation, (2) reinforcement learning and online learning models must maintain a formal concept drift monitoring framework with predefined retraining triggers, (3) challenger models must be maintained for all production optimization models, and (4) model inventories must be updated to include all optimization and allocation algorithms. Examiners will begin assessing AI/ML model governance in Q3 2026 examinations."
+  },
+  {
+    "id": "SEC-2026-0295-O",
+    "title": "Amendments to Rule 15c3-3: Customer Protection for Securities Lending Collateral",
+    "domain": "sec",
+    "source_url": "https://www.sec.gov/rules/final/2026/34-98754.htm",
+    "published_date": "2026-02-25",
+    "change_type": "final_rule",
+    "raw_text": "The Securities and Exchange Commission adopts amendments to Rule 15c3-3 (Customer Protection Rule) to address collateral management practices in securities lending transactions. The amendments require broker-dealers to maintain a minimum 102% collateral coverage ratio (increased from 100%) for customer securities on loan, with daily mark-to-market and same-day margin calls for any shortfall exceeding 0.5% of loan value. Eligible non-cash collateral is restricted: equities may not exceed 30% of total collateral for any single counterparty (reduced from 40%), and the rule eliminates the use of non-HQLA fixed income securities as collateral for customer loans. Broker-dealers must implement a formal collateral substitution process with customer consent for material collateral composition changes. Rehypothecation of customer collateral is limited to 140% of the customer's net debit balance. Compliance required within 270 days of publication."
+  },
+  {
+    "id": "CFTC-2026-0310-P",
+    "title": "SA-CCR Implementation Guidance: Supervisory Factors for Repo and Securities Financing",
+    "domain": "cftc",
+    "source_url": "https://www.cftc.gov/PressRoom/PressReleases/2026-054",
+    "published_date": "2026-03-10",
+    "change_type": "guidance",
+    "raw_text": "The Commodity Futures Trading Commission issues supplemental implementation guidance on the Standardised Approach for Counterparty Credit Risk (SA-CCR) as it applies to repo, reverse repo, and securities financing transactions executed by swap dealers and major swap participants. The guidance clarifies that repo-style transactions with a remaining maturity under 10 business days qualify for the 0% supervisory factor when subject to daily margining, consistent with the Basel Committee's interpretation. For transactions involving non-investment-grade collateral, the supervisory factor is revised to 2.0% (from 1.5%). The guidance also addresses the treatment of netting sets combining repo and OTC derivative positions for swap dealers operating prime brokerage businesses. Firms must submit updated SA-CCR calculation methodologies to their lead supervisor by June 30, 2026. This guidance affects EAD calculations for capital adequacy, counterparty credit risk limits, and XVA pricing."
+  },
+  {
+    "id": "USTR-2026-0308-F",
+    "title": "Section 301 Tariff Modifications on Semiconductor Equipment and Critical Minerals",
+    "domain": "ustr",
+    "source_url": "https://ustr.gov/issue-areas/enforcement/section-301-investigations/tariff-actions-2026",
+    "published_date": "2026-03-08",
+    "change_type": "amendment",
+    "raw_text": "The Office of the United States Trade Representative announces modifications to the Section 301 tariff actions affecting imports of semiconductor manufacturing equipment and critical minerals from the People's Republic of China. Effective April 15, 2026, ad valorem tariff rates will increase from 25% to 50% on lithography equipment (HTS 8486.20), etching machines (HTS 8486.10), and ion implantation equipment (HTS 8486.40). Additionally, tariffs on refined rare earth elements (HTS 2846) will increase from 0% to 25%. An exclusion process will be available for importers demonstrating no viable alternative source. These modifications are expected to impact semiconductor fabrication cost structures and supply chains for defense and consumer electronics sectors."
+  },
+  {
+    "id": "SEC-2023-0726-CYB",
+    "title": "Cybersecurity Risk Management, Strategy, Governance, and Incident Disclosure — Final Rule (Release Nos. 33-11216, 34-97989)",
+    "domain": "sec",
+    "source_url": "https://www.federalregister.gov/documents/2023/08/04/2023-15927/cybersecurity-risk-management-strategy-governance-and-incident-disclosure",
+    "published_date": "2023-08-04",
+    "change_type": "final_rule",
+    "raw_text": "The Securities and Exchange Commission is adopting rules to enhance and standardize disclosures regarding cybersecurity risk management, strategy, governance, and incidents by public companies that are subject to the reporting requirements of the Securities Exchange Act of 1934. The Commission is adopting amendments to Form 8-K to require registrants to disclose material cybersecurity incidents within four business days of determining that a cybersecurity incident is material. The Commission is also adopting amendments to Regulation S-K to require registrants to provide periodic disclosures about their cybersecurity risk management, strategy, and governance in annual reports on Form 10-K. ITEM 1.05 OF FORM 8-K — MATERIAL CYBERSECURITY INCIDENTS. A registrant shall disclose any cybersecurity incident that the registrant determines to be material and shall describe the material aspects of the nature, scope, and timing of the incident, and the material impact or reasonably likely material impact on the registrant. Such disclosure shall be made within four business days after the registrant determines that a cybersecurity incident it has experienced is material. § 229.106 CYBERSECURITY RISK MANAGEMENT, STRATEGY, GOVERNANCE, AND INCIDENTS. (a) Cybersecurity risk management. Describe the registrant's processes, if any, for assessing, identifying, and managing material risks from cybersecurity threats in sufficient detail for a reasonable investor to understand those processes. (b) Management's role. Describe management's role in assessing and managing the registrant's material risks from cybersecurity threats. (c) Board oversight. Describe the board of directors' oversight of risks from cybersecurity threats. If any board committee or subcommittee is responsible for oversight of cybersecurity risks, identify any such committee or subcommittee and describe the processes by which the board or such committee is informed about such risks. COMPLIANCE DATES. Large accelerated filers: annual reports for fiscal years ending on or after December 15, 2023. All other registrants: annual reports for fiscal years ending on or after December 15, 2024. Form 8-K and 6-K disclosures: December 18, 2023 for large accelerated filers; June 15, 2024 for all others. Smaller reporting companies: Form 8-K disclosure obligations begin June 15, 2024. DEFINITIONS. The term 'cybersecurity incident' means an unauthorized occurrence, or a series of related unauthorized occurrences, on or conducted through a registrant's information systems that jeopardizes the confidentiality, integrity, or availability of a registrant's information systems or any information residing therein. The term 'cybersecurity threat' means any potential unauthorized occurrence on or conducted through a registrant's information systems that may result in adverse effects on the confidentiality, integrity, or availability of a registrant's information systems or any information residing therein."
+  }
+]

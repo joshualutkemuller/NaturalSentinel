@@ -27,6 +27,9 @@ monitor_state.json
 # Stale legacy directory (removed in ca9bb34, kept out of tree)
 /naturalsentinel/
 
+# Stray clone of full-stack-fastapi-template at repo root (not part of project)
+/full-stack-fastapi-template/
+
 # Environment / secrets
 .env
 .env.*

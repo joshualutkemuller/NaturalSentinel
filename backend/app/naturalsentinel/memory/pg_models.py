@@ -208,3 +208,97 @@ class PgCitation(SQLModel, table=True):
         default_factory=_now,
         sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False),
     )
+
+
+class PgDocument(SQLModel, table=True):
+    """Tracks user-uploaded documents (contracts, policies, medical records).
+
+    Complements the OpenViking filesystem representation. Not used for
+    programmatically-fetched regulatory filings — those are tracked via
+    ns_memories + ns_state_filings Qdrant collection.
+    """
+
+    __tablename__ = "ns_documents"
+
+    doc_id: str = Field(primary_key=True, default_factory=_uuid)
+    title: str = Field(default="", nullable=False)
+    doc_type: str = Field(default="generic", nullable=False, index=True)
+    file_name: str = Field(default="", nullable=False)
+    file_size: int = Field(default=0, nullable=False)
+    viking_uri: str = Field(default="", nullable=False, index=True)
+    section_count: int = Field(default=0, nullable=False)
+    status: str = Field(default="processing", nullable=False, index=True)
+    # Source provenance — first-class queryable columns rather than
+    # metadata_json blob fields. Storing source_url inside metadata_json
+    # made "find all docs from sec.gov" a JSON-extract scan with no
+    # index. These columns are populated alongside the JSONB blob for
+    # redundancy; the blob is kept so Qdrant payloads and OV metadata
+    # stay aligned with PG.
+    source_url: str = Field(default="", nullable=False, index=True)
+    domain: str | None = Field(default=None, index=True)
+    jurisdiction: str = Field(default="federal", nullable=False, index=True)
+    metadata_json: Any = Field(default={}, sa_column=sa.Column(sa.JSON, nullable=False))
+    structure_json: Any = Field(
+        default={}, sa_column=sa.Column(sa.JSON, nullable=False)
+    )
+    created_at: datetime = Field(
+        default_factory=_now,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False, index=True),
+    )
+    updated_at: datetime = Field(
+        default_factory=_now,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False),
+    )
+    created_by: str = Field(default="", nullable=False, index=True)
+
+
+class PgProcessDefinition(SQLModel, table=True):
+    """Registered document review process definitions."""
+
+    __tablename__ = "ns_process_definitions"
+
+    name: str = Field(primary_key=True)
+    version: str = Field(default="1.0", nullable=False)
+    description: str = Field(default="", nullable=False)
+    doc_types: Any = Field(default=[], sa_column=sa.Column(sa.JSON, nullable=False))
+    step_count: int = Field(default=0, nullable=False)
+    definition_md: str = Field(default="", nullable=False)
+    viking_uri: str = Field(default="", nullable=False)
+    created_at: datetime = Field(
+        default_factory=_now,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=_now,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False),
+    )
+    created_by: str = Field(default="", nullable=False)
+
+
+class PgProcessExecution(SQLModel, table=True):
+    """State tracker for an in-progress document review process execution."""
+
+    __tablename__ = "ns_process_executions"
+
+    execution_id: str = Field(primary_key=True, default_factory=_uuid)
+    session_id: str = Field(default="", nullable=False, index=True)
+    process_name: str = Field(default="", nullable=False, index=True)
+    doc_ids: Any = Field(default=[], sa_column=sa.Column(sa.JSON, nullable=False))
+    current_step: int = Field(default=0, nullable=False)
+    total_steps: int = Field(default=0, nullable=False)
+    completed_steps: int = Field(default=0, nullable=False)
+    flagged_steps: int = Field(default=0, nullable=False)
+    status: str = Field(default="in_progress", nullable=False, index=True)
+    started_at: datetime = Field(
+        default_factory=_now,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=_now,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=False),
+    )
+    completed_at: datetime | None = Field(
+        default=None,
+        sa_column=sa.Column(sa.DateTime(timezone=True), nullable=True),
+    )
+    findings_json: Any = Field(default={}, sa_column=sa.Column(sa.JSON, nullable=False))

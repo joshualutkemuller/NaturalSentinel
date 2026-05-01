@@ -4,7 +4,14 @@ import logging
 from datetime import datetime, timedelta
 
 from app.naturalsentinel.fetchers.sample_data import SAMPLE_FILINGS
-from app.naturalsentinel.models import ChangeType, RegulatoryDomain, RegulatoryFiling
+from app.naturalsentinel.models import (
+    ChangeType,
+    IndustrySector,
+    Jurisdiction,
+    RegulatoryDomain,
+    RegulatoryFiling,
+    StateCode,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +126,9 @@ DOMAIN_BUSINESS_LINES: dict[str, list[str]] = {
 
 def fetch_filings(
     domains: list[RegulatoryDomain] | None = None,
+    sectors: list[IndustrySector] | None = None,
+    state_codes: list[StateCode] | None = None,
+    jurisdiction: Jurisdiction | None = None,
     since_days: int = 30,
     live: bool = False,
     fetch_full_text: bool = True,
@@ -127,32 +137,88 @@ def fetch_filings(
     """Fetch regulatory filings.
 
     Args:
-        domains: Optional domain filter.  ``None`` = all supported domains.
+        domains: Optional federal domain filter.  ``None`` = all supported domains.
+        sectors: Optional industry sector filter.  When provided, federal domains
+            are auto-expanded via ``SECTOR_TO_FEDERAL_DOMAINS`` and state fetchers
+            are filtered to matching sectors.
+        state_codes: Optional state filter for state-level filings.  ``None`` = all
+            registered states.
+        jurisdiction: Optional filter — ``FEDERAL`` returns only federal filings,
+            ``STATE`` returns only state filings, ``None`` returns both (when live).
         since_days: Look-back window in days (default 30).
-        live: If ``True``, fetch from live public sources (Federal Register
-            API, EDGAR, BIS, FINRA) instead of returning the curated sample
-            dataset.  Requires network access; gracefully falls back to
+        live: If ``True``, fetch from live public sources instead of the curated
+            sample dataset.  Requires network access; gracefully falls back to
             sample data if all live sources fail.
-        fetch_full_text: When ``live=True``, whether to retrieve the full
-            HTML document text for each filing (default ``True``).  Set
-            ``False`` to use abstract/summary only for faster ingestion.
-        http_client: Optional :class:`~naturalsentinel.fetchers.live.http_client.HTTPClient`
-            to inject for testing.  When ``None``, each sub-fetcher creates
-            its own rate-limited client.
+        fetch_full_text: When ``live=True``, whether to retrieve the full HTML
+            document text for each filing (default ``True``).  Set ``False`` to
+            use abstract/summary only for faster ingestion.
+        http_client: Optional HTTPClient to inject for testing.
 
     Returns:
         List of :class:`~naturalsentinel.models.RegulatoryFiling` objects.
 
     Live sources
     ------------
-    Federal Register API   FED, CFPB, OCC, FDIC, CFTC, SEC, EPA, USTR, FHFA, FDA
-    SEC EDGAR EFTS         SEC (supplementary)
-    BIS/BCBS               BASEL
-    FINRA notices          FINRA
+    Federal: Federal Register API, SEC EDGAR, BIS/BCBS, FINRA
+    State:   Open States API, state agency RSS feeds, NASAA, NAIC, CSBS
     """
-    if live:
-        return _fetch_live(domains, since_days, fetch_full_text, http_client)
-    return _fetch_sample(domains, since_days)
+    if not live:
+        return _fetch_sample(domains, since_days)
+
+    # Auto-expand domains from sectors
+    effective_domains = _expand_domains(domains, sectors)
+    state_code_strs = [s.value for s in state_codes] if state_codes else None
+    sector_strs = [s.value for s in sectors] if sectors else None
+
+    filings: list[RegulatoryFiling] = []
+
+    if jurisdiction != Jurisdiction.STATE:
+        # Fetch federal filings
+        federal = _fetch_live(
+            effective_domains, since_days, fetch_full_text, http_client
+        )
+        filings.extend(federal)
+
+    if jurisdiction != Jurisdiction.FEDERAL:
+        # Fetch state filings
+        state = _fetch_state_live(sector_strs, state_code_strs, since_days)
+        filings.extend(state)
+
+    if not filings:
+        logger.warning(
+            "All live sources returned zero filings — falling back to sample data"
+        )
+        return _fetch_sample(domains, since_days)
+
+    return filings
+
+
+def _expand_domains(
+    domains: list[RegulatoryDomain] | None,
+    sectors: list[IndustrySector] | None,
+) -> list[RegulatoryDomain] | None:
+    """Merge explicit domains with sector-derived domains."""
+    if not sectors:
+        return domains
+
+    from app.naturalsentinel.fetchers.state_domains import SECTOR_TO_FEDERAL_DOMAINS
+
+    expanded: set[str] = set()
+    if domains:
+        expanded.update(d.value for d in domains)
+    for sector in sectors:
+        expanded.update(SECTOR_TO_FEDERAL_DOMAINS.get(sector.value, []))
+
+    if not expanded:
+        return domains
+
+    result: list[RegulatoryDomain] = []
+    for val in expanded:
+        try:
+            result.append(RegulatoryDomain(val))
+        except ValueError:
+            pass
+    return result or None
 
 
 def _fetch_sample(
@@ -252,12 +318,6 @@ def _fetch_live(
         except Exception as exc:
             logger.warning("FINRA fetch failed: %s", exc)
 
-    if not raw_filings:
-        logger.warning(
-            "All live sources returned zero filings — falling back to sample data"
-        )
-        return _fetch_sample(domains, since_days)
-
     # De-duplicate by ID
     seen: set[str] = set()
     filings: list[RegulatoryFiling] = []
@@ -270,6 +330,89 @@ def _fetch_live(
             filings.append(_raw_to_filing(raw))
         except Exception as exc:
             logger.debug("Skipping malformed filing %s: %s", fid, exc)
+
+    return filings
+
+
+def _fetch_state_live(
+    sectors: list[str] | None,
+    state_codes: list[str] | None,
+    since_days: int,
+) -> list[RegulatoryFiling]:
+    """Coordinate live ingestion from all state-level regulatory sources."""
+    from app.naturalsentinel.fetchers.live import (
+        csbs,
+        naic,
+        nasaa,
+        open_states,
+        state_rss,
+    )
+
+    raw_filings: list[dict] = []
+
+    # --- Open States API (legislative bills) ---
+    try:
+        os_results = open_states.fetch(
+            state_codes=state_codes,
+            sectors=sectors,
+            since_days=since_days,
+        )
+        raw_filings.extend(os_results)
+        logger.info("Open States: fetched %d bills", len(os_results))
+    except Exception as exc:
+        logger.warning("Open States fetch failed: %s", exc)
+
+    # --- State agency RSS feeds ---
+    try:
+        rss_results = state_rss.fetch(
+            state_codes=state_codes,
+            sectors=sectors,
+            since_days=since_days,
+        )
+        raw_filings.extend(rss_results)
+        logger.info("State RSS: fetched %d entries", len(rss_results))
+    except Exception as exc:
+        logger.warning("State RSS fetch failed: %s", exc)
+
+    # --- NASAA (securities — financial_services) ---
+    if not sectors or "financial_services" in sectors:
+        try:
+            nasaa_results = nasaa.fetch(since_days=since_days, state_codes=state_codes)
+            raw_filings.extend(nasaa_results)
+            logger.info("NASAA: fetched %d entries", len(nasaa_results))
+        except Exception as exc:
+            logger.warning("NASAA fetch failed: %s", exc)
+
+    # --- NAIC (insurance) ---
+    if not sectors or "insurance" in sectors:
+        try:
+            naic_results = naic.fetch(since_days=since_days)
+            raw_filings.extend(naic_results)
+            logger.info("NAIC: fetched %d entries", len(naic_results))
+        except Exception as exc:
+            logger.warning("NAIC fetch failed: %s", exc)
+
+    # --- CSBS (banking — financial_services) ---
+    if not sectors or "financial_services" in sectors:
+        try:
+            csbs_results = csbs.fetch(since_days=since_days)
+            raw_filings.extend(csbs_results)
+            logger.info("CSBS: fetched %d entries", len(csbs_results))
+        except Exception as exc:
+            logger.warning("CSBS fetch failed: %s", exc)
+
+    # De-duplicate and normalise
+    seen: set[str] = set()
+    filings: list[RegulatoryFiling] = []
+    for raw in raw_filings:
+        fid = raw.get("id", "")
+        if not fid or fid in seen:
+            continue
+        seen.add(fid)
+        try:
+            filings.append(_raw_to_filing(raw))
+        except Exception as exc:
+            logger.debug("Skipping malformed state filing %s: %s", fid, exc)
 
     return filings
 
@@ -292,6 +435,22 @@ def _raw_to_filing(raw: dict) -> RegulatoryFiling:
     if not pub_date:
         pub_date = datetime.utcnow().strftime("%Y-%m-%d")
 
+    # Jurisdiction
+    jurisdiction_str = raw.get("jurisdiction", "federal")
+    try:
+        jurisdiction = Jurisdiction(jurisdiction_str)
+    except ValueError:
+        jurisdiction = Jurisdiction.FEDERAL
+
+    # State code (optional)
+    state_code: StateCode | None = None
+    sc_raw = raw.get("state_code")
+    if sc_raw:
+        try:
+            state_code = StateCode(sc_raw)
+        except ValueError:
+            pass
+
     return RegulatoryFiling(
         id=raw["id"],
         title=raw.get("title", raw["id"]),
@@ -300,4 +459,7 @@ def _raw_to_filing(raw: dict) -> RegulatoryFiling:
         published_date=pub_date,
         change_type=change_type,
         raw_text=raw.get("raw_text", ""),
+        jurisdiction=jurisdiction,
+        state_code=state_code,
+        industry_sectors=raw.get("industry_sectors", []),
     )

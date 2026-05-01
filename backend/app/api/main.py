@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes import (
+    documents,
     filings,
     items,
     login,
@@ -8,6 +9,7 @@ from app.api.routes import (
     memory,
     openviking,
     private,
+    sector_watch,
     tools,
     users,
     utils,
@@ -24,6 +26,10 @@ api_router.include_router(memory.router, prefix="/memory", tags=["memory"])
 api_router.include_router(tools.router, prefix="/tools", tags=["tools"])
 api_router.include_router(mcp.router, prefix="/mcp", tags=["mcp"])
 api_router.include_router(openviking.router, prefix="/openviking", tags=["openviking"])
+api_router.include_router(
+    sector_watch.router, prefix="/sector-watch", tags=["sector-watch"]
+)
+api_router.include_router(documents.router, prefix="/documents", tags=["documents"])
 
 
 if settings.ENVIRONMENT == "local":

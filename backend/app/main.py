@@ -16,6 +16,13 @@ def custom_generate_unique_id(route: APIRoute) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    # Fail fast if sector/domain/state mappings are inconsistent with the
+    # source enums. A typo in any mapping silently filters content out of
+    # scans; we'd rather crash boot than ship broken filtering.
+    from app.naturalsentinel.fetchers.config_validators import validate_mappings
+
+    validate_mappings()
+
     # Initialize MCP server in-process on startup
     try:
         from app.naturalsentinel.mcp.server import create_mcp_app
@@ -23,6 +30,26 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.mcp_app = create_mcp_app()
     except Exception:
         app.state.mcp_app = None
+
+    # Register built-in document review process definitions
+    try:
+        from sqlmodel import Session
+
+        from app.core.db import engine
+        from app.naturalsentinel.data.processes import (
+            load_builtin_processes,
+        )
+        from app.naturalsentinel.mcp.openviking import _get_ov_client
+
+        with Session(engine) as session:
+            load_builtin_processes(
+                ov_client=_get_ov_client(),
+                session_db=session,
+                skip_existing=True,
+            )
+    except Exception:
+        pass  # Non-fatal — builtins can be registered manually via /documents/processes/
+
     yield
     # Cleanup on shutdown (connections closed by dependency injection)
 

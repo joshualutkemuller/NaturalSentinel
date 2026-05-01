@@ -102,6 +102,24 @@ class Settings(BaseSettings):
     MCP_TRANSPORT: str = "streamable-http"
     OPENVIKING_URL: str = "http://localhost:1933"
 
+    # Qdrant vector database
+    QDRANT_URL: str = "http://localhost:6333"
+    QDRANT_API_KEY: str | None = None
+    QDRANT_COLLECTION_PREFIX: str = "ns_"
+
+    # OpenViking document intelligence
+    OPENVIKING_WORKSPACE: str = "./openviking_data"
+    OPENVIKING_VLM_PROVIDER: str = "litellm"
+    OPENVIKING_VLM_MODEL: str = "claude-sonnet-4-6"
+    OPENVIKING_EMBEDDING_PROVIDER: str = "openai"
+    OPENVIKING_EMBEDDING_MODEL: str = "text-embedding-3-large"
+    OPENVIKING_EMBEDDING_DIMENSION: int = 3072
+    OPENVIKING_VLM_MAX_CONCURRENT: int = 100
+    OPENVIKING_EMBEDDING_MAX_CONCURRENT: int = 10
+
+    # State monitoring
+    OPEN_STATES_API_KEY: str | None = None
+
     def _check_default_secret(self, var_name: str, value: str | None) -> None:
         if value == "changethis":
             message = (

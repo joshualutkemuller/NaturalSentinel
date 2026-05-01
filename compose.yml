@@ -34,6 +34,10 @@ services:
     environment:
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=5432
+      - QDRANT_URL=http://qdrant:6333
+      - OPENVIKING_WORKSPACE=/data/openviking
+    volumes:
+      - openviking-data:/data/openviking
 
   backend:
     image: '${DOCKER_IMAGE_BACKEND:-backend}:${TAG-latest}'
@@ -44,11 +48,17 @@ services:
         restart: true
       prestart:
         condition: service_completed_successfully
+      qdrant:
+        condition: service_started
     env_file:
       - .env
     environment:
       - POSTGRES_SERVER=db
       - POSTGRES_PORT=5432
+      - QDRANT_URL=http://qdrant:6333
+      - OPENVIKING_WORKSPACE=/data/openviking
+    volumes:
+      - openviking-data:/data/openviking
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/utils/health-check/"]
       interval: 10s
@@ -74,3 +84,4 @@ services:
 volumes:
   app-db-data:
   qdrant-data:
+  openviking-data:

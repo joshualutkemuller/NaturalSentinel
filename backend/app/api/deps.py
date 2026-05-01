@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from pydantic import ValidationError
+from qdrant_client import QdrantClient
 from sqlmodel import Session
 
 from app.core import security
@@ -14,6 +15,40 @@ from app.core.db import engine
 from app.models import TokenPayload, User
 from app.naturalsentinel.agent_framework import AgentRuntime
 from app.naturalsentinel.memory.pg_store import PgMemoryStore
+
+# ---------------------------------------------------------------------------
+# Qdrant singleton
+# ---------------------------------------------------------------------------
+
+_qdrant_client: QdrantClient | None = None
+
+
+def get_qdrant_client() -> QdrantClient:
+    """Return the shared Qdrant client (lazy-initialized singleton)."""
+    global _qdrant_client
+    if _qdrant_client is None:
+        _qdrant_client = QdrantClient(
+            url=settings.QDRANT_URL,
+            api_key=settings.QDRANT_API_KEY,
+        )
+    return _qdrant_client
+
+
+QdrantDep = Annotated[QdrantClient, Depends(get_qdrant_client)]
+
+# ---------------------------------------------------------------------------
+# OpenViking singleton (formalizes the module-level client in mcp/openviking.py)
+# ---------------------------------------------------------------------------
+
+
+def get_openviking_client():  # type: ignore[return]
+    """Return the shared OpenViking SyncHTTPClient (lazy-initialized singleton)."""
+    from app.naturalsentinel.mcp.openviking import _get_ov_client
+
+    return _get_ov_client()
+
+
+OpenVikingDep = Annotated[object, Depends(get_openviking_client)]
 
 reusable_oauth2 = OAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"

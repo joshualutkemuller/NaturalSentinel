@@ -88,9 +88,9 @@ instead of the inline string literals.
 
 ---
 
-## Domain mapping caveat
+## Domain mapping
 
-NaturalSentinel does not yet have dedicated `DEA`, `HHS`, or `CMS` values
-in the `RegulatoryDomain` enum. All three filings are tagged
-`RegulatoryDomain.FDA` as the closest existing healthcare domain. Adding
-`DEA` and `CMS` as first-class domains is a planned enhancement.
+`RegulatoryDomain` now includes `DEA`, `CMS`, and `HHS` as first-class
+enum values. Each filing uses its native domain tag. The Federal Register
+fetcher maps these to the correct agency slugs via `DOMAIN_TO_AGENCY` in
+`backend/app/naturalsentinel/fetchers/live/federal_register.py`.

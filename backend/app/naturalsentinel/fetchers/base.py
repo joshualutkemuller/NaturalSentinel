@@ -114,6 +114,31 @@ DOMAIN_BUSINESS_LINES: dict[str, list[str]] = {
         "Internal Models (FRTB / IRBA)",
         "XVA Desk",
     ],
+    # Healthcare / public health domains
+    "dea": [
+        "Telemedicine Prescribing",
+        "Controlled Substance Compliance",
+        "Opioid Treatment Programs",
+        "Digital Health Platforms",
+        "Pharmacy Operations",
+        "Addiction Medicine",
+    ],
+    "cms": [
+        "Medicare Reimbursement",
+        "Telehealth Services",
+        "Physician Fee Schedule",
+        "Hospital Operations",
+        "Medicare Advantage Plans",
+        "Accountable Care Organizations",
+    ],
+    "hhs": [
+        "Public Health Policy",
+        "Healthcare Data Privacy (HIPAA)",
+        "Substance Abuse Programs",
+        "Veterans Health Administration",
+        "Clinical Research Oversight",
+        "Healthcare Workforce",
+    ],
 }
 
 
@@ -145,7 +170,7 @@ def fetch_filings(
 
     Live sources
     ------------
-    Federal Register API   FED, CFPB, OCC, FDIC, CFTC, SEC, EPA, USTR, FHFA, FDA
+    Federal Register API   FED, CFPB, OCC, FDIC, CFTC, SEC, EPA, USTR, FHFA, FDA, DEA, CMS, HHS
     SEC EDGAR EFTS         SEC (supplementary)
     BIS/BCBS               BASEL
     FINRA notices          FINRA

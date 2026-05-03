@@ -13,6 +13,9 @@ rulemaking in a structured JSON API.  This module covers:
     USTR  — Office of the US Trade Representative
     FHFA  — Federal Housing Finance Agency
     FDA   — Food and Drug Administration
+    DEA   — Drug Enforcement Administration
+    CMS   — Centers for Medicare & Medicaid Services
+    HHS   — Department of Health and Human Services
 
 API reference: https://www.federalregister.gov/developers/documentation/api/v1
 """
@@ -34,6 +37,7 @@ from app.naturalsentinel.fetchers.live.parsers import (
 logger = logging.getLogger(__name__)
 
 _API_BASE = "https://www.federalregister.gov/api/v1/documents.json"
+_SINGLE_DOC_API = "https://www.federalregister.gov/api/v1/documents/{}.json"
 
 # Map NaturalSentinel domain codes → Federal Register agency slugs
 DOMAIN_TO_AGENCY: dict[str, str] = {
@@ -47,6 +51,10 @@ DOMAIN_TO_AGENCY: dict[str, str] = {
     "ustr": "office-of-the-united-states-trade-representative",
     "fhfa": "federal-housing-finance-agency",
     "fda": "food-and-drug-administration",
+    # Healthcare / public health agencies
+    "dea": "drug-enforcement-administration",
+    "cms": "centers-for-medicare-medicaid-services",
+    "hhs": "health-and-human-services-department",
 }
 
 # Federal Register document type → NaturalSentinel change_type
@@ -131,6 +139,60 @@ def fetch(
                 results.append(raw)
 
     return results
+
+
+_AGENCY_SLUG_TO_DOMAIN: dict[str, str] = {v: k for k, v in DOMAIN_TO_AGENCY.items()}
+
+
+def fetch_by_document_number(
+    document_numbers: list[str],
+    fetch_full_text: bool = True,
+    client: HTTPClient | None = None,
+) -> list[dict]:
+    """Fetch specific Federal Register documents by document number.
+
+    Args:
+        document_numbers: List of Federal Register document numbers
+            (e.g. ``["2025-24123", "2025-05007"]``).
+        fetch_full_text: If True, fetch and extract the full HTML document
+            text for each result.  Set False to use abstract only (faster).
+        client: Optional injected :class:`HTTPClient` (for testing).
+
+    Returns:
+        List of raw filing dicts ready for normalisation into
+        :class:`~naturalsentinel.models.RegulatoryFiling`.
+    """
+    http = client or HTTPClient()
+    results: list[dict] = []
+
+    for doc_number in document_numbers:
+        url = _SINGLE_DOC_API.format(doc_number)
+        try:
+            doc = http.get_json(url)
+        except (urllib.error.URLError, ValueError, KeyError) as exc:
+            logger.warning(
+                "Federal Register API error for document %s: %s", doc_number, exc
+            )
+            continue
+
+        domain = _resolve_domain(doc)
+        raw = _normalise(doc, domain, http, fetch_full_text)
+        if raw:
+            results.append(raw)
+
+    return results
+
+
+def _resolve_domain(doc: dict) -> str:
+    """Determine the NaturalSentinel domain from a Federal Register API doc."""
+    for agency in doc.get("agencies", []):
+        slug = agency.get("slug", "") or agency.get("id", "")
+        if slug in _AGENCY_SLUG_TO_DOMAIN:
+            return _AGENCY_SLUG_TO_DOMAIN[slug]
+        parent = agency.get("parent_id")
+        if isinstance(parent, str) and parent in _AGENCY_SLUG_TO_DOMAIN:
+            return _AGENCY_SLUG_TO_DOMAIN[parent]
+    return "sec"
 
 
 def _normalise(

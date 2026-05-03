@@ -13,10 +13,8 @@ Documents:
     3. CMS CY 2026 Medicare Physician Fee Schedule Final Rule (Oct 2025) —
        Medicare telehealth services list, supervision, and frequency limits
 
-Note: NaturalSentinel does not currently have dedicated DEA / CMS / HHS
-domain enum values, so all three filings are tagged ``RegulatoryDomain.FDA``
-as the closest existing healthcare domain. Adding ``DEA`` and ``CMS`` as
-first-class domains would be a future enhancement.
+The ``RegulatoryDomain`` enum now includes ``DEA``, ``CMS``, and ``HHS``
+as first-class domains, so each filing uses its native domain tag.
 """
 
 from __future__ import annotations
@@ -42,7 +40,7 @@ DEA_FOURTH_EXTENSION = RegulatoryFiling(
         "Fourth Temporary Extension of COVID-19 Telemedicine Flexibilities "
         "for Prescription of Controlled Medications"
     ),
-    domain=RegulatoryDomain.FDA,
+    domain=RegulatoryDomain.DEA,
     source_url=(
         "https://www.federalregister.gov/documents/2025/12/31/2025-24123/"
         "fourth-temporary-extension-of-covid-19-telemedicine-flexibilities-"
@@ -77,7 +75,7 @@ DEA_BUPRENORPHINE_TELEMEDICINE = RegulatoryFiling(
         "Expansion of Buprenorphine Treatment via Telemedicine Encounter "
         "and Continuity of Care via Telemedicine for Veterans Affairs Patients"
     ),
-    domain=RegulatoryDomain.FDA,
+    domain=RegulatoryDomain.DEA,
     source_url=(
         "https://www.federalregister.gov/documents/2025/03/24/2025-05007/"
         "expansion-of-buprenorphine-treatment-via-telemedicine-encounter-"
@@ -114,7 +112,7 @@ CMS_2026_PFS_TELEHEALTH = RegulatoryFiling(
         "Medicare and Medicaid Programs; CY 2026 Payment Policies Under the "
         "Physician Fee Schedule and Other Changes to Part B Payment Policies"
     ),
-    domain=RegulatoryDomain.FDA,
+    domain=RegulatoryDomain.CMS,
     source_url=(
         "https://www.federalregister.gov/documents/2025/11/05/2025-19787/"
         "medicare-and-medicaid-programs-cy-2026-payment-policies-under-the-"

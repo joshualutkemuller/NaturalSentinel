@@ -27,6 +27,10 @@ class RegulatoryDomain(Enum):
     CFTC = "cftc"  # Commodity Futures Trading Commission
     FDIC = "fdic"  # Federal Deposit Insurance Corporation
     BASEL = "basel"  # Basel Committee on Banking Supervision
+    # Healthcare / public health domains
+    DEA = "dea"  # Drug Enforcement Administration
+    CMS = "cms"  # Centers for Medicare & Medicaid Services
+    HHS = "hhs"  # Department of Health and Human Services
 
 
 class Severity(Enum):
